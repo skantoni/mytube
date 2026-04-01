@@ -1,0 +1,1788 @@
+/* ═══════════════════════════════════════════════════
+   RANKING PAGE - MyTube Rankings System
+   Estilo viciante, confortável e competitivo
+   ═══════════════════════════════════════════════════ */
+
+/* Body & Layout */
+.ranking-body {
+    background: #0a0a0f;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+.ranking-main {
+    padding: 70px 0 30px 0;
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Header */
+.ranking-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 10px 20px;
+    background: rgba(10, 10, 15, 0.95) !important;
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ranking-header-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ranking-header-title i {
+    color: #FFD700;
+    font-size: 20px;
+}
+
+/* ═══════════════════════════════════════
+   MY RANK CARD
+   ═══════════════════════════════════════ */
+.my-rank-card {
+    margin: 16px 16px 8px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border-radius: 20px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(0, 212, 255, 0.15);
+}
+
+.my-rank-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(0, 212, 255, 0.06) 0%, transparent 60%);
+    animation: rankGlow 6s ease-in-out infinite;
+}
+
+@keyframes rankGlow {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-5%, 5%); }
+}
+
+.my-rank-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.my-rank-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(0, 212, 255, 0.4);
+}
+
+.my-rank-info {
+    flex: 1;
+}
+
+.my-rank-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
+.my-rank-school {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.my-rank-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.my-rank-stat {
+    text-align: center;
+}
+
+.my-rank-stat-value {
+    font-size: 18px;
+    font-weight: 800;
+    color: #00d4ff;
+}
+
+.my-rank-stat-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.my-rank-position {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.my-rank-number {
+    font-size: 32px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1;
+}
+
+.my-rank-label {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ═══════════════════════════════════════
+   SCHOOL SELECT BANNER
+   ═══════════════════════════════════════ */
+.school-select-banner {
+    margin: 12px 16px;
+    background: linear-gradient(135deg, #1e1e3a, #2a1a3e);
+    border-radius: 16px;
+    padding: 24px 20px;
+    text-align: center;
+    border: 1px dashed rgba(168, 85, 247, 0.3);
+    animation: bannerPulse 3s ease-in-out infinite;
+}
+
+@keyframes bannerPulse {
+    0%, 100% { border-color: rgba(168, 85, 247, 0.3); }
+    50% { border-color: rgba(168, 85, 247, 0.6); }
+}
+
+.school-select-icon {
+    font-size: 40px;
+    margin-bottom: 8px;
+}
+
+.school-select-banner h3 {
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.school-select-banner p {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.btn-select-school {
+    background: linear-gradient(135deg, #a855f7, #6366f1);
+    color: #fff;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 30px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+
+.btn-select-school:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
+}
+
+/* ═══════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════ */
+.ranking-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    position: sticky;
+    top: 56px;
+    z-index: 10;
+    background: rgba(10, 10, 15, 0.95);
+    backdrop-filter: blur(10px);
+}
+
+.ranking-tabs::-webkit-scrollbar { display: none; }
+
+.ranking-tab {
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.5);
+    padding: 10px 18px;
+    border-radius: 25px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.ranking-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.ranking-tab.active {
+    background: linear-gradient(135deg, #00d4ff, #0099ff);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 2px 12px rgba(0, 212, 255, 0.3);
+}
+
+.ranking-tab i {
+    font-size: 14px;
+}
+
+/* Tab Content */
+.ranking-tab-content {
+    display: none;
+    padding: 16px;
+    animation: fadeInUp 0.3s ease;
+}
+
+.ranking-tab-content.active {
+    display: block;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════
+   SECTION HEADERS
+   ═══════════════════════════════════════ */
+.section-header-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.section-header-label i {
+    color: #FFD700;
+}
+
+/* ═══════════════════════════════════════
+   DOMINANT SCHOOL BANNER
+   ═══════════════════════════════════════ */
+.dominant-banner {
+    background: linear-gradient(135deg, #1a0a2e 0%, #2d1b69 30%, #11998e 100%);
+    border-radius: 20px;
+    padding: 28px 24px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.dominant-banner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 10% 20%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 90% 80%, rgba(17, 153, 142, 0.15) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.dominant-crown {
+    font-size: 48px;
+    text-align: center;
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 1;
+    animation: crownFloat 3s ease-in-out infinite;
+}
+
+@keyframes crownFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+.dominant-school-name {
+    font-size: 24px;
+    font-weight: 900;
+    color: #fff;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    margin-bottom: 4px;
+}
+
+.dominant-school-tag {
+    text-align: center;
+    font-size: 12px;
+    color: #FFD700;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    position: relative;
+    z-index: 1;
+    margin-bottom: 16px;
+}
+
+.dominant-stats {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    position: relative;
+    z-index: 1;
+}
+
+.dominant-stat {
+    text-align: center;
+}
+
+.dominant-stat-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+}
+
+.dominant-stat-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dominant-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.dominant-empty i {
+    font-size: 48px;
+    margin-bottom: 12px;
+    display: block;
+    color: rgba(255, 215, 0, 0.3);
+}
+
+/* ═══════════════════════════════════════
+   TRENDING VIDEOS GRID
+   ═══════════════════════════════════════ */
+.trending-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.trending-video-card {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.trending-video-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(0, 212, 255, 0.2);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.trending-video-thumb {
+    position: relative;
+    width: 100%;
+    padding-top: 130%;
+    background: #1a1a2e;
+    overflow: hidden;
+}
+
+.trending-video-thumb video,
+.trending-video-thumb img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.trending-video-rank {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    color: #FFD700;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 12px;
+    z-index: 2;
+}
+
+.trending-video-stats {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 30px 8px 8px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    display: flex;
+    gap: 10px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.8);
+    z-index: 2;
+}
+
+.trending-video-stats span {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.trending-video-info {
+    padding: 10px 12px;
+}
+
+.trending-video-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+}
+
+.trending-video-creator {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.trending-video-creator img {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.trending-school-badge {
+    font-size: 10px;
+    background: rgba(0, 212, 255, 0.15);
+    color: #00d4ff;
+    padding: 2px 8px;
+    border-radius: 8px;
+    margin-top: 6px;
+    display: inline-block;
+}
+
+/* ═══════════════════════════════════════
+   PERIOD FILTER
+   ═══════════════════════════════════════ */
+.period-filter {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 14px;
+    padding: 4px;
+}
+
+.period-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.period-btn.active {
+    background: rgba(0, 212, 255, 0.15);
+    color: #00d4ff;
+}
+
+.period-btn:hover:not(.active) {
+    color: #fff;
+}
+
+/* ═══════════════════════════════════════
+   PODIUM SECTION (Top 3)
+   ═══════════════════════════════════════ */
+.podium-section {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding: 20px 0;
+}
+
+.podium-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.podium-item:hover {
+    transform: translateY(-6px);
+}
+
+.podium-item.first {
+    order: 2;
+}
+.podium-item.second {
+    order: 1;
+}
+.podium-item.third {
+    order: 3;
+}
+
+.podium-avatar-wrapper {
+    position: relative;
+    margin-bottom: 8px;
+}
+
+.podium-avatar {
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+}
+
+.podium-item.first .podium-avatar {
+    width: 80px;
+    height: 80px;
+    border-color: #FFD700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.podium-item.second .podium-avatar {
+    width: 64px;
+    height: 64px;
+    border-color: #C0C0C0;
+    box-shadow: 0 0 15px rgba(192, 192, 192, 0.2);
+}
+
+.podium-item.third .podium-avatar {
+    width: 64px;
+    height: 64px;
+    border-color: #CD7F32;
+    box-shadow: 0 0 15px rgba(205, 127, 50, 0.2);
+}
+
+.podium-crown {
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 24px;
+    animation: crownFloat 3s ease-in-out infinite;
+}
+
+.podium-rank-badge {
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 900;
+    color: #fff;
+}
+
+.podium-item.first .podium-rank-badge {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+}
+.podium-item.second .podium-rank-badge {
+    background: linear-gradient(135deg, #C0C0C0, #A0A0A0);
+}
+.podium-item.third .podium-rank-badge {
+    background: linear-gradient(135deg, #CD7F32, #8B4513);
+}
+
+.podium-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    max-width: 90px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.podium-school {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    max-width: 110px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.podium-points {
+    font-size: 14px;
+    font-weight: 800;
+    color: #00d4ff;
+    margin-top: 4px;
+}
+
+/* ═══════════════════════════════════════
+   CREATORS TABLE
+   ═══════════════════════════════════════ */
+.creators-table {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.creator-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 14px;
+    padding: 12px 16px;
+    transition: all 0.3s;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.creator-row:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(0, 212, 255, 0.15);
+    transform: translateX(4px);
+}
+
+.creator-row.highlighted {
+    background: rgba(0, 212, 255, 0.08);
+    border-color: rgba(0, 212, 255, 0.2);
+}
+
+.creator-position {
+    font-size: 16px;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.3);
+    min-width: 30px;
+    text-align: center;
+}
+
+.creator-position.gold { color: #FFD700; }
+.creator-position.silver { color: #C0C0C0; }
+.creator-position.bronze { color: #CD7F32; }
+
+.creator-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.creator-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.creator-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.creator-name .verified-badge {
+    color: #3b82f6;
+    font-size: 12px;
+    margin-left: 4px;
+}
+
+.creator-school-tag {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.35);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.creator-stats-inline {
+    display: flex;
+    gap: 10px;
+    margin-top: 2px;
+}
+
+.creator-stat-mini {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.creator-stat-mini i {
+    font-size: 10px;
+}
+
+.creator-points {
+    font-size: 16px;
+    font-weight: 800;
+    color: #00d4ff;
+    white-space: nowrap;
+}
+
+.creator-points-label {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.3);
+    text-align: right;
+}
+
+/* ═══════════════════════════════════════
+   SCHOOLS RANKING
+   ═══════════════════════════════════════ */
+.schools-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.school-rank-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    padding: 16px;
+    transition: all 0.3s;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.school-rank-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0, 212, 255, 0.2);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.school-rank-card.top-1 {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(255, 165, 0, 0.04));
+    border-color: rgba(255, 215, 0, 0.15);
+}
+
+.school-rank-card.top-2 {
+    background: linear-gradient(135deg, rgba(192, 192, 192, 0.06), rgba(160, 160, 160, 0.03));
+    border-color: rgba(192, 192, 192, 0.12);
+}
+
+.school-rank-card.top-3 {
+    background: linear-gradient(135deg, rgba(205, 127, 50, 0.06), rgba(139, 69, 19, 0.03));
+    border-color: rgba(205, 127, 50, 0.12);
+}
+
+.school-rank-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.school-rank-position {
+    font-size: 28px;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.15);
+    min-width: 42px;
+    text-align: center;
+    line-height: 1;
+}
+
+.school-rank-card.top-1 .school-rank-position { color: #FFD700; }
+.school-rank-card.top-2 .school-rank-position { color: #C0C0C0; }
+.school-rank-card.top-3 .school-rank-position { color: #CD7F32; }
+
+.school-rank-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1a1a3e, #2a2a5e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.school-rank-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.school-rank-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.school-rank-city {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.school-rank-points {
+    font-size: 20px;
+    font-weight: 900;
+    color: #00d4ff;
+    text-align: right;
+}
+
+.school-rank-points-label {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.3);
+    text-align: right;
+}
+
+.school-rank-stats {
+    display: flex;
+    gap: 16px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.school-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.school-stat i {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.school-stat-value {
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+/* ═══════════════════════════════════════
+   MY SCHOOL SECTION
+   ═══════════════════════════════════════ */
+.myschool-header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(99, 102, 241, 0.05));
+    border-radius: 16px;
+    border: 1px solid rgba(168, 85, 247, 0.15);
+}
+
+.myschool-header h2 {
+    font-size: 18px;
+    color: #fff;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.myschool-header h2 i {
+    color: #a855f7;
+}
+
+.myschool-header p {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 4px;
+}
+
+/* ═══════════════════════════════════════
+   SCHOOL MODAL (Selector)
+   ═══════════════════════════════════════ */
+.school-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.school-modal.active {
+    display: flex;
+}
+
+.school-modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+.school-modal-content {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    max-height: 80vh;
+    background: #1a1a2e;
+    border-radius: 20px 20px 0 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    animation: slideUpModal 0.3s ease;
+}
+
+@keyframes slideUpModal {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.school-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.school-modal-header h3 {
+    font-size: 18px;
+    color: #fff;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.school-modal-header h3 i {
+    color: #a855f7;
+}
+
+.close-modal-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.close-modal-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.school-search-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.school-search-wrapper i {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 14px;
+}
+
+.school-search-wrapper input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+}
+
+.school-search-wrapper input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.school-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.school-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.school-list-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(168, 85, 247, 0.2);
+}
+
+.school-list-item.selected {
+    background: rgba(168, 85, 247, 0.15);
+    border-color: rgba(168, 85, 247, 0.3);
+}
+
+.school-list-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #1e1e3a, #2a2a5e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.school-list-name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.school-list-short {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.3);
+    font-weight: 500;
+}
+
+/* ═══════════════════════════════════════
+   LOADING & EMPTY STATES
+   ═══════════════════════════════════════ */
+.loading-placeholder {
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.spinner-small {
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #00d4ff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 12px;
+    display: block;
+    color: rgba(255, 255, 255, 0.15);
+}
+
+.empty-state p {
+    font-size: 14px;
+}
+
+/* ═══════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════ */
+@media (max-width: 480px) {
+    .ranking-main {
+        padding-top: 56px;
+    }
+    
+    .trending-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
+    .podium-item.first .podium-avatar {
+        width: 68px;
+        height: 68px;
+    }
+    
+    .podium-item.second .podium-avatar,
+    .podium-item.third .podium-avatar {
+        width: 54px;
+        height: 54px;
+    }
+    
+    .dominant-school-name {
+        font-size: 20px;
+    }
+    
+    .my-rank-content {
+        flex-wrap: wrap;
+    }
+    
+    .my-rank-stats {
+        width: 100%;
+        justify-content: space-around;
+    }
+}
+
+@media (max-width: 360px) {
+    .ranking-tab span {
+        display: none;
+    }
+    
+    .ranking-tab {
+        padding: 10px 14px;
+    }
+    
+    .ranking-tab i {
+        font-size: 16px;
+    }
+}
+
+/* Points animation */
+@keyframes pointsUp {
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-30px); }
+}
+
+.points-animation {
+    position: absolute;
+    color: #FFD700;
+    font-weight: 800;
+    font-size: 16px;
+    pointer-events: none;
+    animation: pointsUp 1s ease-out forwards;
+}
+
+/* Ranking badge in feed */
+.ranking-badge-feed {
+    position: relative;
+}
+
+.ranking-badge-feed .rank-indicator {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+    font-size: 8px;
+    font-weight: 900;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid #000;
+}
+
+/* ═══════════════════════════════════════
+   RANKING SEARCH MODAL
+   ═══════════════════════════════════════ */
+.ranking-search-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #111;
+    display: none;
+    flex-direction: column;
+}
+.ranking-search-modal.active {
+    display: flex;
+}
+
+.ranking-search-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.ranking-search-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+}
+
+.ranking-search-back {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 18px;
+    padding: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.ranking-search-input-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 8px 14px;
+    gap: 8px;
+}
+.ranking-search-input-wrapper i {
+    color: rgba(255,255,255,0.4);
+    font-size: 14px;
+    flex-shrink: 0;
+}
+.ranking-search-input-wrapper input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+}
+.ranking-search-input-wrapper input::placeholder {
+    color: rgba(255,255,255,0.35);
+}
+
+.ranking-search-clear {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ranking-search-results {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 0;
+}
+
+.ranking-search-list {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Search result items */
+.rs-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.rs-item:active,
+.rs-item-active {
+    background: rgba(255,255,255,0.06);
+}
+
+.rs-item-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.rs-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #222;
+}
+
+.rs-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.rs-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rs-meta {
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rs-points-badge {
+    flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,165,0,0.15));
+    color: #FFD700;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,215,0,0.2);
+}
+
+/* Expanded card (inline ranking data) */
+.rs-expanded {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease, padding 0.25s ease;
+    padding: 0 0 0 56px;
+}
+.rs-expanded.open {
+    max-height: 200px;
+    padding: 12px 0 4px 56px;
+}
+
+.rs-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.rs-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    background: rgba(255,255,255,0.04);
+    padding: 6px 10px;
+    border-radius: 8px;
+}
+.rs-stat i {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    width: 14px;
+    text-align: center;
+}
+.rs-stat i.fa-school { color: #4ECDC4; }
+.rs-stat i.fa-bolt { color: #FFD700; }
+.rs-stat i.fa-video { color: #FF6B6B; }
+.rs-stat i.fa-users { color: #A78BFA; }
+
+.rs-profile-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.rs-profile-link:hover {
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+}
+
+/* Reuse existing placeholder/loading styles */
+.ranking-search-results .search-placeholder,
+.ranking-search-results .search-no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 60px 20px;
+    color: rgba(255,255,255,0.3);
+}
+.ranking-search-results .search-placeholder i,
+.ranking-search-results .search-no-results i {
+    font-size: 36px;
+}
+.ranking-search-results .search-placeholder p,
+.ranking-search-results .search-no-results p {
+    font-size: 14px;
+}
+.ranking-search-results .search-loading {
+    display: flex;
+    justify-content: center;
+    padding: 40px;
+}
+
+/* ═══════════════════════════════════════════════════
+   BEST MYTUBER DA SEMANA - Rankings Page
+   Seção de destaque dos melhores da semana
+   ═══════════════════════════════════════════════════ */
+
+.best-mytuber-section {
+    margin: 0 16px 20px;
+}
+
+.best-mytuber-header-label {
+    color: #FFD700 !important;
+    font-size: 16px !important;
+}
+
+.best-mytuber-header-label i {
+    color: #FFD700;
+    animation: crownFloat 3s ease-in-out infinite;
+}
+
+@keyframes crownFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-3px) rotate(-5deg); }
+    75% { transform: translateY(-3px) rotate(5deg); }
+}
+
+/* Global Winner Card */
+.best-mytuber-global-card {
+    position: relative;
+    background: linear-gradient(135deg, #1a1a2e 0%, #0d1b3e 40%, #1a0a2e 100%);
+    border-radius: 20px;
+    padding: 24px 20px;
+    text-align: center;
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    margin-top: 12px;
+}
+
+.best-mytuber-global-card:active {
+    transform: scale(0.98);
+}
+
+.best-mytuber-card-glow {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.08) 0%, transparent 60%);
+    animation: bestGlow 5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes bestGlow {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+.best-mytuber-crown-icon {
+    font-size: 36px;
+    margin-bottom: 4px;
+    animation: crownBounce 3s ease-in-out infinite;
+}
+
+@keyframes crownBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+.best-mytuber-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #1a1a2e;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 4px 14px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+}
+
+.best-mytuber-avatar-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 12px;
+}
+
+.best-mytuber-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.best-mytuber-badge-icon {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #fff;
+    border: 2px solid #1a1a2e;
+}
+
+.best-mytuber-badge-gold {
+    background: linear-gradient(135deg, #FFD700, #f59e0b);
+    box-shadow: 0 2px 10px rgba(255, 215, 0, 0.5);
+}
+
+.best-mytuber-badge-blue {
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    box-shadow: 0 2px 10px rgba(59, 130, 246, 0.5);
+}
+
+.best-mytuber-name {
+    font-size: 18px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
+.best-mytuber-username {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 8px;
+}
+
+.best-mytuber-rising {
+    display: inline-block;
+    background: rgba(234, 179, 8, 0.15);
+    color: #eab308;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+}
+
+.best-mytuber-rising i {
+    margin-right: 3px;
+}
+
+.best-mytuber-stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin: 12px 0;
+}
+
+.best-mytuber-stat {
+    text-align: center;
+}
+
+.best-mytuber-stat-val {
+    font-size: 18px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.best-mytuber-stat-lbl {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Score Breakdown Bars */
+.best-mytuber-score-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.score-bar {
+    height: 20px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.score-bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    min-width: 40px;
+    transition: width 1s ease-out;
+}
+
+.score-bar-fill span {
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+}
+
+/* School Winners */
+.best-mytuber-schools-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #60a5fa;
+    margin-top: 20px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.best-mytuber-schools-title i {
+    color: #60a5fa;
+}
+
+.best-mytuber-school-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.best-mytuber-school-card {
+    background: linear-gradient(135deg, #1a1a2e, #1e293b);
+    border-radius: 16px;
+    padding: 16px 12px;
+    text-align: center;
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.best-mytuber-school-card:active {
+    transform: scale(0.97);
+}
+
+.best-mytuber-school-card:hover {
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.best-mytuber-school-card-header {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 10px;
+}
+
+.best-mytuber-school-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(59, 130, 246, 0.4);
+}
+
+.best-mytuber-school-card-header .best-mytuber-badge-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+    bottom: -2px;
+    right: -2px;
+}
+
+.best-mytuber-school-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.best-mytuber-school-tag {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-bottom: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.best-mytuber-school-tag i {
+    margin-right: 3px;
+    color: #60a5fa;
+}
+
+.best-mytuber-school-score {
+    font-size: 14px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #60a5fa, #6366f1);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}

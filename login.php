@@ -1,0 +1,287 @@
+<?php
+require_once 'includes/config.php';
+
+// Se já estiver logado, redirecionar para home
+if (isLoggedIn()) {
+    redirect('index.php');
+}
+
+$error = '';
+$success = '';
+$error_from = ''; // 'login' ou 'register'
+
+// Preservar dados do formulário de cadastro
+$reg_username = '';
+$reg_email = '';
+$reg_full_name = '';
+$reg_instituicao = '';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (isset($_POST['login'])) {
+        // LOGIN
+        $username = trim($_POST['username']);
+        $password = $_POST['password'];
+        
+        if (empty($username) || empty($password)) {
+            $error = 'Por favor, preencha todos os campos.';
+        } else {
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE BINARY username = ? OR email = ?");
+            $stmt->execute([$username, $username]);
+            $users = $stmt->fetchAll();
+            
+            $user = null;
+            foreach ($users as $u) {
+                if (password_verify($password, $u['password'])) {
+                    $user = $u;
+                    break;
+                }
+            }
+            
+            if ($user) {
+                // Resetar status online stale no banco (pode estar preso de crash anterior)
+                try {
+                    $stmt2 = $pdo->prepare("
+                        UPDATE user_online_status 
+                        SET is_online = 0, last_seen = NOW() 
+                        WHERE user_id = ?
+                    ");
+                    $stmt2->execute([$user['id']]);
+                } catch (Exception $e) {
+                    // Silenciar — login deve sempre funcionar
+                }
+                
+                // Limpar sessão antiga e recarregar dados atualizados
+                session_regenerate_id(true);
+                $_SESSION = [];
+                
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['full_name'] = $user['full_name'];
+                $_SESSION['profile_picture'] = $user['profile_picture'];
+                
+                // Usar JavaScript para redirecionamento mais confiável
+                echo "<script>window.location.href = 'index.php?splash=1';</script>";
+                exit();
+            } else {
+                $error = 'Usuário ou senha incorretos.';
+            }
+        }
+    } 
+    
+    
+    elseif (isset($_POST['register'])) {
+        // CADASTRO
+        $username = trim($_POST['reg_username']);
+        $email = trim($_POST['reg_email']);
+        $full_name = trim($_POST['reg_full_name']);
+        $instituicao = trim($_POST['reg_instituicao'] ?? '');
+        $password = $_POST['reg_password'];
+        $confirm_password = $_POST['reg_confirm_password'];
+        
+        // Preservar dados para reexibir no formulário
+        $reg_username = $username;
+        $reg_email = $email;
+        $reg_full_name = $full_name;
+        $reg_instituicao = $instituicao;
+        $error_from = 'register';
+        
+        // Validações
+        if (empty($username) || empty($email) || empty($full_name) || empty($password)) {
+            $error = 'Por favor, preencha todos os campos.';
+        } elseif (strlen($username) < 3 || strlen($username) > 12) {
+            $error = 'Nome de usuário deve ter entre 3 e 12 caracteres.';
+        } elseif (!preg_match('/^[a-zA-Z0-9_\-]+$/', $username)) {
+            $error = 'Nome de usuário pode conter apenas letras, números, - e _';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/@.+\..+/', $email)) {
+            $error = 'E-mail inválido. Verifique se contém @ e um domínio válido.';
+        } elseif (strlen($password) < 6) {
+            $error = 'Senha deve ter pelo menos 6 caracteres.';
+        } elseif ($password !== $confirm_password) {
+            $error = 'Senhas não conferem.';
+        } else {
+            // Verificar se usuário já existe
+            $stmt_user = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+            $stmt_user->execute([$username]);
+            
+            if ($stmt_user->fetch()) {
+                $error = 'Nome de usuário já existe.';
+            } else {
+                // Verificar limite de contas por email (máx 3)
+                $stmt_email = $pdo->prepare("SELECT COUNT(id) FROM users WHERE email = ?");
+                $stmt_email->execute([$email]);
+                $email_count = (int)$stmt_email->fetchColumn();
+                
+                if ($email_count >= 3) {
+                    $error = 'Este e-mail já atingiu o limite de 3 contas.';
+                } else {
+                    // Criar usuário
+                    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                    $stmt = $pdo->prepare("INSERT INTO users (username, email, full_name, password, instituicao) VALUES (?, ?, ?, ?, ?)");
+                    
+                    if ($stmt->execute([$username, $email, $full_name, $hashed_password, $instituicao])) {
+                        $success = 'Conta criada com sucesso! Faça login.';
+                    } else {
+                        $error = 'Erro ao criar conta. Tente novamente.';
+                    }
+                }
+            }
+        }
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyTube - Login</title>
+    <link rel="stylesheet" href="assets/css/auth.css">
+    <link rel="stylesheet" href="assets/css/main.css">
+    <?php include __DIR__ . '/includes/favicon.php'; ?>
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="logo">
+                <h1>MyTube</h1>
+                <p>Compartilhe seus momentos</p>
+            </div>
+            
+            <?php if ($error): ?>
+                <div class="alert alert-error"><?php echo $error; ?></div>
+            <?php endif; ?>
+            
+            <?php if ($success): ?>
+                <div class="alert alert-success"><?php echo $success; ?></div>
+            <?php endif; ?>
+            
+            <div class="auth-tabs">
+                <button class="tab-btn <?php echo ($error_from !== 'register') ? 'active' : ''; ?>" onclick="showLogin()">Entrar</button>
+                <button class="tab-btn <?php echo ($error_from === 'register') ? 'active' : ''; ?>" onclick="showRegister()">Cadastrar</button>
+            </div>
+            
+            <!-- Formulário de Login -->
+            <form id="loginForm" method="POST" class="auth-form <?php echo ($error_from !== 'register') ? 'active' : ''; ?>">
+                <div class="input-group">
+                    <input type="text" name="username" placeholder="Nome de usuário ou e-mail" required>
+                </div>
+                <div class="input-group password-group">
+                    <input type="password" name="password" placeholder="Senha" required>
+                    <button type="button" class="toggle-password" onclick="togglePassword(this)" tabindex="-1">
+                        <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <svg class="eye-off-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    </button>
+                </div>
+                <button type="submit" name="login" class="btn btn-primary">Entrar</button>
+                <p class="forgot-password">
+                    <a href="#" onclick="showForgotPassword(); return false;">Esqueceu a senha?</a>
+                </p>
+            </form>
+
+            <!-- Fluxo de Esqueceu a Senha -->
+            <div id="forgotPasswordFlow" class="auth-form forgot-flow">
+                <!-- Etapa 1: Inserir Email -->
+                <div id="forgotStep1" class="forgot-step active">
+                    <div class="forgot-header">
+                        <button type="button" class="back-btn" onclick="backToLogin()">&larr;</button>
+                        <h3>Recuperar Senha</h3>
+                    </div>
+                    <p class="forgot-description">Insira o e-mail da sua conta para receber um código de verificação.</p>
+                    <div class="input-group">
+                        <input type="email" id="resetEmail" placeholder="Seu e-mail" required>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="sendResetCode()" id="btnSendCode">Enviar Código</button>
+                </div>
+
+                <!-- Etapa 2: Inserir Código -->
+                <div id="forgotStep2" class="forgot-step">
+                    <div class="forgot-header">
+                        <button type="button" class="back-btn" onclick="backToStep1()">&larr;</button>
+                        <h3>Verificar Código</h3>
+                    </div>
+                    <p class="forgot-description">Insira o código de 6 dígitos enviado para <strong id="emailDisplay"></strong></p>
+                    <div class="code-inputs" id="codeInputs">
+                        <input type="text" maxlength="1" class="code-digit" data-index="0" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" maxlength="1" class="code-digit" data-index="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" maxlength="1" class="code-digit" data-index="2" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" maxlength="1" class="code-digit" data-index="3" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" maxlength="1" class="code-digit" data-index="4" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" maxlength="1" class="code-digit" data-index="5" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="verifyResetCode()" id="btnVerifyCode">Verificar</button>
+                    <p class="resend-code">
+                        <span id="resendTimer">Reenviar código em <strong id="countdown">60</strong>s</span>
+                        <a href="#" id="resendLink" style="display:none;" onclick="resendCode(); return false;">Reenviar código</a>
+                    </p>
+                </div>
+
+                <!-- Etapa 3: Nova Senha -->
+                <div id="forgotStep3" class="forgot-step">
+                    <div class="forgot-header">
+                        <h3>Nova Senha</h3>
+                    </div>
+                    <p class="forgot-description">Crie uma nova senha para a sua conta.</p>
+                    <div class="input-group">
+                        <input type="password" id="newPassword" placeholder="Nova senha (mín. 6 caracteres)" required>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="confirmNewPassword" placeholder="Confirmar nova senha" required>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="resetPassword()" id="btnResetPassword">Redefinir Senha</button>
+                </div>
+
+                <!-- Etapa 4: Sucesso -->
+                <div id="forgotStep4" class="forgot-step">
+                    <div class="success-icon">&#10003;</div>
+                    <h3>Senha Redefinida!</h3>
+                    <p class="forgot-description">Sua senha foi alterada com sucesso. Faça login com a nova senha.</p>
+                    <button type="button" class="btn btn-primary" onclick="backToLogin()">Ir para Login</button>
+                </div>
+
+                <div id="forgotMessage" class="forgot-message" style="display:none;"></div>
+            </div>
+            
+            <!-- Formulário de Cadastro -->
+            <form id="registerForm" method="POST" class="auth-form <?php echo ($error_from === 'register') ? 'active' : ''; ?>">
+                <div class="input-group username-group">
+                    <span class="username-prefix">@</span>
+                    <input type="text" name="reg_username" placeholder="Nome de usuário" maxlength="12" pattern="[a-zA-Z0-9_\-]{3,12}" title="3 a 12 caracteres. Apenas letras, números, - e _" autocomplete="off" value="<?php echo htmlspecialchars($reg_username); ?>" required>
+                    <small class="field-hint">3-12 caracteres (letras, números, - e _)</small>
+                </div>
+                <div class="input-group">
+                    <input type="email" name="reg_email" placeholder="E-mail" value="<?php echo htmlspecialchars($reg_email); ?>" required>
+                </div>
+                <div class="input-group">
+                    <input type="text" name="reg_full_name" placeholder="Nome completo" value="<?php echo htmlspecialchars($reg_full_name); ?>" required>
+                </div>
+                <!-- <div class="input-group">
+                    <input type="text" name="reg_instituicao" placeholder="Instituição (opcional)" value="<?php echo htmlspecialchars($reg_instituicao); ?>">
+                </div> -->
+                <div class="input-group password-group">
+                    <input type="password" name="reg_password" placeholder="Senha" required>
+                    <button type="button" class="toggle-password" onclick="togglePassword(this)" tabindex="-1">
+                        <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <svg class="eye-off-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    </button>
+                </div>
+                <div class="input-group password-group">
+                    <input type="password" name="reg_confirm_password" placeholder="Confirmar senha" required>
+                    <button type="button" class="toggle-password" onclick="togglePassword(this)" tabindex="-1">
+                        <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <svg class="eye-off-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    </button>
+                </div>
+                <div id="passwordMatchError" class="inline-error" style="display:none;">Senhas não conferem.</div>
+                <button type="submit" name="register" class="btn btn-primary">Criar Conta</button>
+                <p class="terms">
+                    Ao cadastrar-se, você concorda com nossos 
+                    <a href="#" onclick="alert('Termos em desenvolvimento!')">Termos de Uso</a>
+                </p>
+            </form>
+        </div>
+    </div>
+    
+    <script src="assets/js/auth.js"></script>
+</body>
+</html>

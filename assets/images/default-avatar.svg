@@ -1,0 +1,9 @@
+<!-- ARQUIVO DE IMAGEM PADRÃO -->
+<!-- Copie uma imagem default-avatar.png para assets/images/ -->
+<!-- Ou crie um SVG placeholder -->
+
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="100" cy="100" r="100" fill="#e0e0e0"/>
+  <circle cx="100" cy="80" r="35" fill="#9e9e9e"/>
+  <ellipse cx="100" cy="160" rx="60" ry="50" fill="#9e9e9e"/>
+</svg>

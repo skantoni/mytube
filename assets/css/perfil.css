@@ -1,0 +1,937 @@
+/* CSS para página de perfil do usuário */
+
+/* Reset e base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    color: #fff;
+}
+
+/* Header da página de perfil */
+.profile-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(15, 23, 42, 0.95);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 1000;
+    padding: 15px 0;
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+}
+
+.back-btn, .edit-btn, .notification-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    position: relative;
+}
+
+.back-btn:hover, .edit-btn:hover, .notification-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Ações do lado direito do header */
+.header-right-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Badge de notificações */
+.notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #ff3b5c;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+}
+
+.header-content h1 {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+/* Conteúdo principal */
+.profile-main {
+    padding-top: 80px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+/* Seção do perfil */
+.profile-section {
+    margin-bottom: 40px;
+}
+
+.profile-info {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+    margin-bottom: 30px;
+}
+
+.profile-avatar {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.avatar-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 4px solid #3b82f6;
+    object-fit: cover;
+    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
+}
+
+.verified-badge-large {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background: #3b82f6;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    border: 3px solid #fff;
+}
+
+.institution-info-btn {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #06b6d4);
+    color: #fff;
+    border: 2.5px solid #0f172a;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    z-index: 3;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+    padding: 0;
+}
+
+.institution-info-btn:hover {
+    transform: scale(1.15);
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.6);
+}
+
+/* Badge Best MyTuber da Semana */
+.best-mytuber-badge {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    color: #fff;
+    border: 2.5px solid #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    z-index: 3;
+    cursor: default;
+}
+
+.best-mytuber-badge i {
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+}
+
+/* Global Badge = Dourado com coroa */
+.best-mytuber-global {
+    top: -4px;
+    right: -4px;
+    background: linear-gradient(135deg, #FFD700, #f59e0b, #f97316);
+    box-shadow: 0 2px 12px rgba(255, 215, 0, 0.6);
+    animation: badgePulseGlobal 2.5s ease-in-out infinite;
+}
+
+/* School Badge = Azul/Prata com medalha */
+.best-mytuber-school {
+    top: -4px;
+    right: 28px;
+    background: linear-gradient(135deg, #60a5fa, #3b82f6, #6366f1);
+    box-shadow: 0 2px 12px rgba(59, 130, 246, 0.6);
+    animation: badgePulseSchool 2.5s ease-in-out infinite;
+}
+
+.best-mytuber-global + .best-mytuber-school {
+    right: 28px;
+}
+
+.best-mytuber-school:first-of-type:last-of-type {
+    right: -4px;
+}
+
+@keyframes badgePulseGlobal {
+    0%, 100% { box-shadow: 0 2px 12px rgba(255, 215, 0, 0.5); transform: scale(1); }
+    50%      { box-shadow: 0 4px 20px rgba(255, 215, 0, 0.9); transform: scale(1.1); }
+}
+
+@keyframes badgePulseSchool {
+    0%, 100% { box-shadow: 0 2px 12px rgba(59, 130, 246, 0.5); transform: scale(1); }
+    50%      { box-shadow: 0 4px 20px rgba(59, 130, 246, 0.9); transform: scale(1.1); }
+}
+
+.institution-tooltip {
+    position: absolute;
+    top: -10px;
+    left: calc(100% + 12px);
+    background: #1e293b;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 100;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    animation: tooltipFadeIn 0.25s ease-out;
+    pointer-events: none;
+}
+
+.institution-tooltip::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 14px;
+    width: 12px;
+    height: 12px;
+    background: #1e293b;
+    transform: rotate(45deg);
+    border-left: 1px solid rgba(59, 130, 246, 0.3);
+    border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.institution-tooltip .tooltip-label {
+    color: #94a3b8;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 2px;
+}
+
+@keyframes tooltipFadeIn {
+    from { opacity: 0; transform: translateX(-5px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.profile-details {
+    flex: 1;
+}
+
+.profile-name {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.profile-username {
+    font-size: 1.1rem;
+    color: #94a3b8;
+    margin-bottom: 15px;
+}
+
+.profile-bio {
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    color: #e2e8f0;
+}
+
+.profile-bio .bio-mention {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.profile-bio .bio-mention:hover {
+    text-decoration: underline;
+}
+
+/* Estatísticas */
+.profile-stats {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 25px;
+    align-items: flex-start;
+}
+
+.stat {
+    text-align: center;
+    min-width: 70px;
+}
+
+.stat-number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #3b82f6;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Botões de ação */
+.profile-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 25px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
+
+.btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.follow-profile-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.follow-profile-btn.following {
+    background: rgba(59, 130, 246, 0.3);
+    color: #3b82f6;
+    border-color: #3b82f6;
+}
+
+.follow-profile-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* Botón de chat */
+.btn-chat {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    
+}
+
+.btn-chat:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+/* Seção de vídeos */
+.videos-section {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 30px;
+    margin-bottom: 30px;
+}
+
+.videos-header {
+    margin-bottom: 25px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 15px;
+}
+
+.videos-header h3 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Grade de vídeos */
+.videos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.video-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.video-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+    border-color: #3b82f6;
+}
+
+.video-thumbnail {
+    position: relative;
+    width: 100%;
+    height: 250px;
+    overflow: hidden;
+}
+
+.video-thumbnail img,
+.video-thumbnail video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(transparent 60%, rgba(0, 0, 0, 0.8));
+    display: flex;
+    align-items: flex-end;
+    padding: 15px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* Desktop: Mostrar apenas no hover */
+@media (min-width: 769px) {
+    .video-card:hover .video-overlay {
+        opacity: 1;
+    }
+}
+
+/* Mobile: Sempre visível */
+@media (max-width: 768px) {
+    .video-overlay {
+        opacity: 1;
+        background: linear-gradient(transparent 70%, rgba(0, 0, 0, 0.9));
+    }
+    
+    /* Hover ainda funciona no mobile para dispositivos híbridos */
+    .video-card:hover .video-overlay {
+        opacity: 1;
+    }
+}
+
+.video-stats {
+    display: flex;
+    gap: 15px;
+    color: white;
+    font-size: 0.8rem;
+}
+
+.video-stats span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.video-info {
+    padding: 15px;
+}
+
+.video-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.video-date {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+/* Estado vazio */
+.empty-videos {
+    text-align: center;
+    padding: 60px 20px;
+    opacity: 0.8;
+}
+
+.empty-videos p {
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .profile-info {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .profile-stats {
+        justify-content: center;
+    }
+    
+    .profile-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .avatar-image {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .profile-name {
+        font-size: 1.6rem;
+    }
+    
+    .videos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+    }
+    
+    .video-thumbnail {
+        height: 200px;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-main {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    
+    .videos-section {
+        padding: 20px;
+    }
+    
+    .profile-stats {
+        gap: 20px;
+    }
+    
+    .videos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+    }
+    
+    .video-thumbnail {
+        height: 150px;
+    }
+}
+
+/* ========== MODAL DE NOTIFICAÇÕES ========== */
+.notifications-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 10000;
+    display: none;
+    flex-direction: column;
+}
+
+.notifications-modal.active {
+    display: flex;
+}
+
+.notifications-modal-content {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #0f172a;
+}
+
+.notifications-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.notifications-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.notifications-close {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.notifications-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.notification-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.notification-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.notification-item.unread {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.notification-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-text {
+    font-size: 14px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.notification-text strong {
+    font-weight: 600;
+    color: white;
+}
+
+.notification-time {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 4px;
+}
+
+.notification-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.notification-icon.like {
+    background: rgba(255, 59, 92, 0.2);
+    color: #ff3b5c;
+}
+
+.notification-icon.comment {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+}
+
+.notification-icon.follow {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+}
+
+.notification-icon.unfollow {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.notification-icon.mention {
+    background: rgba(168, 85, 247, 0.2);
+    color: #a855f7;
+}
+
+.notifications-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+}
+
+.notifications-empty i {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.notifications-empty p {
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .notifications-modal-content {
+        max-width: 100%;
+    }
+}
+
+/* === Stat clickable === */
+.stat.stat-clickable {
+    cursor: pointer;
+    border-radius: 8px;
+    padding: 8px 12px;
+    transition: background 0.2s;
+}
+.stat.stat-clickable:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* === Followers / Following Modal === */
+.follow-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+.follow-modal-overlay.active {
+    display: flex;
+}
+
+.follow-modal-box {
+    background: #0f172a;
+    border-radius: 16px;
+    max-width: 420px;
+    width: 95%;
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.follow-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.follow-modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #fff;
+}
+.follow-modal-close {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.follow-modal-body {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.follow-list {
+    padding: 8px 0;
+}
+
+.follow-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    transition: background 0.15s;
+}
+.follow-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.follow-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.follow-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.follow-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.follow-username {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.follow-verified {
+    color: #3b82f6;
+    font-size: 0.75rem;
+    margin-left: 4px;
+}
+
+.btn-follow-small {
+    padding: 6px 16px;
+    border-radius: 6px;
+    border: none;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    background: #3b82f6;
+    color: #fff;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.btn-follow-small:hover {
+    background: #2563eb;
+}
+.btn-follow-small.following {
+    background: rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.btn-follow-small.following:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.follow-loading, .follow-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: rgba(255, 255, 255, 0.5);
+    gap: 8px;
+}
+.follow-empty i {
+    font-size: 2rem;
+}
+
+.follow-load-more {
+    display: block;
+    width: calc(100% - 40px);
+    margin: 8px 20px 16px;
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    font-weight: 600;
+}
+.follow-load-more:hover {
+    background: rgba(255, 255, 255, 0.15);
+}

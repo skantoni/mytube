@@ -1,0 +1,12 @@
+{
+    "name": "mytube/app",
+    "description": "MyTube Social Network",
+    "type": "project",
+    "authors": [
+        {
+            "name": "Skeny Antonio",
+            "email": "jaciroantonio13@gmail.com"
+        }
+    ],
+    "require": {}
+}

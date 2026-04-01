@@ -1,0 +1,48 @@
+{
+  "name": "MyTube",
+  "short_name": "MyTube",
+  "description": "Sua rede social de vídeos — descubra, compartilhe e conecte-se!",
+  "start_url": "/my/index.php?pwa=1",
+  "scope": "/my/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "lang": "pt-BR",
+  "categories": ["social", "entertainment"],
+  "icons": [
+    {
+      "src": "/my/assets/images/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/my/assets/images/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Feed",
+      "short_name": "Feed",
+      "url": "/my/index.php",
+      "icons": [{ "src": "/my/assets/images/logo_icon.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Chat",
+      "short_name": "Chat",
+      "url": "/my/chat.php",
+      "icons": [{ "src": "/my/assets/images/logo_icon.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Upload",
+      "short_name": "Upload",
+      "url": "/my/upload.php",
+      "icons": [{ "src": "/my/assets/images/logo_icon.png", "sizes": "96x96" }]
+    }
+  ]
+}

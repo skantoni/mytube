@@ -1,0 +1,1630 @@
+/* TikTok Style Layout - MyTube */
+
+/* Reset e configurações básicas */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Prevenir overflow horizontal global */
+html, body, #root, #app {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    position: relative;
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #000;
+    color: #fff;
+    position: relative;
+}
+
+/* .boosted-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(234, 179, 8, 0.18);
+    border: 1px solid rgba(234, 179, 8, 0.35);
+    color: #facc15;
+    font-size: 12px;
+    font-weight: 700;
+    width: fit-content;
+    backdrop-filter: blur(6px);
+} */
+
+.boosted-badge{
+        font-size: 10px;
+        color: #164cc0;
+}
+
+
+/* Esconder scrollbar mas manter funcionalidade */
+::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    background: transparent;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: transparent;
+}
+
+html {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+/* Prevenir scroll horizontal em todos elementos */
+body * {
+    max-width: 100%;
+}
+
+/* Container principal do feed */
+.tiktok-container {
+    height: 100vh;
+    width: 100%;
+    max-width: 100vw;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Item individual do vídeo */
+.video-item {
+    position: relative;
+    width: 100%;
+    max-width: 100vw;
+    height: 100vh;
+    scroll-snap-align: start;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    overflow: hidden;
+}
+
+/* Player de vídeo centralizado */
+.video-player {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 400px;
+    max-height: 90vh;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.video-player video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+/* Placeholder leve para vídeos fora da viewport (virtual scroll) */
+.video-placeholder {
+    width: 100%;
+    height: 100%;
+    background: #111;
+    border-radius: 12px;
+}
+
+/* Informações do vídeo sobrepostas na parte inferior */
+.video-info-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 60px 15px 15px 15px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+    z-index: 3;
+    border-radius: 0 0 12px 12px;
+    pointer-events: none;
+}
+
+/* Row container para autor e botão seguir */
+.video-author-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.video-author-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: white;
+    pointer-events: auto;
+    cursor: pointer;
+    width: fit-content;
+}
+
+.video-author-link:hover {
+    opacity: 0.85;
+}
+
+.video-author-link:hover .video-author-name {
+    text-decoration: underline;
+}
+
+/* Botão de Seguir estilo Facebook (inline) */
+.follow-btn-inline {
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    pointer-events: auto;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    white-space: nowrap;
+}
+
+.follow-btn-inline:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.follow-btn-inline:active {
+    transform: scale(0.96);
+}
+
+.follow-btn-inline.following {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.follow-btn-inline.following:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+.follow-btn-inline.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.video-author-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.video-author-name {
+    font-weight: 600;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.video-author-name .verified-icon {
+    color: #20d5ec;
+    font-size: 14px;
+}
+
+.video-caption-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    pointer-events: auto;
+}
+
+.video-caption {
+    font-size: 14px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.95);
+    margin: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.caption-toggle-btn {
+    align-self: flex-start;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    color: #dbeafe;
+    font-size: 12px;
+    font-weight: 700;
+/*     text-decoration: underline;
+ */    cursor: pointer;
+    pointer-events: auto;
+}
+
+.caption-toggle-btn:hover {
+    color: #ffffff;
+}
+
+.video-hashtags {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    pointer-events: auto;
+}
+
+.video-hashtag-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    color: #dbeafe;
+    background: rgba(59, 130, 246, 0.18);
+    border: 1px solid rgba(96, 165, 250, 0.35);
+}
+
+.video-hashtag-link:hover {
+    background: rgba(59, 130, 246, 0.28);
+}
+
+/* Controles de vídeo */
+.video-controls {
+    position: absolute;
+    top: 18px;
+    right: 15px;
+    z-index: 4;
+}
+
+/*  iPhone SE / dispositivos pequenos (375×667) 
+ */@media (min-width: 370px) and (max-height: 670px) {
+    .video-controls {
+        top: 30px;
+    }
+} 
+
+.audio-toggle {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    pointer-events: auto;
+}
+
+.audio-toggle:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
+}
+
+.audio-toggle.active {
+/*     background: rgba(59, 130, 246, 0.8);
+ */    color: #fff;
+}
+
+.audio-toggle.active:hover {
+    background: rgba(59, 130, 246, 1);
+}
+
+/* Overlay para prompt de áudio */
+.audio-prompt-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    cursor: pointer;
+    border-radius: 12px;
+}
+
+.audio-prompt-content {
+    text-align: center;
+    color: white;
+    padding: 30px;
+}
+
+.audio-prompt-content i {
+    font-size: 4rem;
+    color: #3b82f6;
+    margin-bottom: 20px;
+    animation: pulse 2s infinite;
+}
+
+.audio-prompt-content h3 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.audio-prompt-content p {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Overlay com informações do vídeo */
+.video-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 20px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    z-index: 2;
+    pointer-events: none;
+    box-sizing: border-box;
+}
+
+.video-info {
+    margin-bottom: 10px;
+}
+
+.video-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+    line-height: 1.3;
+}
+
+.video-author {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.author-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    object-fit: cover;
+}
+
+.avatar-link {
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    pointer-events: auto;
+}
+
+.avatar-link:hover .author-avatar {
+    transform: scale(1.05);
+    border-color: #3b82f6;
+}
+
+.username-link {
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.2s ease;
+    pointer-events: auto;
+}
+
+.username-link:hover {
+    color: #3b82f6;
+}
+
+.author-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.verified-badge {
+    color: #3b82f6;
+    font-size: 0.8rem;
+}
+
+.video-description {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    opacity: 0.9;
+}
+
+/* Botões de ação estilo TikTok - lado direito */
+.action-buttons {
+    position: absolute;
+    right: 15px;
+    bottom: 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    z-index: 3;
+}
+
+.action-btn {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    background: transparent !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: none !important;
+    color: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    position: relative;
+    padding: 8px;
+    pointer-events: auto;
+    box-shadow: none !important;
+    min-width: unset !important;
+}
+
+.action-btn:hover {
+    transform: scale(1.1);
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.action-btn.liked {
+    color: #ff3040;
+    background: transparent !important;
+}
+
+.action-btn.following {
+    background: transparent !important;
+    color: #fff;
+}
+
+.action-btn.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.action-btn.loading svg {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* SVG icon styles - modern line icons */
+.action-btn svg {
+    width: 28px;
+    height: 28px;
+    transition: all 0.25s ease;
+    flex-shrink: 0;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+}
+
+.action-btn.liked svg.icon-heart {
+    fill: #ff3040;
+    stroke: #ff3040;
+    filter: drop-shadow(0 0 8px rgba(255, 48, 64, 0.5));
+    animation: heartPop 0.35s ease;
+}
+
+@keyframes heartPop {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.3); }
+    60% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+}
+
+.action-btn:hover svg {
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.3));
+}
+
+.follow-btn svg {
+    width: 28px;
+    height: 28px;
+}
+
+.delete-btn svg {
+    width: 22px;
+    height: 22px;
+}
+
+.action-count,
+.like-count {
+    display: block;
+    width: 100%;
+    font-size: 0.75rem;
+    font-weight: 800;
+    white-space: nowrap;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 1);
+    padding: 1px 0;
+    text-align: center;
+    line-height: 1;
+    margin-top: 2px;
+}
+
+/* Botão de seguir especial */
+.follow-btn {
+    background: transparent !important;
+    border: none !important;
+    pointer-events: auto;
+    color: #fff;
+    box-shadow: none !important;
+    min-width: unset !important;
+    padding: 0 !important;
+}
+
+.follow-btn.following {
+    background: transparent !important;
+    color: #fff !important;
+}
+
+/* Esconder texto do botão seguir lateral — só ícone */
+.follow-btn .action-count {
+    display: none;
+}
+
+/* Centralizar ícone no botão seguir */
+.follow-btn {
+    padding: 0;
+    justify-content: center;
+    align-items: center;
+}
+
+.follow-btn svg {
+    margin: 0;
+    position: static;
+}
+
+/* Header fixo superior */
+.tiktok-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100vw;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.3);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+/* Header modo perfil */
+.profile-header-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: white;
+    flex: 1;
+    margin-left: 10px;
+}
+
+.profile-header-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+.profile-header-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.profile-header-name {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.profile-header-name .verified-badge {
+    color: #3b82f6;
+    font-size: 12px;
+    margin-left: 4px;
+}
+
+.profile-header-videos {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+}
+
+.tiktok-logo {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #3b82f6;
+}
+
+.header-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.header-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.header-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
+
+/* Foto de perfil no header */
+.header-btn.profile-btn {
+    padding: 0;
+    overflow: visible;
+    position: relative;
+}
+
+.header-profile-pic {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+/* Ponto vermelho de notificação */
+.notification-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    background: #ff3b5c;
+    border-radius: 50%;
+    border: 2px solid #111;
+    animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 59, 92, 0.7);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 4px rgba(255, 59, 92, 0);
+    }
+}
+
+/* Container da barra de progresso interativa */
+.progress-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 18px;
+    z-index: 10;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-end;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+}
+
+.progress-track {
+    position: relative;
+    width: 100%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.15);
+    transition: height 0.15s ease;
+    overflow: hidden;
+}
+
+.progress-container.scrubbing .progress-track {
+    height: 6px;
+}
+
+/* Indicador de progresso do vídeo */
+.progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    max-width: 100%;
+    height: 100%;
+    background: #3b82f6;
+    z-index: 4;
+    box-sizing: border-box;
+    transition: none;
+}
+
+.progress-container:not(.scrubbing) .progress-bar {
+    transition: width 0.2s linear;
+}
+
+/* Tooltip de tempo */
+.progress-time {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    font-variant-numeric: tabular-nums;
+}
+
+.progress-container.scrubbing .progress-time {
+    opacity: 1;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    /* Garantir sem overflow no mobile */
+    html, body {
+        overflow-x: hidden;
+        max-width: 100vw;
+        width: 100%;
+        position: relative;
+    }
+    
+    .video-player {
+        max-width: 100%;
+        border-radius: 0;
+        height: 100vh;
+        width: 100%;
+    }
+    
+    .video-player video {
+        border-radius: 0;
+        width: 100%;
+        max-width: 100%;
+        object-fit: contain;
+        object-position: center center; 
+    }
+    
+    .action-buttons {
+        right: 10px;
+        bottom: 120px;
+        gap: 15px;
+    }
+    
+    .action-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+    
+    .video-overlay {
+        padding: 15px;
+    }
+    
+    .tiktok-header {
+        padding: 8px 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .action-buttons {
+        right: 8px;
+        bottom: 100px;
+        gap: 12px;
+    }
+    
+    .action-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 1.1rem;
+    }
+    
+    .video-overlay {
+        padding: 12px;
+    }
+    
+    .video-title {
+        font-size: 0.9rem;
+    }
+    
+    .author-name {
+        font-size: 0.8rem;
+    }
+}
+
+/* Loading estado */
+.video-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 1.1rem;
+    z-index: 5;
+}
+
+/* Animações */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.action-btn:active {
+    animation: pulse 0.2s ease;
+}
+
+/* Estados especiais */
+.video-item.paused .video-player::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    background: rgba(59, 130, 246, 0.85);
+    border-radius: 50%;
+    z-index: 3;
+    opacity: 0.9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 30px 30px;
+}
+
+/* Pulsar apenas quando o vídeo está carregando (buffering) */
+.video-item.buffering .video-player::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    background: rgba(59, 130, 246, 0.85);
+    border-radius: 50%;
+    z-index: 3;
+    opacity: 0.9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 30px 30px;
+    animation: pulse 1s infinite;
+}
+
+/* Estilo para usuários não logados */
+.empty-feed {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    height: 100vh;
+    padding: 40px;
+    color: #fff;
+}
+
+.empty-feed h3 {
+    margin: 20px 0 10px;
+    font-size: 1.5rem;
+}
+
+.empty-feed p {
+    margin-bottom: 30px;
+    opacity: 0.8;
+}
+
+/* Menu de compartilhamento (aparece quando clica em compartilhar) */
+.share-menu {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100vw;
+    background: rgba(20, 20, 20, 0.95);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    padding: 20px;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    z-index: 20;
+    border-radius: 20px 20px 0 0;
+    box-sizing: border-box;
+}
+
+.share-menu.active {
+    transform: translateY(0);
+}
+
+.share-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.share-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.share-option:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Chat Share Modal */
+.chat-share-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10001;
+    justify-content: center;
+    align-items: flex-end;
+    backdrop-filter: blur(4px);
+}
+
+.chat-share-modal {
+    background: #1a1a2e;
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-width: 500px;
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    animation: slideUpChat 0.3s ease;
+}
+
+@keyframes slideUpChat {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.chat-share-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.chat-share-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #fff;
+    font-weight: 600;
+}
+
+.chat-share-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.6);
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.chat-share-close:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.1);
+}
+
+.chat-share-search {
+    width: calc(100% - 40px);
+    margin: 12px 20px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.chat-share-search::placeholder {
+    color: rgba(255,255,255,0.35);
+}
+
+.chat-share-search:focus {
+    border-color: #3b82f6;
+}
+
+.chat-share-list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 8px 12px 20px;
+}
+
+.chat-share-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    gap: 12px;
+}
+
+.chat-share-item:hover {
+    background: rgba(255,255,255,0.08);
+}
+
+.chat-share-item:active {
+    background: rgba(254, 44, 85, 0.15);
+}
+
+.chat-share-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,0.1);
+}
+
+.chat-share-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-share-name {
+    font-weight: 600;
+    color: #fff;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-share-username {
+    color: rgba(255,255,255,0.45);
+    font-size: 0.8rem;
+    margin-top: 2px;
+}
+
+.chat-share-send-icon {
+    color: #fe2c55;
+    font-size: 1rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.chat-share-item:hover .chat-share-send-icon {
+    opacity: 1;
+}
+
+.chat-share-loading {
+    display: flex;
+    justify-content: center;
+    padding: 40px 0;
+}
+
+.chat-share-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(255,255,255,0.4);
+}
+
+.chat-share-empty i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.spinner-small {
+    width: 28px;
+    height: 28px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: #fe2c55;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Botão de ação especial para seguir */
+.follow-btn {
+    background: linear-gradient(135deg, #ff3040, #ff6b35) !important;
+}
+
+.follow-btn.following {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Melhorias para touch devices */
+@media (hover: none) and (pointer: coarse) {
+    .action-btn:hover {
+        transform: none;
+        background: rgba(255, 255, 255, 0.15);
+    }
+    
+    .action-btn:active {
+        transform: scale(0.95);
+    }
+}
+
+/* Prevenção de seleção de texto em elementos interativos */
+.video-player,
+.action-buttons,
+.tiktok-header {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Cursor personalizado para vídeos */
+.video-player video {
+    cursor: pointer;
+}
+
+/* Loading spinner */
+.video-loading::after {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #3b82f6;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Melhorias específicas para contadores em mobile */
+@media (max-width: 768px) {
+    .action-count,
+    .like-count {
+        font-size: 0.7rem;
+        font-weight: 900;
+        padding: 1px 0;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 1);
+    }
+    
+    .action-buttons {
+        gap: 18px;
+        bottom: 110px;
+        right: 12px;
+    }
+    
+    .action-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 1.1rem;
+        padding: 6px;
+    }
+}
+
+/* ========== MODAL DE PESQUISA ========== */
+.search-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 10000;
+    display: none;
+    flex-direction: column;
+}
+
+.search-modal.active {
+    display: flex;
+}
+
+.search-modal-content {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.search-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #111;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.search-input-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0 12px;
+    gap: 10px;
+}
+
+.search-input-wrapper .search-icon {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+}
+
+.search-input-wrapper input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: white;
+    font-size: 15px;
+    padding: 10px 0;
+}
+
+.search-input-wrapper input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.search-clear {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+}
+
+.search-cancel {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 8px;
+    white-space: nowrap;
+}
+
+.search-cancel:hover {
+    opacity: 0.8;
+}
+
+.search-results {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.search-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: rgba(255, 255, 255, 0.4);
+    gap: 12px;
+}
+
+.search-placeholder i {
+    font-size: 48px;
+}
+
+.search-placeholder p {
+    font-size: 14px;
+}
+
+/* Resultados da pesquisa */
+.search-section {
+    margin-bottom: 24px;
+}
+
+.search-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    padding-left: 4px;
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.search-result-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.search-result-hashtag {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.search-result-hashtag:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.search-result-hashtag-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #dbeafe;
+}
+
+.search-result-hashtag-meta {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.search-result-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.search-result-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.search-result-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.search-result-name .verified-icon {
+    color: #20d5ec;
+    font-size: 12px;
+}
+
+.search-result-meta {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 2px;
+}
+
+/* Resultado de vídeo */
+.search-result-video {
+    display: flex;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.search-result-video:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.search-result-thumbnail {
+    width: 80px;
+    height: 100px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: #222;
+}
+
+.search-result-video-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.search-result-video-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: white;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.search-result-video-author {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 4px;
+}
+
+.search-result-video-stats {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.search-loading {
+    display: flex;
+    justify-content: center;
+    padding: 40px;
+}
+
+.search-no-results {
+    text-align: center;
+    padding: 40px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.search-no-results i {
+    font-size: 48px;
+    margin-bottom: 12px;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .search-modal-content {
+        max-width: 100%;
+    }
+    
+    .search-header {
+        padding: 10px 12px;
+    }
+}
+
+/* Desktop: header totalmente transparente + vídeo sem cortes */
+@media (min-width: 769px) {
+    .tiktok-header {
+        background: transparent;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+
+    .video-player {
+        max-height: 100vh;
+    }
+
+    .video-player video {
+        object-fit: contain;
+    }
+
+    /* ===== Botões de Navegação Desktop (estilo Facebook) ===== */
+    .desktop-nav-buttons {
+        position: fixed;
+        right: 100px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        z-index: 50;
+    }
+
+    .desktop-nav-btn {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #fff;
+        font-size: 1.1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .desktop-nav-btn:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: scale(1.08);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .desktop-nav-btn:active {
+        transform: scale(0.95);
+    }
+
+    .desktop-nav-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+
+    .desktop-nav-btn:disabled:hover {
+        background: rgba(255, 255, 255, 0.12);
+        box-shadow: none;
+    }
+
+    /* ===== Layout quando comentários estão abertos ===== */
+    .tiktok-container {
+        transition: margin-right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.comments-open .tiktok-container {
+        margin-right: 400px;
+    }
+
+    body.comments-open .desktop-nav-buttons {
+        right: 500px;
+    }
+
+    body.comments-open .tiktok-header {
+        right: 400px;
+    }
+}
+
+/* Esconder botões no mobile */
+@media (max-width: 768px) {
+    .desktop-nav-buttons {
+        display: none !important;
+    }
+}

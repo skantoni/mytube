@@ -1,0 +1,311 @@
+/* === SISTEMA DE BOTÕES INTERATIVOS === */
+
+/* Animações para toast */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* === BOTÃO DE LIKE === */
+.like-btn, [data-video-like] {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    position: relative;
+}
+
+.like-btn:hover, [data-video-like]:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+/* Estado ativo do like */
+.like-btn.liked, [data-video-like].liked {
+    color: #ff3040 !important;
+}
+
+.like-btn.liked:hover, [data-video-like].liked:hover {
+    color: #ff5060 !important;
+    background: rgba(255, 48, 64, 0.1);
+}
+
+/* Ícone do coração */
+.like-btn i, [data-video-like] i {
+    transition: all 0.2s ease;
+}
+
+.like-btn.liked i, [data-video-like].liked i {
+    animation: heartBeat 0.6s ease;
+}
+
+@keyframes heartBeat {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.3); }
+    50% { transform: scale(1.1); }
+    70% { transform: scale(1.25); }
+    100% { transform: scale(1); }
+}
+
+/* Contador de likes */
+.like-count {
+    font-weight: 500;
+    min-width: 20px;
+    text-align: left;
+}
+
+/* === BOTÃO DE FOLLOW === */
+.follow-btn, [data-user-follow] {
+    background: transparent;
+    border: 1.5px solid rgba(255, 255, 255, 0.6);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+    position: relative;
+}
+
+.follow-btn:hover, [data-user-follow]:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+}
+
+/* Estado ativo do follow */
+.follow-btn.following, [data-user-follow].following {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #fff;
+}
+
+.follow-btn.following:hover, [data-user-follow].following:hover {
+    background: #f0f0f0 !important;
+    color: #333 !important;
+    border-color: #f0f0f0;
+}
+
+/* === ESTADOS DE LOADING === */
+.like-btn:disabled, [data-video-like]:disabled,
+.follow-btn:disabled, [data-user-follow]:disabled {
+    opacity: 0.6;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.like-btn:disabled::after, [data-video-like]:disabled::after,
+.follow-btn:disabled::after, [data-user-follow]:disabled::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* === RESPONSIVIDADE === */
+@media (max-width: 768px) {
+    .like-btn, [data-video-like] {
+        padding: 6px 10px;
+        font-size: 0.85rem;
+        gap: 4px;
+    }
+    
+    .follow-btn, [data-user-follow] {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        min-width: 70px;
+    }
+}
+
+@media (max-width: 480px) {
+    .like-btn, [data-video-like] {
+        padding: 4px 8px;
+        font-size: 0.8rem;
+    }
+    
+    .follow-btn, [data-user-follow] {
+        padding: 5px 10px;
+        font-size: 0.75rem;
+        min-width: 60px;
+    }
+}
+
+/* === INTEGRAÇÃO COM FEED DE VÍDEOS === */
+.video-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+}
+
+.video-actions .like-btn,
+.video-actions [data-video-like] {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 25px;
+    padding: 10px 16px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.user-info .follow-btn,
+.user-info [data-user-follow] {
+    margin-left: auto;
+    font-size: 0.8rem;
+    padding: 6px 14px;
+}
+
+/* === TOAST NOTIFICATIONS === */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    z-index: 10000;
+    max-width: 300px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    animation: slideInRight 0.3s ease;
+}
+
+.toast-success {
+    background: #10b981;
+}
+
+.toast-error {
+    background: #ef4444;
+}
+
+.toast-info {
+    background: #3b82f6;
+}
+
+/* === VARIAÇÕES DE ESTILO === */
+
+/* Botão de like minimalista */
+.like-btn-minimal, [data-video-like].minimal {
+    background: none;
+    border: none;
+    padding: 4px;
+    border-radius: 50%;
+}
+
+.like-btn-minimal:hover, [data-video-like].minimal:hover {
+    background: rgba(255, 48, 64, 0.1);
+}
+
+/* Botão de follow com gradiente */
+.follow-btn-gradient, [data-user-follow].gradient {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+}
+
+.follow-btn-gradient:hover, [data-user-follow].gradient:hover {
+    background: linear-gradient(45deg, #5a6fd8 0%, #6a4190 100%);
+    transform: translateY(-2px);
+}
+
+.follow-btn-gradient.following, [data-user-follow].gradient.following {
+    background: #fff !important;
+    color: #667eea !important;
+    border: 1.5px solid #667eea;
+}
+
+/* === ANIMAÇÕES AVANÇADAS === */
+.like-btn, [data-video-like] {
+    position: relative;
+    overflow: hidden;
+}
+
+.like-btn::before, [data-video-like]::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 48, 64, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.3s ease;
+    z-index: -1;
+}
+
+.like-btn.liked::before, [data-video-like].liked::before {
+    width: 100px;
+    height: 100px;
+}
+
+/* Efeito ripple nos botões */
+.follow-btn, [data-user-follow] {
+    position: relative;
+    overflow: hidden;
+}
+
+.follow-btn::after, [data-user-follow]::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.4s ease;
+}
+
+.follow-btn:active::after, [data-user-follow]:active::after {
+    width: 200px;
+    height: 200px;
+}

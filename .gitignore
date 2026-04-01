@@ -1,0 +1,61 @@
+# ================================================
+# MyTube - .gitignore
+# ================================================
+
+# === CONFIGURAÇÃO SENSÍVEL (CREDENCIAIS) ===
+# Estes ficheiros contêm passwords, API keys, etc.
+# Use os ficheiros .example como template
+includes/config.php
+includes/r2_config.php
+includes/mail_config.php
+
+# === CONTEÚDO DE UTILIZADORES ===
+uploads/videos/*
+uploads/chat/*
+uploads/*.log
+!uploads/videos/.gitkeep
+!uploads/chat/.gitkeep
+
+# === DEPENDÊNCIAS & BINÁRIOS ===
+aws.phar
+composer.phar
+vendor/
+chat-server/node_modules/
+
+# === CONFIGURAÇÕES DE PRODUÇÃO (contêm credenciais reais) ===
+chat-server/.env
+chat-server/.env.production
+# (manter os .example que servem de template)
+
+# === CACHE & LOGS ===
+cache/rankings/*
+!cache/rankings/.gitkeep
+*.log
+logs/*
+!logs/.gitkeep
+chat-server/logs/*
+!chat-server/logs/.gitkeep
+
+# === FICHEIROS DE TESTE / DEBUG ===
+test_r2.php
+check_table.php
+check_users.php
+
+# === BACKUPS ===
+*.OLD
+*.BAK
+
+# === SISTEMA OPERATIVO ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === IDE / EDITOR ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === PHP ===
+.user.ini

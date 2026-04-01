@@ -1,0 +1,127 @@
+# MyTube - Configurações Apache
+
+# Habilitar mod_rewrite
+RewriteEngine On
+
+# Redirecionar para HTTPS (opcional - descomente se tiver SSL)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# URLs amigáveis
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Redirecionar para páginas específicas
+RewriteRule ^user/([^/]+)$ profile.php?user=$1 [L,QSA]
+RewriteRule ^video/([0-9]+)$ watch.php?id=$1 [L,QSA]
+RewriteRule ^tag/([^/]+)$ explore.php?tag=$1 [L,QSA]
+
+# Configurações de segurança
+<Files ".htaccess">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "*.env">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "*.log">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Configurações de cache
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # Imagens
+    ExpiresByType image/jpg "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    
+    # CSS e JS
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    
+    # Vídeos
+    ExpiresByType video/mp4 "access plus 1 week"
+    ExpiresByType video/webm "access plus 1 week"
+</IfModule>
+
+# Compressão GZIP
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+</IfModule>
+
+# Configurações de upload (usar .user.ini em free hosting se php_value não funcionar)
+<IfModule mod_php.c>
+    php_value upload_max_filesize 50M
+    php_value post_max_size 50M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>
+
+# Headers de segurança
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Proteção de diretórios sensíveis
+RedirectMatch 404 /\.git
+RedirectMatch 404 /database/
+
+# Bloquear acesso directo à pasta includes/ (PHP puro, sem servir via HTTP)
+<IfModule mod_authz_core.c>
+    <Directory "includes">
+        Require all denied
+    </Directory>
+</IfModule>
+
+# Bloquear acesso à pasta de logs
+<IfModule mod_authz_core.c>
+    <Directory "logs">
+        Require all denied
+    </Directory>
+</IfModule>
+
+# Bloquear acesso a ficheiros de configuração individualmente (fallback)
+<FilesMatch "^(config|r2_config|mail_config)\.php$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Tipos MIME personalizados
+<IfModule mod_mime.c>
+    AddType video/mp4 .mp4
+    AddType video/webm .webm
+    AddType video/ogg .ogv
+    AddType application/font-woff2 .woff2
+    AddType application/manifest+json .json
+    AddType application/javascript .js
+</IfModule>
+
+# PWA: Service Worker precisa de headers específicos
+<Files "sw.js">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Service-Worker-Allowed "/my/"
+</Files>
+
+# PWA: Manifest sem cache agressivo
+<Files "manifest.json">
+    Header set Cache-Control "public, max-age=86400"
+</Files>
