@@ -7,7 +7,9 @@
 // CONFIGURAÇÃO E VARIÁVEIS GLOBAIS
 // ========================================
 
-const SOCKET_SERVER = 'http://localhost:3001';
+const SOCKET_SERVER = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:3001' 
+    : 'https://mytube.social'; // A apontar para o domínio de produção com proxy ou porta SSL
 const DEFAULT_AVATAR = 'assets/images/default-avatar.svg';
 let socket = null;
 let reconnectAttempts = 0;
