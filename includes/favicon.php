@@ -3,7 +3,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo_icon.png">
 
 <!-- PWA Manifest -->
-<link rel="manifest" href="/my/manifest.json">
+<link rel="manifest" href="/manifest.json">
 
 <!-- PWA Meta Tags -->
 <meta name="theme-color" content="#111111">
@@ -18,7 +18,7 @@
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/my/sw.js', { scope: '/my/' })
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
             .then(function(reg) {
                 console.log('[PWA] Service Worker registrado com sucesso.', reg.scope);
                 // Verificar por atualizações
