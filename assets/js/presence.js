@@ -6,7 +6,9 @@
 (function() {
     'use strict';
     
-    const SOCKET_SERVER = 'http://localhost:3001';
+    const SOCKET_SERVER = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        ? 'http://localhost:3001' 
+        : 'https://mytube.social';
     let presenceSocket = null;
     let chatUnreadCount = 0;
 
