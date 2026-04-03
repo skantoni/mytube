@@ -86,18 +86,11 @@ RedirectMatch 404 /\.git
 RedirectMatch 404 /database/
 
 # Bloquear acesso directo à pasta includes/ (PHP puro, sem servir via HTTP)
-<IfModule mod_authz_core.c>
-    <Directory "includes">
-        Require all denied
-    </Directory>
-</IfModule>
+# Use RedirectMatch instead of Directory block inside .htaccess
+RedirectMatch 404 /includes/
 
 # Bloquear acesso à pasta de logs
-<IfModule mod_authz_core.c>
-    <Directory "logs">
-        Require all denied
-    </Directory>
-</IfModule>
+RedirectMatch 404 /logs/
 
 # Bloquear acesso a ficheiros de configuração individualmente (fallback)
 <FilesMatch "^(config|r2_config|mail_config)\.php$">
@@ -124,4 +117,4 @@ RedirectMatch 404 /database/
 # PWA: Manifest sem cache agressivo
 <Files "manifest.json">
     Header set Cache-Control "public, max-age=86400"
-</Files>
+</Files>
