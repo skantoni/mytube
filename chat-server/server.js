@@ -372,7 +372,7 @@ async function getMessages(conversationId, limit = 50, beforeId = null, userId =
 async function getUserConversations(userId) {
     try {
         const [rows] = await pool.execute(`
-            SELECT DISTINCT
+            SELECT
                 c.id as conversation_id,
                 c.updated_at,
                 CASE 
@@ -405,6 +405,7 @@ async function getUserConversations(userId) {
             JOIN users u ON (CASE WHEN c.user1_id = ? THEN c.user2_id ELSE c.user1_id END) = u.id
             LEFT JOIN user_online_status uo ON u.id = uo.user_id
             WHERE c.user1_id = ? OR c.user2_id = ?
+            GROUP BY c.id
             ORDER BY c.updated_at DESC
         `, [userId, userId, userId, userId, userId]);
         
@@ -670,8 +671,8 @@ async function searchUsers(query, currentUserId, limit = 20) {
             FROM users
             WHERE id != ? AND username LIKE ?
             ORDER BY username
-            LIMIT ?
-        `, [currentUserId, `%${query}%`, limit]);
+            LIMIT ${parseInt(limit)}
+        `, [currentUserId || 0, `%${query}%`]);
         
         return rows;
     } catch (error) {
