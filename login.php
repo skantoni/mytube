@@ -145,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="auth-card">
             <div class="logo">
                 <h1>MyTube</h1>
-                <p>Compartilhe seus momentos</p>
+                <p>Aquí os criadores competem</p>
             </div>
             
             <?php if ($error): ?>

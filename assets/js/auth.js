@@ -245,28 +245,8 @@ function adjustCardHeight() {
 
 // Efeitos visuais adicionais
 document.addEventListener('DOMContentLoaded', function() {
-    // Efeito parallax no fundo
-    document.addEventListener('mousemove', function(e) {
-        const mouseX = e.clientX / window.innerWidth;
-        const mouseY = e.clientY / window.innerHeight;
-        
-        const card = document.querySelector('.auth-card');
-        if (card) {
-            const rotateX = (mouseY - 0.5) * 10;
-            const rotateY = (mouseX - 0.5) * -10;
-            
-            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-        }
-    });
-    
-    // Reset da rotação quando o mouse sai da tela
-    document.addEventListener('mouseleave', function() {
-        const card = document.querySelector('.auth-card');
-        if (card) {
-            card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
-        }
-    });
-    
+    // Efeito parallax removido.
+
     // Efeito de digitação no placeholder
     const inputs = document.querySelectorAll('input');
     inputs.forEach(input => {
