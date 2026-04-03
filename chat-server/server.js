@@ -374,6 +374,7 @@ async function getUserConversations(userId) {
         const [rows] = await pool.execute(`
             SELECT DISTINCT
                 c.id as conversation_id,
+                c.updated_at,
                 CASE 
                     WHEN c.user1_id = ? THEN c.user2_id 
                     ELSE c.user1_id 
