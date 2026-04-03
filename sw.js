@@ -1,5 +1,5 @@
 // MyTube Service Worker — PWA
-const CACHE_NAME = 'mytube-v2';
+const CACHE_NAME = 'mytube-v3';
 const STATIC_ASSETS = [
   '/my/assets/css/main.css',
   '/my/assets/css/tiktok.css',
