@@ -1,5 +1,7 @@
 // MyTube Service Worker — PWA
-const CACHE_NAME = 'mytube-v4';
+// Versionamento automático: usa ?v=... passado no registro do SW.
+const SW_VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
+const CACHE_NAME = `mytube-${SW_VERSION}`;
 const STATIC_ASSETS = [
   '/my/assets/css/main.css',
   '/my/assets/css/tiktok.css',

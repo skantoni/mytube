@@ -2,8 +2,13 @@
 <link rel="shortcut icon" href="assets/images/logo_icon.png" type="image/x-icon">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo_icon.png">
 
+<?php
+$swVersion = @filemtime(__DIR__ . '/../sw.js') ?: time();
+$manifestVersion = @filemtime(__DIR__ . '/../manifest.json') ?: time();
+?>
+
 <!-- PWA Manifest -->
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="/manifest.json?v=<?php echo $manifestVersion; ?>">
 
 <!-- PWA Meta Tags -->
 <meta name="theme-color" content="#111111">
@@ -18,7 +23,7 @@
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        navigator.serviceWorker.register('/sw.js?v=<?php echo $swVersion; ?>', { scope: '/' })
             .then(function(reg) {
                 console.log('[PWA] Service Worker registrado com sucesso.', reg.scope);
                 
