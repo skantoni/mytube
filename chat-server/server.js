@@ -347,8 +347,7 @@ async function getMessages(conversationId, limit = 50, beforeId = null, userId =
             params.push(beforeId);
         }
         
-        query += ' ORDER BY m.id DESC LIMIT ?';
-        params.push(limit);
+        query += ` ORDER BY m.id DESC LIMIT ${parseInt(limit) || 50}`;
         
         const [rows] = await pool.execute(query, params);
         const messages = rows.reverse();
