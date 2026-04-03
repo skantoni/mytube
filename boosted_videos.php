@@ -58,10 +58,10 @@ $boosted_views = array_sum(array_map(static fn($video) => (int) $video['views_co
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Boosted - MyTube</title>
-    <link rel="stylesheet" href="assets/css/main.css">
-    <link rel="stylesheet" href="assets/css/boosted-videos.css">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/boosted-videos.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="assets/js/avatar-fallback.js"></script>
+    <script src="<?php echo asset('assets/js/avatar-fallback.js'); ?>"></script>
     <?php include __DIR__ . '/includes/favicon.php'; ?>
 </head>
 <body class="boosted-page">
@@ -225,6 +225,6 @@ $boosted_views = array_sum(array_map(static fn($video) => (int) $video['views_co
         </div>
     </main>
 
-    <script src="assets/js/boosted-videos.js"></script>
+    <script src="<?php echo asset('assets/js/boosted-videos.js'); ?>"></script>
 </body>
 </html>

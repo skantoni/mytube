@@ -183,9 +183,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload de Vídeo - MyTube</title>
-    <link rel="stylesheet" href="assets/css/main.css">
-    <script src="assets/js/avatar-fallback.js"></script>
-    <link rel="stylesheet" href="assets/css/upload.css">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
+    <script src="<?php echo asset('assets/js/avatar-fallback.js'); ?>"></script>
+    <link rel="stylesheet" href="<?php echo asset('assets/css/upload.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         /* Ajuste para remover o espaço do header */
@@ -416,7 +416,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </div>
     
-    <script src="assets/js/upload.js"></script>
+    <script src="<?php echo asset('assets/js/upload.js'); ?>"></script>
     <?php include 'includes/presence_bootstrap.php'; ?>
 </body>
 </html>

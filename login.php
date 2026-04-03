@@ -136,8 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MyTube - Login</title>
-    <link rel="stylesheet" href="assets/css/auth.css">
-    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/auth.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
     <?php include __DIR__ . '/includes/favicon.php'; ?>
 </head>
 <body class="auth-body">
@@ -282,6 +282,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </div>
     
-    <script src="assets/js/auth.js"></script>
+    <script src="<?php echo asset('assets/js/auth.js'); ?>"></script>
 </body>
 </html>

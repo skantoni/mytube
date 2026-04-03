@@ -15,4 +15,4 @@ window.mytubeUsername = <?php echo json_encode($presence_username, JSON_UNESCAPE
 window.mytubeIsAdmin = <?php echo $presence_is_admin ? 'true' : 'false'; ?>;
 </script>
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<script src="assets/js/presence.js"></script>
+<script src="<?php echo asset('assets/js/presence.js'); ?>"></script>

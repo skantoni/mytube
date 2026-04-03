@@ -231,9 +231,9 @@ $has_more_videos = $total_user_videos > count($user_videos);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($user['full_name']); ?> - MyTube</title>
-    <link rel="stylesheet" href="assets/css/main.css">
-    <script src="assets/js/avatar-fallback.js"></script>
-    <link rel="stylesheet" href="assets/css/profile.css">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
+    <script src="<?php echo asset('assets/js/avatar-fallback.js'); ?>"></script>
+    <link rel="stylesheet" href="<?php echo asset('assets/css/profile.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <?php echo r2_js_config(); ?>
     <?php include __DIR__ . '/includes/favicon.php'; ?>
@@ -807,7 +807,7 @@ $has_more_videos = $total_user_videos > count($user_videos);
         </div>
     </div>
 
-    <script src="assets/js/notifications.js"></script>
+    <script src="<?php echo asset('assets/js/notifications.js'); ?>"></script>
     <script>
         // Função para abrir lista de chats
         function openChatList() {
@@ -1743,8 +1743,8 @@ $has_more_videos = $total_user_videos > count($user_videos);
     });
     </script>
 
-    <script src="assets/js/profile.js"></script>
-    <script src="assets/js/video-delete.js"></script>
+    <script src="<?php echo asset('assets/js/profile.js'); ?>"></script>
+    <script src="<?php echo asset('assets/js/video-delete.js'); ?>"></script>
     <?php include 'includes/presence_bootstrap.php'; ?>
 </body>
 </html>

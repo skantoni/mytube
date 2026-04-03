@@ -43,12 +43,12 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>MyTube - Sua rede social de vídeos</title>
-    <link rel="stylesheet" href="assets/css/main.css">
-    <script src="assets/js/avatar-fallback.js"></script>
-    <link rel="stylesheet" href="assets/css/tiktok.css">
-    <link rel="stylesheet" href="assets/css/comments.css">
-    <link rel="stylesheet" href="assets/css/feed.css">
-    <link rel="stylesheet" href="assets/css/splash.css">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
+    <script src="<?php echo asset('assets/js/avatar-fallback.js'); ?>"></script>
+    <link rel="stylesheet" href="<?php echo asset('assets/css/tiktok.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/comments.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/feed.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/splash.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <meta name="description" content="MyTube - Compartilhe seus vídeos e descubra conteúdos incríveis!">
     <?php echo r2_js_config(); ?>
@@ -195,11 +195,11 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
                 document.getElementById('guestLoginModal').style.display = 'flex';
             }
         </script>
-        <script src="assets/js/network-quality.js"></script>
-        <script src="assets/js/modal-mobile-helper.js"></script>
-        <script src="assets/js/tiktok.js"></script>
-        <script src="assets/js/comments-new.js"></script>
-        <script src="assets/js/feed-ajax.js"></script>
+        <script src="<?php echo asset('assets/js/network-quality.js'); ?>"></script>
+        <script src="<?php echo asset('assets/js/modal-mobile-helper.js'); ?>"></script>
+        <script src="<?php echo asset('assets/js/tiktok.js'); ?>"></script>
+        <script src="<?php echo asset('assets/js/comments-new.js'); ?>"></script>
+        <script src="<?php echo asset('assets/js/feed-ajax.js'); ?>"></script>
         <script>
             // Initialize guest feed
             document.addEventListener('DOMContentLoaded', function() {
@@ -474,17 +474,17 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
     </script>
     <?php endif; ?>
     
-   <!-- <script src="assets/js/feed.js"></script> -->
-    <script src="assets/js/network-quality.js"></script>
-    <script src="assets/js/modal-mobile-helper.js"></script>
-    <script src="assets/js/tiktok.js"></script>
-    <script src="assets/js/comments-new.js"></script>
-    <script src="assets/js/video-delete.js"></script>
-    <script src="assets/js/feed-ajax.js"></script>
+   <!-- <script src="<?php echo asset('assets/js/feed.js'); ?>"></script> -->
+    <script src="<?php echo asset('assets/js/network-quality.js'); ?>"></script>
+    <script src="<?php echo asset('assets/js/modal-mobile-helper.js'); ?>"></script>
+    <script src="<?php echo asset('assets/js/tiktok.js'); ?>"></script>
+    <script src="<?php echo asset('assets/js/comments-new.js'); ?>"></script>
+    <script src="<?php echo asset('assets/js/video-delete.js'); ?>"></script>
+    <script src="<?php echo asset('assets/js/feed-ajax.js'); ?>"></script>
     <!-- Sistema de Sincronização de Likes em Tempo Real -->
-    <script src="assets/js/like-sync.js"></script>
+    <script src="<?php echo asset('assets/js/like-sync.js'); ?>"></script>
     <!-- Sistema de Sincronização de Comentários em Tempo Real -->
-    <script src="assets/js/comment-sync.js"></script>
+    <script src="<?php echo asset('assets/js/comment-sync.js'); ?>"></script>
     <?php include 'includes/presence_bootstrap.php'; ?>
     <?php if (isLoggedIn()): ?>
     <script>
@@ -525,7 +525,7 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
             }
         });
     </script>
-    <script src="assets/js/notifications.js"></script>
+    <script src="<?php echo asset('assets/js/notifications.js'); ?>"></script>
     <?php endif; ?>
     <?php endif; /* end main if/elseif/else */ ?>
     <script>

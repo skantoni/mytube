@@ -50,7 +50,7 @@ $current_user = $stmt->fetch();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat - MyTube</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="assets/css/chat.css">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/chat.css'); ?>">
     <style>
         * {
             margin: 0;
@@ -265,6 +265,6 @@ $current_user = $stmt->fetch();
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     
     <!-- Chat Socket.IO Client -->
-    <script src="assets/js/chat-socket.js"></script>
+    <script src="<?php echo asset('assets/js/chat-socket.js'); ?>"></script>
 </body>
 </html>

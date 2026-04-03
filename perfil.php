@@ -99,10 +99,10 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($user_data['username']); ?> - MyTube</title>
-    <link rel="stylesheet" href="assets/css/main.css">
-    <script src="assets/js/avatar-fallback.js"></script>
-    <link rel="stylesheet" href="assets/css/perfil.css">
-    <link rel="stylesheet" href="assets/css/interactive-buttons.css">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
+    <script src="<?php echo asset('assets/js/avatar-fallback.js'); ?>"></script>
+    <link rel="stylesheet" href="<?php echo asset('assets/css/perfil.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/interactive-buttons.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Meta tag para informar se o usuário está logado -->
     <meta name="user-logged-in" content="<?php echo isLoggedIn() ? 'true' : 'false'; ?>"><?php 
@@ -670,7 +670,7 @@ try {
         }
     </script>
     
-    <script src="assets/js/video-delete.js"></script>
+    <script src="<?php echo asset('assets/js/video-delete.js'); ?>"></script>
 
     <!-- Modal de Seguidores / Seguindo -->
     <div class="follow-modal-overlay" id="followModal" onclick="if(event.target===this)closeFollowModal()">

@@ -31,10 +31,10 @@ $is_admin = ($current_user['username'] === 'Admin');
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>🏆 Rankings - MyTube</title>
-    <link rel="stylesheet" href="assets/css/main.css">
-    <script src="assets/js/avatar-fallback.js"></script>
-    <link rel="stylesheet" href="assets/css/tiktok.css">
-    <link rel="stylesheet" href="assets/css/ranking.css">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
+    <script src="<?php echo asset('assets/js/avatar-fallback.js'); ?>"></script>
+    <link rel="stylesheet" href="<?php echo asset('assets/css/tiktok.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/ranking.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <?php echo r2_js_config(); ?>
     <?php include __DIR__ . '/includes/favicon.php'; ?>
@@ -308,6 +308,6 @@ $is_admin = ($current_user['username'] === 'Admin');
         window.serverDay = <?php echo (int)date('j'); ?>;
     </script>
     <?php include 'includes/presence_bootstrap.php'; ?>
-    <script src="assets/js/ranking.js"></script>
+    <script src="<?php echo asset('assets/js/ranking.js'); ?>"></script>
 </body>
 </html>
