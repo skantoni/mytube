@@ -128,7 +128,7 @@ try {
                 
                 var ref = document.referrer || '';
                 // Evitar loop: se veio de perfil, profile ou notificações, ir para o feed
-                if (!ref || ref.indexOf('perfil.php') !== -1 || ref.indexOf('profile.php') !== -1 || ref.indexOf('settings.php') !== -1 || ref.indexOf('notification') !== -1) {
+                if (!ref || ref.indexOf('chat.php') !== -1 || ref.indexOf('perfil.php') !== -1 || ref.indexOf('profile.php') !== -1 || ref.indexOf('settings.php') !== -1 || ref.indexOf('notification') !== -1) {
                     window.location.href = 'index.php';
                 } else {
                     history.back();
