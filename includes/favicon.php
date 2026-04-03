@@ -21,6 +21,10 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js', { scope: '/' })
             .then(function(reg) {
                 console.log('[PWA] Service Worker registrado com sucesso.', reg.scope);
+                
+                // Forçar a checagem manual de novas versões do sw.js no servidor!
+                reg.update();
+
                 // Verificar por atualizações
                 reg.addEventListener('updatefound', function() {
                     const newSW = reg.installing;

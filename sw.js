@@ -66,22 +66,22 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Para assets estáticos: Cache First → Network fallback
+  // Para assets estáticos: Network First → Cache fallback
+  // Evita ficar preso com CSS/JS antigos após deploy.
   const isStaticAsset =
     /\.(css|js|png|jpg|jpeg|webp|svg|gif|woff2?|ttf|eot|ico)$/i.test(url.pathname);
 
   if (isStaticAsset) {
     event.respondWith(
-      caches.match(request).then(cached => {
-        if (cached) return cached;
-        return fetch(request).then(response => {
+      fetch(request)
+        .then(response => {
           if (response && response.status === 200 && response.type !== 'opaque') {
             const clone = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
           }
           return response;
-        });
-      })
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }

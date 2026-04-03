@@ -850,6 +850,7 @@ body * {
     
     .tiktok-header {
         padding: 8px 15px;
+        padding-top: calc(8px + env(safe-area-inset-top, 0px));
     }
 }
 
