@@ -11,7 +11,7 @@
  * - Boosted com limite de exposição, cooldown e fadiga
  */
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 require_once '../includes/config.php';
 require_once '../includes/hashtag_helper.php';
