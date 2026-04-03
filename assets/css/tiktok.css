@@ -301,6 +301,8 @@ body * {
  */@media (min-width: 370px) and (max-height: 670px) {
     .video-controls {
         top: calc(30px + env(safe-area-inset-top, 0px));
+    }
+}
 .audio-toggle {
     width: 45px;
     height: 45px;
