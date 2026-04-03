@@ -158,11 +158,12 @@ class TikTokPlayer {
     // HELPER: Estado de mute global atual
     // ============================================
     getCurrentMuteState() {
-        // Verificar nos vídeos existentes
-        if (this.videos && this.videos.length > 0) {
-            const firstWithState = this.videos.find(v => v.wasMuted !== undefined);
-            if (firstWithState) return firstWithState.wasMuted;
+        // Verificar uma flag explícita do utilizador
+        const explicitMute = localStorage.getItem('mytube_global_muted');
+        if (explicitMute !== null) {
+            return explicitMute === 'true';
         }
+        
         // Fallback: verificar se utilizador já interagiu (som ativado)
         const userInteracted = localStorage.getItem('mytube_user_interacted') === 'true';
         return !userInteracted;
@@ -1408,6 +1409,7 @@ class TikTokPlayer {
         if (video.muted) {
             // Ativar som
             video.muted = false;
+            localStorage.setItem('mytube_global_muted', 'false');
             button.classList.add('active');
             icon.className = 'fas fa-volume-up';
             button.title = 'Desativar Som';
@@ -1420,6 +1422,7 @@ class TikTokPlayer {
         } else {
             // Desativar som
             video.muted = true;
+            localStorage.setItem('mytube_global_muted', 'true');
             button.classList.remove('active');
             icon.className = 'fas fa-volume-mute';
             button.title = 'Ativar Som';
@@ -1505,6 +1508,7 @@ class TikTokPlayer {
     enableAudioForAll(videoId) {
         // Marcar que o usuário já interagiu
         localStorage.setItem('mytube_user_interacted', 'true');
+        localStorage.setItem('mytube_global_muted', 'false');
         
         // Ativar som em todos os vídeos materializados
         this.videos.forEach(videoData => {
