@@ -198,7 +198,7 @@
         presenceSocket.on('message_notification', () => {
             updateChatUnreadUI(chatUnreadCount + 1);
             try {
-                const audio = new Audio('assets/sounds/recive.mp3');
+                const audio = new Audio('assets/sounds/recive.mp3?v=' + Date.now());
                 audio.play().catch(e => console.log('Audio autoplay prevented:', e));
             } catch (e) {}
         });

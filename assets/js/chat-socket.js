@@ -2659,7 +2659,7 @@ function formatLastSeen(timestamp) {
 }
 function playNotificationSound() {
     try {
-        const audio = new Audio('assets/sounds/recive.mp3');
+        const audio = new Audio('assets/sounds/recive.mp3?v=' + Date.now());
         audio.play().catch(e => console.log('Audio autoplay prevented:', e));
     } catch (e) {
         console.error('Erro ao tocar som:', e);
@@ -2668,7 +2668,7 @@ function playNotificationSound() {
 
 function playSentSound() {
     try {
-        const audio = new Audio('assets/sounds/send.mp3');
+        const audio = new Audio('assets/sounds/send.mp3?v=' + Date.now());
         audio.play().catch(e => console.log('Audio autoplay prevented:', e));
     } catch (e) {
         console.error('Erro ao tocar som:', e);
