@@ -541,29 +541,20 @@ class TikTokPlayer {
         videoData.savedTime = video.currentTime || 0;
         videoData.wasMuted = video.muted;
 
-        // Limpar handlers para evitar leak de memória e crash em eventos stale
-        video.onloadeddata = null;
-        video.ontimeupdate = null;
-        video.onended = null;
-        video.onwaiting = null;
-        video.onplaying = null;
-        video.oncanplay = null;
-
         // Pausar e liberar recursos de mídia (decoder, buffers)
         video.pause();
         video.removeAttribute('src');
-        video.innerHTML = '';
-        video.load();
+        // Remover elementos <source> para garantir a purga do buffer
+        while (video.firstChild) {
+            video.removeChild(video.firstChild);
+        }
+        video.load(); // Forçar o descarregamento da rede/buffer
 
-        // Substituir <video> por placeholder leve
-        const placeholder = document.createElement('div');
-        placeholder.className = 'video-placeholder';
-        placeholder.dataset.videoId = videoData.videoId;
-        placeholder.dataset.videoPath = videoData.videoPath;
+        // Apenas esconder visualmente ou aplicar estilo de placeholder (sem remover a tag <video>!)
+        // Isso preserva o "token de interação do usuário" associado a este elemento no mobile.
+        video.classList.add('video-unloaded');
+        video.style.opacity = '0';
 
-        player.replaceChild(placeholder, video);
-
-        videoData.video = null;
         videoData.materialized = false;
         videoData.loaded = false;
         videoData.element.classList.remove('buffering');
@@ -575,26 +566,46 @@ class TikTokPlayer {
         const player = videoData.element.querySelector('.video-player');
         if (!player) return;
 
+        // Recuperar o <video> existente em vez de criar um novo
+        let video = player.querySelector('video');
+        
+        // Cuidar dos casos de carregamento original do HTML onde o backend só gerou o placeholder (div)
         const placeholder = player.querySelector('.video-placeholder');
+        if (placeholder && !video) {
+            video = document.createElement('video');
+            video.id = `video-${videoData.videoId}`;
+            video.playsInline = true;
+            video.setAttribute('playsinline', '');
+            video.setAttribute('data-has-audio', 'true');
+            video.setAttribute('data-video-id', videoData.videoId);
+            video.setAttribute('data-video-path', videoData.videoPath);
+            player.replaceChild(video, placeholder);
+            videoData.video = video;
+            // Assinar eventos 1x
+            video.onended = () => this.nextVideo();
+            video.onwaiting = () => { videoData.element.classList.add('buffering'); };
+            video.onplaying = () => { videoData.element.classList.remove('buffering'); };
+            video.oncanplay = () => { videoData.element.classList.remove('buffering'); };
+        } else if (!video) {
+            return; 
+        }
 
-        // Criar novo elemento <video>
-        const video = document.createElement('video');
-        video.id = `video-${videoData.videoId}`;
         video.loop = true;
-        video.muted = videoData.wasMuted !== undefined ? videoData.wasMuted : true;
-        video.playsInline = true;
+        // Respeitar sempre a vontade global estrita para evitar mute forçado do browser
+        video.muted = this.getCurrentMuteState();
         video.preload = 'metadata';
-        video.setAttribute('playsinline', '');
-        video.setAttribute('data-has-audio', 'true');
-        video.setAttribute('data-video-id', videoData.videoId);
-        video.setAttribute('data-video-path', videoData.videoPath);
 
+        // Reconstruir o src
         const source = document.createElement('source');
         source.src = resolveVideoUrl(videoData.videoPath);
         source.type = 'video/mp4';
         video.appendChild(source);
 
-        // Re-attachar event handlers
+        // Restaurar estado visual
+        video.classList.remove('video-unloaded');
+        video.style.opacity = '1';
+
+        // Re-attachar eventos de progresso e carregamento
         video.onloadeddata = () => {
             videoData.loaded = true;
             if (videoData.savedTime > 0) {
@@ -602,25 +613,6 @@ class TikTokPlayer {
             }
         };
         video.ontimeupdate = () => this.updateProgress(videoData);
-        video.onended = () => this.nextVideo();
-
-        // Buffering: adicionar/remover classe para animação de loading
-        video.onwaiting = () => {
-            videoData.element.classList.add('buffering');
-        };
-        video.onplaying = () => {
-            videoData.element.classList.remove('buffering');
-        };
-        video.oncanplay = () => {
-            videoData.element.classList.remove('buffering');
-        };
-
-        // Trocar placeholder pelo <video>
-        if (placeholder) {
-            player.replaceChild(video, placeholder);
-        } else {
-            player.insertBefore(video, player.firstChild);
-        }
 
         videoData.video = video;
         videoData.materialized = true;
@@ -750,13 +742,11 @@ class TikTokPlayer {
         }
         if (videoData.video) {
             // Respeitar o estado de mute atual (global)
-            // Se o usuário silenciou manualmente, manter silenciado ao dar play
-            const currentMuted = videoData.video.muted;
+            const globalMuted = this.getCurrentMuteState();
             const userInteracted = localStorage.getItem('mytube_user_interacted') === 'true';
             
-            // Determinar se deve ter som: respeitar estado actual do vídeo
-            // Só tentar com som se o utilizador já interagiu E o vídeo NÃO está mutado
-            const shouldHaveAudio = userInteracted && !currentMuted;
+            // Só tentar com som se o utilizador já interagiu E o som global estiver ativo
+            const shouldHaveAudio = userInteracted && !globalMuted;
             
             if (shouldHaveAudio) {
                 videoData.video.muted = false;
@@ -767,7 +757,7 @@ class TikTokPlayer {
                         this.updateAudioButtonState(videoData.videoId, false);
                     })
                     .catch(e => {
-                        // Fallback: tentar sem som
+                        // Fallback: tentar sem som no mobile (autoplay prevent)
                         videoData.video.muted = true;
                         videoData.video.play()
                             .then(() => {
