@@ -41,6 +41,7 @@ let lastContactPresenceSubscriptionKey = null;
 
 // Lazy loading observer para media do chat
 let chatMediaObserver = null;
+let chatViewportHandlersSetup = false;
 
 function initChatMediaObserver() {
     if (chatMediaObserver) chatMediaObserver.disconnect();
@@ -76,6 +77,52 @@ function initChatMediaObserver() {
         rootMargin: '400px 0px',
         threshold: 0.01
     });
+}
+
+function updateAppHeightVar() {
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    document.documentElement.style.setProperty('--app-height', `${Math.round(viewportHeight)}px`);
+}
+
+function updateChatKeyboardOffset() {
+    const visualViewport = window.visualViewport;
+    if (!visualViewport) {
+        document.documentElement.style.setProperty('--chat-keyboard-offset', '0px');
+        return;
+    }
+
+    const keyboardHeight = Math.max(0, window.innerHeight - visualViewport.height - visualViewport.offsetTop);
+    const offset = keyboardHeight > 40 ? keyboardHeight : 0;
+    document.documentElement.style.setProperty('--chat-keyboard-offset', `${Math.round(offset)}px`);
+}
+
+function setupMobileViewportFixes() {
+    if (chatViewportHandlersSetup) {
+        updateAppHeightVar();
+        updateChatKeyboardOffset();
+        return;
+    }
+
+    const applyViewportFixes = () => {
+        updateAppHeightVar();
+        updateChatKeyboardOffset();
+    };
+
+    applyViewportFixes();
+
+    window.addEventListener('resize', applyViewportFixes);
+    window.addEventListener('orientationchange', applyViewportFixes);
+    document.addEventListener('focusin', applyViewportFixes);
+    document.addEventListener('focusout', () => {
+        setTimeout(applyViewportFixes, 60);
+    });
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', applyViewportFixes);
+        window.visualViewport.addEventListener('scroll', applyViewportFixes);
+    }
+
+    chatViewportHandlersSetup = true;
 }
 
 // Variáveis vindas do PHP (definidas em chat.php)
@@ -256,6 +303,7 @@ function updateActiveUsersCountUI() {
 // ========================================
 
 document.addEventListener('DOMContentLoaded', function() {
+    setupMobileViewportFixes();
     ensureChatActiveUsersCounter();
     updateActiveUsersCountUI();
     initializeSocket();

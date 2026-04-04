@@ -14,13 +14,19 @@ body {
     background: #0f172a;
 }
 
+:root {
+    --app-height: 100vh;
+    --chat-keyboard-offset: 0px;
+}
+
 /* ========================================
    CHAT CONTAINER
    ======================================== */
 
 .chat-container {
     display: flex;
-    height: 100vh;
+    height: var(--app-height);
+    min-height: var(--app-height);
     background: #0f172a;
 }
 
@@ -1090,6 +1096,8 @@ body {
     display: flex;
     align-items: flex-end;
     gap: 8px;
+    margin-bottom: var(--chat-keyboard-offset);
+    transition: margin-bottom 0.18s ease-out;
 }
 
 .attach-btn,
@@ -1161,6 +1169,9 @@ body {
     line-height: 20px;
     background: transparent;
     color: #e2e8f0;
+    -webkit-text-fill-color: #e2e8f0;
+    caret-color: #e2e8f0;
+    opacity: 1;
 }
 
 #messageInput::placeholder {
@@ -2052,7 +2063,8 @@ body {
 
 @media (max-width: 768px) {
     .chat-container {
-        height: 100vh;
+        height: var(--app-height);
+        min-height: var(--app-height);
         position: relative;
     }
     
@@ -2079,6 +2091,7 @@ body {
         top: 0;
         height: 100%;
         display: none;
+        padding-bottom: env(safe-area-inset-bottom);
     }
     
     .chat-main.active {
