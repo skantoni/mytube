@@ -395,8 +395,6 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
             <?php if (isLoggedIn()): ?>
             <div class="comment-form">
                 <div class="comment-input-container">
-                    <img src="assets/images/avatars/<?php echo $_SESSION['profile_picture'] ?? 'default.webp'; ?>" 
-                         alt="Sua foto" class="comment-avatar">
                     <div class="comment-input-wrapper">
                         <button type="button" class="comment-emoji-btn" data-target-input="commentInput" aria-label="Abrir emojis">
                             <i class="fas fa-smile"></i>
@@ -438,8 +436,6 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
             <?php if (isLoggedIn()): ?>
             <div class="modal-footer">
                 <div class="comment-input-container">
-                    <img src="assets/images/avatars/<?php echo $_SESSION['profile_picture'] ?? 'default.webp'; ?>" 
-                         alt="Sua foto" class="comment-avatar">
                     <div class="comment-input-wrapper">
                         <button type="button" class="comment-emoji-btn" data-target-input="commentInputMobile" aria-label="Abrir emojis">
                             <i class="fas fa-smile"></i>
