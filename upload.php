@@ -133,8 +133,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
 
+            // Se houve erro na música, abortar antes do upload
+            if ($error) {
+                // Limpar ficheiro de vídeo processado
+                if ($is_transcoded && file_exists($processed_video_path)) {
+                    @unlink($processed_video_path);
+                }
+            }
+
+            if (!$error) {
+
             $uniqueName = uniqid() . '_' . time() . '.' . $processed_video_ext;
-            
+
             // ============================================
             // UPLOAD PARA CLOUDFLARE R2 OU LOCAL
             // ============================================
@@ -240,6 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             } else {
                 $error = 'Erro ao fazer upload do arquivo.';
+            }
             }
         }
     }
