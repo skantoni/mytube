@@ -1853,3 +1853,21 @@
         font-size: 0.75rem;
     }
 }
+
+/* Evita conflito com estilos globais de .comment-form do feed no desktop */
+@media (min-width: 769px) {
+    .comments-sidebar .comment-form {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .comments-sidebar .comment-input-container {
+        width: 100%;
+    }
+
+    .comments-sidebar .edit-indicator {
+        width: 100%;
+        margin: 0;
+    }
+}

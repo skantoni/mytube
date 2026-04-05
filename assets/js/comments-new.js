@@ -1732,8 +1732,8 @@ class CommentsSystem {
             </button>
         `;
         
-        // Inserir antes do input container
-        inputContainer.parentElement.insertBefore(indicator, inputContainer);
+        // Inserir no topo do container para não competir com layouts flex de outras folhas CSS
+        inputContainer.parentElement.prepend(indicator);
         
         // Bind cancelar
         indicator.querySelector('.edit-indicator-cancel').addEventListener('click', () => {
