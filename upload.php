@@ -4,6 +4,7 @@ require_once 'includes/ranking_cache.php';
 require_once 'includes/hashtag_helper.php';
 require_once 'includes/r2_storage.php';
 require_once 'includes/video_processing.php';
+require_once 'includes/music_config.php';
 
 // Verificar se está logado
 if (!isLoggedIn()) {
@@ -82,6 +83,51 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $processed_video_ext = (string)$processing_result['extension'];
             $is_transcoded = !empty($processing_result['transcoded']);
 
+            // ============================================
+            // MÚSICA DE FUNDO (ROYALTY-FREE)
+            // ============================================
+            $music_name = '';
+            $music_artist = '';
+            $music_tmp_path = null;
+            $music_merged_path = null;
+
+            $music_data_raw = trim($_POST['music_track_data'] ?? '');
+            if ($music_data_raw !== '') {
+                $music_data = json_decode($music_data_raw, true);
+                if (is_array($music_data) && !empty($music_data['download_url'])) {
+                    $music_mode = ($_POST['music_mode'] ?? 'mix') === 'replace' ? 'replace' : 'mix';
+                    $music_volume_pct = max(5, min(100, (int)($_POST['music_volume'] ?? 25)));
+                    $music_volume = $music_volume_pct / 100.0;
+
+                    $music_tmp_path = video_download_music($music_data['download_url']);
+                    if ($music_tmp_path) {
+                        $merge_result = video_merge_music(
+                            $processed_video_path,
+                            $music_tmp_path,
+                            $music_mode,
+                            $music_volume
+                        );
+
+                        if ($merge_result['success'] && $merge_result['output_path']) {
+                            // Limpar video anterior se era transcoded
+                            if ($is_transcoded && file_exists($processed_video_path)) {
+                                @unlink($processed_video_path);
+                            }
+                            $music_merged_path = $merge_result['output_path'];
+                            $processed_video_path = $music_merged_path;
+                            $processed_video_ext = 'mp4';
+                            $is_transcoded = true; // marcar para cleanup
+                            $music_name = sanitize($music_data['name'] ?? '');
+                            $music_artist = sanitize($music_data['artist'] ?? '');
+                        } else {
+                            // Falha no merge: continuar sem música
+                            error_log('Music merge failed: ' . ($merge_result['error'] ?? 'unknown'));
+                        }
+                        @unlink($music_tmp_path);
+                    }
+                }
+            }
+
             $uniqueName = uniqid() . '_' . time() . '.' . $processed_video_ext;
             
             // ============================================
@@ -132,11 +178,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $pdo->beginTransaction();
 
                     $stmt = $pdo->prepare("
-                        INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, created_at) 
-                        VALUES (?, ?, ?, ?, ?, ?, NOW())
+                        INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, music_name, music_artist, created_at) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
                     ");
 
-                    if (!$stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public])) {
+                    if (!$stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public, $music_name, $music_artist])) {
                         throw new RuntimeException('Erro ao salvar vídeo no banco de dados.');
                     }
 
@@ -210,6 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
     <script src="<?php echo asset('assets/js/avatar-fallback.js'); ?>"></script>
     <link rel="stylesheet" href="<?php echo asset('assets/css/upload.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/music-picker.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         /* Ajuste para remover o espaço do header */
@@ -389,6 +436,62 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 Separe por espaço e não use espaço dentro da hashtag. Ex: #diversao #viral #mytube
                             </small>
                         </div>
+
+                        <!-- Música de Fundo (Royalty-Free) -->
+                        <div class="form-group">
+                            <label class="music-toggle-group" for="musicToggle">
+                                <div class="music-toggle-left">
+                                    <i class="fas fa-music"></i>
+                                    <div>
+                                        <span>Adicionar Música de Fundo</span>
+                                        <small>Músicas royalty-free via Jamendo</small>
+                                    </div>
+                                </div>
+                                <div class="music-switch">
+                                    <input type="checkbox" id="musicToggle">
+                                    <span class="music-switch-slider"></span>
+                                </div>
+                            </label>
+
+                            <div class="music-panel" id="musicPanel">
+                                <div class="music-search-bar">
+                                    <i class="fas fa-search"></i>
+                                    <input type="text" id="musicSearch" placeholder="Buscar músicas... ex: happy, chill, energetic" autocomplete="off">
+                                </div>
+
+                                <div class="music-tags">
+                                    <button type="button" class="music-tag-btn" data-tag="pop">Pop</button>
+                                    <button type="button" class="music-tag-btn" data-tag="rock">Rock</button>
+                                    <button type="button" class="music-tag-btn" data-tag="electronic">Electronic</button>
+                                    <button type="button" class="music-tag-btn" data-tag="hiphop">Hip Hop</button>
+                                    <button type="button" class="music-tag-btn" data-tag="jazz">Jazz</button>
+                                    <button type="button" class="music-tag-btn" data-tag="ambient">Ambient</button>
+                                    <button type="button" class="music-tag-btn" data-tag="classical">Classical</button>
+                                    <button type="button" class="music-tag-btn" data-tag="lofi">Lo-Fi</button>
+                                </div>
+
+                                <div class="music-results" id="musicResults"></div>
+
+                                <div class="music-selected" id="musicSelected"></div>
+
+                                <div class="music-options">
+                                    <div class="music-option-group">
+                                        <label for="musicMode"><i class="fas fa-sliders-h"></i> Modo:</label>
+                                        <select id="musicMode" name="music_mode">
+                                            <option value="mix">Mixar com áudio original</option>
+                                            <option value="replace">Substituir áudio</option>
+                                        </select>
+                                    </div>
+                                    <div class="music-option-group">
+                                        <label><i class="fas fa-volume-up"></i> Volume:</label>
+                                        <input type="range" id="musicVolume" name="music_volume" class="music-volume-slider" min="5" max="100" value="25">
+                                        <span class="music-volume-label" id="musicVolumeLabel">25%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <input type="hidden" name="music_track_data" id="musicTrackData" value="">
+                        </div>
                         
                         <div class="form-group">
                             <div class="checkbox-group">
@@ -441,6 +544,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
     
     <script src="<?php echo asset('assets/js/upload.js'); ?>"></script>
+    <script src="<?php echo asset('assets/js/music-picker.js'); ?>"></script>
     <?php include 'includes/presence_bootstrap.php'; ?>
 </body>
 </html>

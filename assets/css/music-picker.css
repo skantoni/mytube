@@ -1,0 +1,525 @@
+/* ============================================
+   MUSIC PICKER — Selector de Músicas Royalty-Free
+   ============================================ */
+
+/* Toggle container */
+.music-toggle-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: var(--border-radius, 12px);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 0;
+}
+
+.music-toggle-group:hover {
+    background: rgba(139, 92, 246, 0.14);
+    border-color: rgba(139, 92, 246, 0.35);
+}
+
+.music-toggle-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.music-toggle-left i {
+    font-size: 1.2rem;
+    color: #8b5cf6;
+}
+
+.music-toggle-left span {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.music-toggle-left small {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.78rem;
+    display: block;
+    margin-top: 2px;
+}
+
+/* Custom toggle switch */
+.music-switch {
+    position: relative;
+    width: 48px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.music-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.music-switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.15);
+    transition: 0.3s;
+    border-radius: 26px;
+}
+
+.music-switch-slider::before {
+    content: '';
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.music-switch input:checked + .music-switch-slider {
+    background: #8b5cf6;
+}
+
+.music-switch input:checked + .music-switch-slider::before {
+    transform: translateX(22px);
+}
+
+/* Panel */
+.music-panel {
+    display: none;
+    margin-top: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius, 12px);
+    padding: 18px;
+    animation: musicPanelIn 0.3s ease;
+}
+
+@keyframes musicPanelIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Search bar */
+.music-search-bar {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 0 14px;
+    margin-bottom: 14px;
+    transition: border-color 0.3s;
+}
+
+.music-search-bar:focus-within {
+    border-color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.06);
+}
+
+.music-search-bar i {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.9rem;
+    margin-right: 10px;
+}
+
+.music-search-bar input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: white;
+    padding: 12px 0;
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.music-search-bar input::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+}
+
+/* Tags */
+.music-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.music-tag-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.music-tag-btn:hover {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.3);
+    color: #c4b5fd;
+}
+
+.music-tag-btn.active {
+    background: #8b5cf6;
+    border-color: #8b5cf6;
+    color: white;
+}
+
+/* Results container */
+.music-results {
+    max-height: 320px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
+}
+
+.music-results::-webkit-scrollbar {
+    width: 5px;
+}
+
+.music-results::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.3);
+    border-radius: 10px;
+}
+
+/* Track item */
+.music-track {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    transition: all 0.2s;
+    cursor: default;
+}
+
+.music-track:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.music-track.selected {
+    background: rgba(139, 92, 246, 0.12);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.music-track-cover {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.music-track-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.music-track-cover i {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 1.1rem;
+}
+
+.music-track-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.music-track-name {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.88rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.music-track-artist {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.78rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.music-track-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 3px;
+}
+
+.music-track-duration {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.72rem;
+}
+
+.music-track-duration i {
+    margin-right: 3px;
+    font-size: 0.65rem;
+}
+
+.music-track-genre {
+    color: #c4b5fd;
+    font-size: 0.7rem;
+    background: rgba(139, 92, 246, 0.12);
+    padding: 1px 8px;
+    border-radius: 10px;
+}
+
+/* Track action buttons */
+.music-track-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.music-btn-preview,
+.music-btn-select {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+}
+
+.music-btn-preview {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.music-btn-preview:hover,
+.music-btn-preview.playing {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+}
+
+.music-btn-select {
+    background: rgba(139, 92, 246, 0.12);
+    color: #c4b5fd;
+}
+
+.music-btn-select:hover {
+    background: rgba(139, 92, 246, 0.25);
+    color: #a78bfa;
+}
+
+.music-btn-select.active {
+    background: #8b5cf6;
+    color: white;
+}
+
+/* Selected music banner */
+.music-selected {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-radius: 10px;
+    margin-top: 12px;
+    animation: musicPanelIn 0.3s ease;
+}
+
+.music-selected-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.music-selected-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(139, 92, 246, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #a78bfa;
+}
+
+.music-selected-name {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.88rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.music-selected-artist {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.78rem;
+}
+
+.music-selected-remove {
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.music-selected-remove:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+/* Volume / mix options */
+.music-options {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+}
+
+.music-option-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.music-option-group label {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.music-option-group select {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    outline: none;
+    cursor: pointer;
+}
+
+.music-option-group select:focus {
+    border-color: #8b5cf6;
+}
+
+.music-volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 5px;
+    outline: none;
+}
+
+.music-volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #8b5cf6;
+    cursor: pointer;
+}
+
+.music-volume-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #8b5cf6;
+    cursor: pointer;
+    border: none;
+}
+
+.music-volume-label {
+    color: #c4b5fd;
+    font-size: 0.78rem;
+    font-weight: 600;
+    min-width: 32px;
+}
+
+/* Loading & empty states */
+.music-loading,
+.music-empty {
+    text-align: center;
+    padding: 30px 20px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.88rem;
+}
+
+.music-loading i,
+.music-empty i {
+    display: block;
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.25);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .music-panel {
+        padding: 14px;
+    }
+
+    .music-track {
+        padding: 8px 8px;
+        gap: 8px;
+    }
+
+    .music-track-cover {
+        width: 38px;
+        height: 38px;
+    }
+
+    .music-btn-preview,
+    .music-btn-select {
+        width: 32px;
+        height: 32px;
+        font-size: 0.78rem;
+    }
+
+    .music-options {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .music-tags {
+        gap: 6px;
+    }
+
+    .music-tag-btn {
+        padding: 5px 10px;
+        font-size: 0.75rem;
+    }
+}
