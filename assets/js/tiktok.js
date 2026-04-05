@@ -22,8 +22,10 @@ class TikTokPlayer {
         this.currentVideoIndex = 0;
         this.videos = [];
         this.isScrolling = false;
-        this.isAndroid = /Android/i.test(navigator.userAgent || '');
-        this.scrollEndDelay = this.isAndroid ? 220 : 150;
+        this.isSnapping = false;
+        this.scrollEndDelay = 180;
+        this.snapTolerancePx = 2;
+        this._snapUnlockTimer = null;
         this.initialized = false;
         this.controlsSetup = false;
         this.intersectionObserver = null;
@@ -40,7 +42,6 @@ class TikTokPlayer {
     }
 
     init() {
-        document.documentElement.classList.toggle('is-android', this.isAndroid);
         this.setupVideos();
         this.setupScrolling();
         this.setupGlobalEventHandler();
@@ -644,9 +645,12 @@ class TikTokPlayer {
     }
 
     handleScrollEnd() {
+        if (this.isSnapping) return;
+
         // Encontrar qual vídeo está mais visível
         const container = document.querySelector('.tiktok-container');
-        const containerHeight = container.clientHeight;
+        if (!container || this.videos.length === 0) return;
+
         let mostVisible = null;
         let maxVisibility = 0;
 
@@ -665,13 +669,58 @@ class TikTokPlayer {
             }
         });
 
-        if (mostVisible !== null && mostVisible !== this.currentVideoIndex) {
-            this.currentVideoIndex = mostVisible;
+        if (mostVisible === null) return;
+
+        const targetEl = this.videos[mostVisible]?.element;
+        if (!targetEl) return;
+
+        const needsSettle = Math.abs(container.scrollTop - targetEl.offsetTop) > this.snapTolerancePx;
+        if (needsSettle) {
+            this.snapToVideo(mostVisible, 'smooth');
+            return;
+        }
+
+        this.activateVideoAtIndex(mostVisible);
+        this.enforceMaxMaterialized();
+    }
+
+    activateVideoAtIndex(index) {
+        if (index === null || index < 0 || index >= this.videos.length) return;
+        if (index !== this.currentVideoIndex) {
+            this.currentVideoIndex = index;
             this.persistFeedState();
             this.loadCurrentVideo();
             this.updateDesktopNavButtons();
+            return;
         }
-        this.enforceMaxMaterialized();
+        this.updateDesktopNavButtons();
+    }
+
+    snapToVideo(index, behavior = 'smooth') {
+        const container = document.querySelector('.tiktok-container');
+        const videoData = this.videos[index];
+        if (!container || !videoData) return;
+
+        if (!videoData.materialized) {
+            this.materializeVideo(videoData);
+        }
+
+        const targetTop = videoData.element.offsetTop;
+        const currentTop = container.scrollTop;
+        if (Math.abs(currentTop - targetTop) <= this.snapTolerancePx) {
+            this.activateVideoAtIndex(index);
+            return;
+        }
+
+        this.isSnapping = true;
+        container.scrollTo({ top: targetTop, behavior });
+
+        clearTimeout(this._snapUnlockTimer);
+        this._snapUnlockTimer = setTimeout(() => {
+            this.isSnapping = false;
+            this.activateVideoAtIndex(index);
+            this.enforceMaxMaterialized();
+        }, behavior === 'smooth' ? 260 : 0);
     }
 
     loadCurrentVideo() {
@@ -842,17 +891,7 @@ class TikTokPlayer {
     }
 
     scrollToVideo(index) {
-        const videoData = this.videos[index];
-        if (!videoData) return;
-        // Materializar antes de scroll
-        if (!videoData.materialized) {
-            this.materializeVideo(videoData);
-        }
-        videoData.element.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start' 
-        });
-        this.updateDesktopNavButtons();
+        this.snapToVideo(index, 'smooth');
     }
 
     // ============================================

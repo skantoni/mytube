@@ -87,10 +87,6 @@ body * {
     -webkit-overflow-scrolling: touch;
 }
 
-html.is-android .tiktok-container {
-    scroll-snap-type: y proximity;
-}
-
 /* Item individual do vídeo */
 .video-item {
     position: relative;
@@ -98,6 +94,7 @@ html.is-android .tiktok-container {
     max-width: 100vw;
     height: 100vh;
     scroll-snap-align: start;
+    scroll-snap-stop: always;
     display: flex;
     align-items: center;
     justify-content: center;
