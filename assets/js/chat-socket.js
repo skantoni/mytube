@@ -838,6 +838,18 @@ function handleMessageSent(data) {
         if (statusElement) {
             updateMessageStatusIcon(statusElement, data.status || 'sent');
         }
+
+        // Mensagens de texto otimistas começam sem botão de opções.
+        // Ao confirmar o ID real, injeta os três pontos para edição/apagar sem precisar recarregar.
+        const msgContent = tempMessage.querySelector('.message-content');
+        if (msgContent && !msgContent.querySelector('.msg-more-btn')) {
+            const messageText = tempMessage.querySelector('.message-text')?.textContent?.trim() || '';
+            const moreBtn = document.createElement('button');
+            moreBtn.className = 'msg-more-btn';
+            moreBtn.innerHTML = '<i class="fas fa-ellipsis-v"></i>';
+            moreBtn.onclick = (event) => showMessageOptions(event, data.messageId, messageText, true);
+            msgContent.insertBefore(moreBtn, msgContent.firstChild);
+        }
     } else {
         console.warn(`⚠️ Mensagem temporária ${data.tempId} não encontrada`);
     }
@@ -1402,6 +1414,15 @@ function deleteMessage(messageId, deleteType = 'for_all') {
                     msgEl.style.transform = 'scale(0.8)';
                     setTimeout(() => msgEl.remove(), 300);
                 }
+
+                if (socket) {
+                    socket.emit('delete_message', {
+                        messageId: messageId,
+                        userId: currentUserId,
+                        deleteType: 'for_me'
+                    });
+                }
+
                 showToast('Mensagem apagada para si');
             } else {
                 showToast(data.error || 'Erro ao apagar mensagem');

@@ -382,6 +382,7 @@ async function getUserConversations(userId) {
                 u.profile_picture as avatar,
                 u.is_verified,
                 (SELECT CASE
+                                        WHEN m2.deleted_for_all = 1 THEN 'Mensagem apagada'
                     WHEN m2.type = 'image' THEN 'Foto'
                     WHEN m2.type = 'video' THEN 'Vídeo'
                     WHEN m2.type = 'audio' THEN 'Áudio'
@@ -390,22 +391,32 @@ async function getUserConversations(userId) {
                     ELSE m2.message
                  END
                  FROM messages m2 
-                 WHERE m2.conversation_id = c.id 
+                                 WHERE m2.conversation_id = c.id
+                                     AND NOT (
+                                             (m2.sender_id = ? AND m2.deleted_for_sender = 1)
+                                             OR (m2.receiver_id = ? AND m2.deleted_for_receiver = 1)
+                                     )
                  ORDER BY m2.created_at DESC LIMIT 1) as last_message,
                 (SELECT m3.created_at FROM messages m3 
-                 WHERE m3.conversation_id = c.id 
+                                 WHERE m3.conversation_id = c.id
+                                     AND NOT (
+                                             (m3.sender_id = ? AND m3.deleted_for_sender = 1)
+                                             OR (m3.receiver_id = ? AND m3.deleted_for_receiver = 1)
+                                     )
                  ORDER BY m3.created_at DESC LIMIT 1) as last_message_time,
                 uo.last_seen,
                 (SELECT COUNT(*) FROM messages m4 
                  WHERE m4.conversation_id = c.id 
                  AND m4.receiver_id = ? 
-                 AND m4.status != 'read') as unread_count
+                                 AND m4.status != 'read'
+                                 AND m4.deleted_for_all = 0
+                                 AND m4.deleted_for_receiver = 0) as unread_count
             FROM conversations c
             JOIN users u ON (CASE WHEN c.user1_id = ? THEN c.user2_id ELSE c.user1_id END) = u.id
             LEFT JOIN user_online_status uo ON u.id = uo.user_id
             WHERE c.user1_id = ? OR c.user2_id = ?
             ORDER BY c.updated_at DESC
-        `, [userId, userId, userId, userId, userId]);
+                `, [userId, userId, userId, userId, userId, userId, userId, userId, userId]);
         
         // Enriquecer com status online da memória (fonte de verdade)
         rows.forEach(row => {
@@ -1173,6 +1184,8 @@ io.on('connection', (socket) => {
         if (deleteType === 'for_me') {
             // Apagar apenas para mim (via API PHP)
             // O cliente já faz a chamada HTTP, aqui só removemos do DOM local
+            const myConversations = await getUserConversations(userId);
+            io.to(`user_${userId}`).emit('conversations_list', myConversations);
             socket.emit('delete_success', { messageId, deleteType: 'for_me' });
         } else {
             // Apagar para todos (comportamento original)
@@ -1183,6 +1196,24 @@ io.on('connection', (socket) => {
                     messageId,
                     conversationId: result.conversationId
                 });
+
+                const [participants] = await pool.execute(
+                    'SELECT user1_id, user2_id FROM conversations WHERE id = ? LIMIT 1',
+                    [result.conversationId]
+                );
+
+                if (participants.length > 0) {
+                    const participantIds = [participants[0].user1_id, participants[0].user2_id]
+                        .map((id) => normalizeUserId(id))
+                        .filter((id) => Number.isInteger(id) && id > 0);
+
+                    for (const participantId of participantIds) {
+                        const userConversations = await getUserConversations(participantId);
+                        io.to(`user_${participantId}`).emit('conversations_list', userConversations);
+                        await emitUnreadMessagesCountToUser(participantId);
+                    }
+                }
+
                 socket.emit('delete_success', { messageId, deleteType: 'for_all' });
             } else {
                 socket.emit('error', { message: result.error });
