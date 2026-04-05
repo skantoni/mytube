@@ -290,13 +290,14 @@ function video_download_music(string $url): ?string {
 /**
  * Combina video com uma faixa de audio de fundo usando FFmpeg.
  *
- * @param string $video_path   Caminho do video processado
- * @param string $music_path   Caminho do ficheiro MP3
- * @param string $mode         'mix' (mistura com audio original) ou 'replace' (substitui audio)
- * @param float  $music_volume Volume da musica (0.0-1.0), usado no modo 'mix'
+ * @param string $video_path    Caminho do video processado
+ * @param string $music_path    Caminho do ficheiro MP3
+ * @param string $mode          'mix' (mistura com audio original) ou 'replace' (substitui audio)
+ * @param float  $music_volume  Volume da musica (0.0-1.0), usado no modo 'mix'
+ * @param float  $start_offset  Segundo onde a musica começa (ex: 5.30 = começa aos 5.3s)
  * @return array{success: bool, output_path: ?string, error: ?string}
  */
-function video_merge_music(string $video_path, string $music_path, string $mode = 'mix', float $music_volume = 0.25): array {
+function video_merge_music(string $video_path, string $music_path, string $mode = 'mix', float $music_volume = 0.25, float $start_offset = 0.0): array {
     $result = ['success' => false, 'output_path' => null, 'error' => null];
 
     if (!video_exec_available()) {
@@ -325,23 +326,30 @@ function video_merge_music(string $video_path, string $music_path, string $mode 
     }
 
     $music_volume = max(0.05, min(1.0, $music_volume));
+    $start_offset = max(0.0, $start_offset);
+    $ss_arg = $start_offset > 0.01
+        ? sprintf('-ss %s', escapeshellarg(number_format($start_offset, 2, '.', '')))
+        : '';
 
+    // -stream_loop -1 : repete a musica infinitamente, -shortest corta quando o video acaba
     if ($mode === 'replace' || !$has_audio) {
         // Substituir audio ou video sem audio: usar faixa de musica directamente
         $command = sprintf(
-            '%s -y -i %s -i %s -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 128k -ar 48000 -shortest %s 2>&1',
+            '%s -y -i %s -stream_loop -1 %s -i %s -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 128k -ar 48000 -shortest %s 2>&1',
             escapeshellarg($ffmpeg),
             escapeshellarg($video_path),
+            $ss_arg,
             escapeshellarg($music_path),
             escapeshellarg($output_path)
         );
     } else {
-        // Modo mix: misturar audio original com musica de fundo
+        // Modo mix: misturar audio original com musica de fundo em loop
         $vol = number_format($music_volume, 2, '.', '');
         $command = sprintf(
-            '%s -y -i %s -i %s -filter_complex "[1:a]volume=%s[music];[0:a][music]amix=inputs=2:duration=first:dropout_transition=2[out]" -map 0:v:0 -map "[out]" -c:v copy -c:a aac -b:a 128k -ar 48000 %s 2>&1',
+            '%s -y -i %s -stream_loop -1 %s -i %s -filter_complex "[1:a]volume=%s[music];[0:a][music]amix=inputs=2:duration=first:dropout_transition=2[out]" -map 0:v:0 -map "[out]" -c:v copy -c:a aac -b:a 128k -ar 48000 %s 2>&1',
             escapeshellarg($ffmpeg),
             escapeshellarg($video_path),
+            $ss_arg,
             escapeshellarg($music_path),
             $vol,
             escapeshellarg($output_path)

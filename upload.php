@@ -98,6 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $music_mode = ($_POST['music_mode'] ?? 'mix') === 'replace' ? 'replace' : 'mix';
                     $music_volume_pct = max(5, min(100, (int)($_POST['music_volume'] ?? 25)));
                     $music_volume = $music_volume_pct / 100.0;
+                    $music_start = max(0.0, min(300.0, (float)($_POST['music_start'] ?? 0)));
 
                     $music_tmp_path = video_download_music($music_data['download_url']);
                     if ($music_tmp_path) {
@@ -105,7 +106,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $processed_video_path,
                             $music_tmp_path,
                             $music_mode,
-                            $music_volume
+                            $music_volume,
+                            $music_start
                         );
 
                         if ($merge_result['success'] && $merge_result['output_path']) {
@@ -491,6 +493,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
 
                             <input type="hidden" name="music_track_data" id="musicTrackData" value="">
+                            <input type="hidden" name="music_start" id="musicStartOffset" value="0">
                         </div>
                         
                         <div class="form-group">
