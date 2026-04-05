@@ -251,13 +251,15 @@ function video_prepare_for_storage(string $input_path, string $original_extensio
 }
 
 /**
- * Faz download de um ficheiro de audio a partir de uma URL segura (Jamendo).
+ * Faz download de um ficheiro de audio a partir de uma URL segura (Deezer CDN).
+ * Usa cURL como método principal (mais fiável que file_get_contents para HTTPS).
  * Retorna o caminho do ficheiro temporario ou null em caso de erro.
  */
 function video_download_music(string $url): ?string {
     // Validar que a URL pertence ao Deezer CDN
     $parsed = parse_url($url);
     if (!$parsed || empty($parsed['host'])) {
+        error_log('video_download_music: URL inválida');
         return null;
     }
     $host = strtolower($parsed['host']);
@@ -270,20 +272,62 @@ function video_download_music(string $url): ?string {
 
     $tmp_path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid('mytube_music_', true) . '.mp3';
 
+    // Método 1: cURL (preferível — funciona em quase todos os servidores)
+    if (function_exists('curl_init')) {
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS      => 5,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; MyTube/1.0)',
+        ]);
+        $data = curl_exec($ch);
+        $http_code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
+        curl_close($ch);
+
+        if ($data === false || $http_code !== 200 || strlen($data) < 1024) {
+            error_log('video_download_music: cURL falhou — HTTP ' . $http_code . ' — ' . $curl_error . ' — URL: ' . $url);
+            return null;
+        }
+
+        if (file_put_contents($tmp_path, $data) === false) {
+            error_log('video_download_music: falha ao escrever ficheiro temporário');
+            return null;
+        }
+
+        error_log('video_download_music: OK via cURL — ' . strlen($data) . ' bytes — ' . $tmp_path);
+        return $tmp_path;
+    }
+
+    // Método 2: file_get_contents (fallback)
     $context = stream_context_create([
-        'http' => ['timeout' => 30, 'follow_location' => true, 'max_redirects' => 3],
+        'http' => [
+            'timeout' => 30,
+            'follow_location' => true,
+            'max_redirects' => 5,
+            'header' => "User-Agent: Mozilla/5.0 (compatible; MyTube/1.0)\r\n",
+        ],
         'ssl'  => ['verify_peer' => true, 'verify_peer_name' => true],
     ]);
 
     $data = @file_get_contents($url, false, $context);
     if ($data === false || strlen($data) < 1024) {
+        error_log('video_download_music: file_get_contents falhou — URL: ' . $url);
         return null;
     }
 
     if (file_put_contents($tmp_path, $data) === false) {
+        error_log('video_download_music: falha ao escrever ficheiro temporário');
         return null;
     }
 
+    error_log('video_download_music: OK via file_get_contents — ' . strlen($data) . ' bytes');
     return $tmp_path;
 }
 
@@ -331,11 +375,12 @@ function video_merge_music(string $video_path, string $music_path, string $mode 
         ? sprintf('-ss %s', escapeshellarg(number_format($start_offset, 2, '.', '')))
         : '';
 
+    // IMPORTANTE: -stream_loop e -ss são input options — devem vir ANTES do -i a que se aplicam
     // -stream_loop -1 : repete a musica infinitamente, -shortest corta quando o video acaba
     if ($mode === 'replace' || !$has_audio) {
         // Substituir audio ou video sem audio: usar faixa de musica directamente
         $command = sprintf(
-            '%s -y -i %s -stream_loop -1 %s -i %s -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 128k -ar 48000 -shortest %s 2>&1',
+            '%s -y -i %s -stream_loop -1 %s -i %s -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 128k -ar 48000 -shortest -fflags +shortest -max_interleave_delta 100M %s 2>&1',
             escapeshellarg($ffmpeg),
             escapeshellarg($video_path),
             $ss_arg,
@@ -346,7 +391,7 @@ function video_merge_music(string $video_path, string $music_path, string $mode 
         // Modo mix: misturar audio original com musica de fundo em loop
         $vol = number_format($music_volume, 2, '.', '');
         $command = sprintf(
-            '%s -y -i %s -stream_loop -1 %s -i %s -filter_complex "[1:a]volume=%s[music];[0:a][music]amix=inputs=2:duration=first:dropout_transition=2[out]" -map 0:v:0 -map "[out]" -c:v copy -c:a aac -b:a 128k -ar 48000 %s 2>&1',
+            '%s -y -i %s -stream_loop -1 %s -i %s -filter_complex "[1:a]volume=%s[music];[0:a][music]amix=inputs=2:duration=first:dropout_transition=2[out]" -map 0:v:0 -map "[out]" -c:v copy -c:a aac -b:a 128k -ar 48000 -shortest -fflags +shortest -max_interleave_delta 100M %s 2>&1',
             escapeshellarg($ffmpeg),
             escapeshellarg($video_path),
             $ss_arg,
@@ -356,6 +401,8 @@ function video_merge_music(string $video_path, string $music_path, string $mode 
         );
     }
 
+    error_log('video_merge_music: command = ' . $command);
+
     $output = [];
     $exit_code = 1;
     exec($command, $output, $exit_code);
@@ -364,7 +411,7 @@ function video_merge_music(string $video_path, string $music_path, string $mode 
         if (file_exists($output_path)) {
             @unlink($output_path);
         }
-        $result['error'] = 'Falha ao adicionar música de fundo ao vídeo.';
+        $result['error'] = 'Falha ao adicionar música de fundo ao vídeo (FFmpeg exit ' . $exit_code . ').';
         error_log('FFmpeg music merge failed (exit ' . $exit_code . '): ' . implode("\n", array_slice($output, -10)));
         return $result;
     }

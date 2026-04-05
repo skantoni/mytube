@@ -122,10 +122,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $music_name = sanitize($music_data['name'] ?? '');
                             $music_artist = sanitize($music_data['artist'] ?? '');
                         } else {
-                            // Falha no merge: continuar sem música
+                            $error = 'Falha ao adicionar música ao vídeo: ' . ($merge_result['error'] ?? 'erro desconhecido no FFmpeg');
                             error_log('Music merge failed: ' . ($merge_result['error'] ?? 'unknown'));
                         }
                         @unlink($music_tmp_path);
+                    } else {
+                        $error = 'Não foi possível descarregar a música selecionada. Verifique a conexão do servidor.';
+                        error_log('Music download failed for URL: ' . $music_data['download_url']);
                     }
                 }
             }
