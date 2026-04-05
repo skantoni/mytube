@@ -87,6 +87,10 @@ body * {
     -webkit-overflow-scrolling: touch;
 }
 
+html.is-android .tiktok-container {
+    scroll-snap-type: y proximity;
+}
+
 /* Item individual do vídeo */
 .video-item {
     position: relative;

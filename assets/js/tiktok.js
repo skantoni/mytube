@@ -22,6 +22,8 @@ class TikTokPlayer {
         this.currentVideoIndex = 0;
         this.videos = [];
         this.isScrolling = false;
+        this.isAndroid = /Android/i.test(navigator.userAgent || '');
+        this.scrollEndDelay = this.isAndroid ? 220 : 150;
         this.initialized = false;
         this.controlsSetup = false;
         this.intersectionObserver = null;
@@ -38,6 +40,7 @@ class TikTokPlayer {
     }
 
     init() {
+        document.documentElement.classList.toggle('is-android', this.isAndroid);
         this.setupVideos();
         this.setupScrolling();
         this.setupGlobalEventHandler();
@@ -440,7 +443,7 @@ class TikTokPlayer {
             scrollTimeout = setTimeout(() => {
                 this.isScrolling = false;
                 this.handleScrollEnd();
-            }, 150);
+            }, this.scrollEndDelay);
         }, { passive: true });
     }
 
