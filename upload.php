@@ -449,7 +449,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <i class="fas fa-music"></i>
                                     <div>
                                         <span>Adicionar Música de Fundo</span>
-                                        <small>Músicas royalty-free via Jamendo</small>
+                                        <small>Músicas royalty-free via Deezer</small>
                                     </div>
                                 </div>
                                 <div class="music-switch">
