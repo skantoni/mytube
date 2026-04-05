@@ -21,6 +21,10 @@ $success = '';
 $isAjax = isset($_POST['ajax_upload']);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Buffer de saída para evitar que warnings corrompam a resposta JSON
+    if ($isAjax) {
+        ob_start();
+    }
     $title = sanitize($_POST['title']);
     $description = mb_substr(sanitize($_POST['description']), 0, 400);
     $hashtags_input = isset($_POST['hashtags']) ? trim((string)$_POST['hashtags']) : '';
@@ -192,12 +196,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 try {
                     $pdo->beginTransaction();
 
-                    $stmt = $pdo->prepare("
-                        INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, music_name, music_artist, created_at) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-                    ");
+                    // Tentar INSERT com colunas de música; fallback sem elas se não existirem
+                    $inserted = false;
+                    try {
+                        $stmt = $pdo->prepare("
+                            INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, music_name, music_artist, created_at) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                        ");
+                        $inserted = $stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public, $music_name, $music_artist]);
+                    } catch (Throwable $colErr) {
+                        // Colunas music_name/music_artist podem não existir — fallback
+                        error_log('INSERT com music columns falhou, tentando sem: ' . $colErr->getMessage());
+                        if ($pdo->inTransaction()) { $pdo->rollBack(); $pdo->beginTransaction(); }
+                        $stmt = $pdo->prepare("
+                            INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, created_at) 
+                            VALUES (?, ?, ?, ?, ?, ?, NOW())
+                        ");
+                        $inserted = $stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public]);
+                    }
 
-                    if (!$stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public, $music_name, $music_artist])) {
+                    if (!$inserted) {
                         throw new RuntimeException('Erro ao salvar vídeo no banco de dados.');
                     }
 
@@ -224,6 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $success = 'Vídeo enviado com sucesso!';
 
                     if ($isAjax) {
+                        if (ob_get_level()) ob_end_clean();
                         header('Content-Type: application/json');
                         echo json_encode(['success' => true, 'message' => $success]);
                         exit;
@@ -256,6 +275,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if ($isAjax && $error) {
+        if (ob_get_level()) ob_end_clean();
         header('Content-Type: application/json');
         echo json_encode(['success' => false, 'error' => $error]);
         exit;

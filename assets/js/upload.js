@@ -316,11 +316,26 @@ function startAjaxUpload() {
                     resetUploadUI();
                 }
             } catch(e) {
-                // Se não é JSON, pode ser redirect da página normal
-                showUploadComplete(true, 'Vídeo enviado com sucesso!');
-                setTimeout(() => {
-                    window.location.href = 'index.php';
-                }, 2000);
+                // Resposta não é JSON válido — tentar extrair JSON de resposta com warnings
+                const text = uploadXHR.responseText || '';
+                const jsonMatch = text.match(/\{[\s\S]*\}$/);
+                if (jsonMatch) {
+                    try {
+                        const fallback = JSON.parse(jsonMatch[0]);
+                        if (fallback.success) {
+                            showUploadComplete(true, fallback.message || 'Vídeo enviado com sucesso!');
+                            setTimeout(() => { window.location.href = 'index.php'; }, 2000);
+                        } else {
+                            showUploadComplete(false, fallback.error || 'Erro ao enviar vídeo.');
+                            resetUploadUI();
+                        }
+                        return;
+                    } catch(e2) {}
+                }
+                // Não conseguiu extrair JSON — mostrar erro
+                console.error('Upload response parse error:', text.substring(0, 500));
+                showUploadComplete(false, 'Erro no servidor. Resposta inesperada. Verifique se o vídeo foi publicado.');
+                resetUploadUI();
             }
         } else {
             showUploadComplete(false, 'Erro no servidor (HTTP ' + uploadXHR.status + '). Tente novamente.');

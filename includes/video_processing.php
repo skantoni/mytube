@@ -45,7 +45,7 @@ function video_resolve_binary(array $candidates): ?string {
             continue;
         }
 
-        if (preg_match('/[\\\/]/', $candidate)) {
+        if (str_contains($candidate, '/') || str_contains($candidate, '\\')) {
             if (file_exists($candidate) && is_file($candidate)) {
                 return $candidate;
             }
