@@ -94,8 +94,9 @@ async function loadFeatured(tag) {
     results.innerHTML = '<div class="music-loading"><i class="fas fa-spinner fa-spin"></i> Carregando músicas...</div>';
 
     try {
-        let url = 'api/search_music.php?action=featured';
-        if (tag) url += '&tag=' + encodeURIComponent(tag);
+        let url = tag
+            ? 'api/search_music.php?action=genre&tag=' + encodeURIComponent(tag)
+            : 'api/search_music.php?action=featured';
         const resp = await fetch(url);
         const data = await resp.json();
         if (data.success && data.tracks) {
@@ -133,7 +134,6 @@ function renderMusicResults(tracks) {
                     <div class="music-track-artist">${escHtml(track.artist)}</div>
                     <div class="music-track-meta">
                         <span class="music-track-duration"><i class="fas fa-clock"></i> ${escHtml(track.duration_fmt)}</span>
-                        ${track.genre ? `<span class="music-track-genre">${escHtml(track.genre)}</span>` : ''}
                     </div>
                 </div>
                 <div class="music-track-actions">

@@ -255,20 +255,14 @@ function video_prepare_for_storage(string $input_path, string $original_extensio
  * Retorna o caminho do ficheiro temporario ou null em caso de erro.
  */
 function video_download_music(string $url): ?string {
-    // Validar que a URL pertence ao Jamendo
+    // Validar que a URL pertence ao Deezer CDN
     $parsed = parse_url($url);
     if (!$parsed || empty($parsed['host'])) {
         return null;
     }
     $host = strtolower($parsed['host']);
-    $allowed_hosts = ['mp3d.jamendo.com', 'prod-1.storage.jamendo.com', 'storage.jamendo.com'];
-    $is_allowed = false;
-    foreach ($allowed_hosts as $ah) {
-        if ($host === $ah || str_ends_with($host, '.' . $ah)) {
-            $is_allowed = true;
-            break;
-        }
-    }
+    $is_allowed = str_ends_with($host, '.dzcdn.net')
+               || str_ends_with($host, '.deezer.com');
     if (!$is_allowed) {
         error_log('video_download_music: host não permitido: ' . $host);
         return null;

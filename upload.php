@@ -460,14 +460,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 </div>
 
                                 <div class="music-tags">
+                                    <button type="button" class="music-tag-btn" data-tag="afrobeat">Afrobeat</button>
+                                    <button type="button" class="music-tag-btn" data-tag="kizomba">Kizomba</button>
+                                    <button type="button" class="music-tag-btn" data-tag="kuduro">Kuduro</button>
+                                    <button type="button" class="music-tag-btn" data-tag="funk">Funk</button>
                                     <button type="button" class="music-tag-btn" data-tag="pop">Pop</button>
-                                    <button type="button" class="music-tag-btn" data-tag="rock">Rock</button>
+                                    <button type="button" class="music-tag-btn" data-tag="hip hop">Hip Hop</button>
+                                    <button type="button" class="music-tag-btn" data-tag="reggaeton">Reggaeton</button>
                                     <button type="button" class="music-tag-btn" data-tag="electronic">Electronic</button>
-                                    <button type="button" class="music-tag-btn" data-tag="hiphop">Hip Hop</button>
-                                    <button type="button" class="music-tag-btn" data-tag="jazz">Jazz</button>
-                                    <button type="button" class="music-tag-btn" data-tag="ambient">Ambient</button>
-                                    <button type="button" class="music-tag-btn" data-tag="classical">Classical</button>
-                                    <button type="button" class="music-tag-btn" data-tag="lofi">Lo-Fi</button>
                                 </div>
 
                                 <div class="music-results" id="musicResults"></div>
