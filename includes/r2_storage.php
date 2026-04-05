@@ -18,6 +18,18 @@ function r2_get_client() {
     static $client = null;
     
     if ($client === null) {
+        if (!function_exists('mb_strlen')) {
+            $sapi = PHP_SAPI;
+            $ini_file = (string)php_ini_loaded_file();
+            $mbstring_loaded = extension_loaded('mbstring') ? 'true' : 'false';
+            throw new RuntimeException(
+                'Extensão mbstring não está ativa no runtime atual. '
+                . 'SAPI=' . $sapi
+                . '; extension_loaded(mbstring)=' . $mbstring_loaded
+                . '; ini=' . $ini_file
+            );
+        }
+
         require_once __DIR__ . '/../aws.phar';
         
         $client = new Aws\S3\S3Client([
@@ -65,7 +77,7 @@ function r2_upload_video(string $local_file_path, string $r2_file_name, string $
             'url' => R2_PUBLIC_URL . '/' . $key,
             'error' => null,
         ];
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log('R2 Upload Error: ' . $e->getMessage());
         return [
             'success' => false,
@@ -95,7 +107,7 @@ function r2_delete_video(string $video_path): bool {
         ]);
         
         return true;
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log('R2 Delete Error: ' . $e->getMessage());
         return false;
     }
