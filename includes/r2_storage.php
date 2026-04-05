@@ -11,42 +11,6 @@
 require_once __DIR__ . '/r2_config.php';
 
 /**
- * Carrega o SDK AWS via Composer ou aws.phar.
- */
-function r2_bootstrap_sdk(): void {
-    if (class_exists('Aws\\S3\\S3Client')) {
-        return;
-    }
-
-    $autoload_candidates = [
-        dirname(__DIR__) . '/vendor/autoload.php',
-        __DIR__ . '/../vendor/autoload.php',
-    ];
-
-    foreach ($autoload_candidates as $autoload) {
-        if (is_file($autoload)) {
-            require_once $autoload;
-            if (class_exists('Aws\\S3\\S3Client')) {
-                return;
-            }
-        }
-    }
-
-    $phar_path = dirname(__DIR__) . '/aws.phar';
-    if (is_file($phar_path)) {
-        require_once $phar_path;
-        if (class_exists('Aws\\S3\\S3Client')) {
-            return;
-        }
-    }
-
-    throw new RuntimeException(
-        'AWS SDK não encontrado. Instale com "composer require aws/aws-sdk-php" '
-        . 'ou faça upload do ficheiro aws.phar para a raiz do projeto.'
-    );
-}
-
-/**
  * Obter instância do cliente S3 para o R2
  * Usa singleton para evitar múltiplas instâncias
  */
@@ -55,18 +19,10 @@ function r2_get_client() {
     
     if ($client === null) {
         if (!function_exists('mb_strlen')) {
-            $sapi = PHP_SAPI;
-            $ini_file = (string)php_ini_loaded_file();
-            $mbstring_loaded = extension_loaded('mbstring') ? 'true' : 'false';
-            throw new RuntimeException(
-                'Extensão mbstring não está ativa no runtime atual. '
-                . 'SAPI=' . $sapi
-                . '; extension_loaded(mbstring)=' . $mbstring_loaded
-                . '; ini=' . $ini_file
-            );
+            throw new RuntimeException('Extensão mbstring não está ativa no PHP.');
         }
 
-        r2_bootstrap_sdk();
+        require_once __DIR__ . '/../aws.phar';
         
         $client = new Aws\S3\S3Client([
             'region' => R2_REGION,

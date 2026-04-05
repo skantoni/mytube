@@ -3,6 +3,7 @@ require_once 'includes/config.php';
 require_once 'includes/ranking_cache.php';
 require_once 'includes/hashtag_helper.php';
 require_once 'includes/r2_storage.php';
+require_once 'includes/video_processing.php';
 
 // Verificar se está logado
 if (!isLoggedIn()) {
@@ -70,7 +71,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } elseif ($videoSize > 100 * 1024 * 1024) {
             $error = 'Arquivo muito grande. Tamanho máximo: 100MB';
         } else {
-            $uniqueName = uniqid() . '_' . time() . '.' . $videoType;
+            $processing_result = video_prepare_for_storage($videoTmp, $videoType);
+            if (!$processing_result['success']) {
+                $error = $processing_result['error'] ?: 'Erro ao processar vídeo para formato compatível.';
+            }
+        }
+
+        if (!$error) {
+            $processed_video_path = (string)$processing_result['output_path'];
+            $processed_video_ext = (string)$processing_result['extension'];
+            $is_transcoded = !empty($processing_result['transcoded']);
+
+            $uniqueName = uniqid() . '_' . time() . '.' . $processed_video_ext;
             
             // ============================================
             // UPLOAD PARA CLOUDFLARE R2 OU LOCAL
@@ -81,8 +93,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             if (R2_ENABLED) {
                 // Tentar upload para R2 directamente do ficheiro temporário
-                $mime_type = r2_get_mime_type($videoType);
-                $r2_result = r2_upload_video($videoTmp, $uniqueName, $mime_type);
+                $mime_type = r2_get_mime_type($processed_video_ext);
+                $r2_result = r2_upload_video($processed_video_path, $uniqueName, $mime_type);
                 
                 if ($r2_result['success']) {
                     $upload_success = true;
@@ -94,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (!is_dir('uploads/videos/')) {
                         mkdir('uploads/videos/', 0755, true);
                     }
-                    if (move_uploaded_file($videoTmp, $local_path)) {
+                    if (video_move_to_storage($processed_video_path, $local_path)) {
                         $upload_success = true;
                         $db_video_path = $uniqueName;
                     }
@@ -105,10 +117,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (!is_dir('uploads/videos/')) {
                     mkdir('uploads/videos/', 0755, true);
                 }
-                if (move_uploaded_file($videoTmp, $local_path)) {
+                if (video_move_to_storage($processed_video_path, $local_path)) {
                     $upload_success = true;
                     $db_video_path = $uniqueName;
                 }
+            }
+
+            if ($is_transcoded && !$upload_success && file_exists($processed_video_path)) {
+                @unlink($processed_video_path);
             }
 
             if ($upload_success) {
@@ -140,6 +156,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     $pdo->commit();
 
+                    if ($is_transcoded && file_exists($processed_video_path)) {
+                        @unlink($processed_video_path);
+                    }
+
                     $success = 'Vídeo enviado com sucesso!';
 
                     if ($isAjax) {
@@ -161,6 +181,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         r2_delete_video($db_video_path);
                     } elseif ($local_path && file_exists($local_path)) {
                         unlink($local_path);
+                    }
+
+                    if ($is_transcoded && file_exists($processed_video_path)) {
+                        @unlink($processed_video_path);
                     }
                 }
             } else {
