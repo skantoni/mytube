@@ -27,23 +27,34 @@
  */
 require_once '../includes/config.php';
 
-header('Content-Type: application/json');
+$is_cli  = (php_sapi_name() === 'cli');
+$is_cron = $is_cli || (
+    isset($_GET['secret']) &&
+    hash_equals(CRON_SECRET, $_GET['secret'])
+);
 
-// Apenas admin pode executar
-if (!isLoggedIn()) {
-    echo json_encode(['success' => false, 'error' => 'Não autenticado']);
-    exit;
+if (!$is_cli) {
+    header('Content-Type: application/json');
 }
 
-$admin_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
-$admin_stmt->execute([$_SESSION['user_id']]);
-$admin_user = $admin_stmt->fetch();
-if ($admin_user['username'] !== 'Admin') {
-    echo json_encode(['success' => false, 'error' => 'Apenas admin pode executar o cálculo']);
-    exit;
+// Autorização: CLI, secret token ou admin logado
+if (!$is_cron) {
+    if (!isLoggedIn()) {
+        echo json_encode(['success' => false, 'error' => 'Não autenticado']);
+        exit;
+    }
+    $admin_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+    $admin_stmt->execute([$_SESSION['user_id']]);
+    $admin_user = $admin_stmt->fetch();
+    if ($admin_user['username'] !== 'Admin') {
+        echo json_encode(['success' => false, 'error' => 'Apenas admin pode executar o cálculo']);
+        exit;
+    }
 }
 
-$force = isset($_GET['force']) || isset($_POST['force']);
+$force = $is_cli
+    ? in_array('--force', $argv ?? [])
+    : (isset($_GET['force']) || isset($_POST['force']));
 
 try {
     // ═══════════════════════════════════════
