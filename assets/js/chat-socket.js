@@ -2880,15 +2880,19 @@ function selectFile(type) {
     switch (type) {
         case 'image':
             fileInput.accept = 'image/*';
+            fileInput.multiple = true;
             break;
         case 'video':
             fileInput.accept = 'video/*';
+            fileInput.multiple = false;
             break;
         case 'document':
             fileInput.accept = '.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip,.rar,.7z,.ppt,.pptx,.odt,.ods,.odp,.rtf,.json,.xml,.html,.css,.js,.py,.java,.c,.cpp,.sql';
+            fileInput.multiple = false;
             break;
         default:
             fileInput.accept = '';
+            fileInput.multiple = false;
     }
     
     fileInput.value = '';
@@ -2899,16 +2903,10 @@ function selectFile(type) {
 }
 
 function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+    const selectedFiles = Array.from(event.target.files || []);
+    if (!selectedFiles.length) return;
     
     const uploadType = event.target.dataset.uploadType || 'file';
-    
-    // Determinar tipo real baseado no MIME
-    let fileType = uploadType;
-    if (uploadType === 'document') fileType = 'file';
-    if (file.type.startsWith('image/') && uploadType === 'image') fileType = 'image';
-    if (file.type.startsWith('video/') && uploadType === 'video') fileType = 'video';
     
     // Extensões permitidas (mesmo que o servidor)
     const allowedExtensions = {
@@ -2925,28 +2923,82 @@ function handleFileSelect(event) {
         audio: { max: 10 * 1024 * 1024, label: '10MB' },
         file: { max: 25 * 1024 * 1024, label: '25MB' }
     };
-    
-    // Validar extensão
-    const ext = file.name.split('.').pop().toLowerCase();
-    const allowed = allowedExtensions[fileType] || [];
-    if (allowed.length > 0 && !allowed.includes(ext)) {
-        const typeLabels = { image: 'imagem', video: 'vídeo', audio: 'áudio', file: 'documento' };
-        showToast(`Tipo de ${typeLabels[fileType] || 'ficheiro'} não permitido (.${ext}). Formatos aceites: ${allowed.join(', ')}`);
+
+    const resolveFileType = (file) => {
+        let fileType = uploadType;
+        if (uploadType === 'document') fileType = 'file';
+        if (file.type.startsWith('image/') && uploadType === 'image') fileType = 'image';
+        if (file.type.startsWith('video/') && uploadType === 'video') fileType = 'video';
+        return fileType;
+    };
+
+    const validateFile = (file, fileType) => {
+        // Validar extensão
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        const allowed = allowedExtensions[fileType] || [];
+        if (allowed.length > 0 && !allowed.includes(ext)) {
+            const typeLabels = { image: 'imagem', video: 'vídeo', audio: 'áudio', file: 'documento' };
+            showToast(`Tipo de ${typeLabels[fileType] || 'ficheiro'} não permitido (.${ext}). Formatos aceites: ${allowed.join(', ')}`);
+            return false;
+        }
+
+        // Validar tamanho
+        const limit = sizeLimits[fileType];
+        if (limit && file.size > limit.max) {
+            const typeLabels = { image: 'Imagem', video: 'Vídeo', audio: 'Áudio', file: 'Ficheiro' };
+            showToast(`${typeLabels[fileType] || 'Ficheiro'} muito grande! Máximo ${limit.label}. (${formatFileSize(file.size)})`);
+            return false;
+        }
+
+        return true;
+    };
+
+    // Fluxo para múltiplas fotos: envia cada imagem em sequência
+    if (uploadType === 'image' && selectedFiles.length > 1) {
+        const imageFiles = selectedFiles.filter((file) => resolveFileType(file) === 'image');
+
+        if (imageFiles.length !== selectedFiles.length) {
+            showToast('No envio múltiplo de fotos, todos os ficheiros devem ser imagens.');
+            event.target.value = '';
+            return;
+        }
+
+        for (const imageFile of imageFiles) {
+            if (!validateFile(imageFile, 'image')) {
+                event.target.value = '';
+                return;
+            }
+        }
+
+        (async () => {
+            let sentCount = 0;
+            for (const imageFile of imageFiles) {
+                const sent = await uploadAndSendFile(imageFile, 'image');
+                if (sent) sentCount += 1;
+            }
+
+            if (sentCount === imageFiles.length) {
+                showToast(`${sentCount} foto${sentCount === 1 ? '' : 's'} enviada${sentCount === 1 ? '' : 's'}!`, 'success');
+            } else if (sentCount > 0) {
+                showToast(`Enviadas ${sentCount} de ${imageFiles.length} fotos.`, 'warning');
+            }
+        })();
+
         event.target.value = '';
         return;
     }
-    
-    // Validar tamanho
-    const limit = sizeLimits[fileType];
-    if (limit && file.size > limit.max) {
-        const typeLabels = { image: 'Imagem', video: 'Vídeo', audio: 'Áudio', file: 'Ficheiro' };
-        showToast(`${typeLabels[fileType] || 'Ficheiro'} muito grande! Máximo ${limit.label}. (${formatFileSize(file.size)})`);
+
+    const file = selectedFiles[0];
+    const fileType = resolveFileType(file);
+
+    if (!validateFile(file, fileType)) {
         event.target.value = '';
         return;
     }
-    
+
     // Mostrar preview antes de enviar
     showFilePreview(file, fileType);
+    event.target.value = '';
 }
 
 function showFilePreview(file, fileType) {
@@ -3027,9 +3079,9 @@ function closeFilePreview() {
 }
 
 async function uploadAndSendFile(file, fileType) {
-    if (!chatWithUserId) return;
+    if (!chatWithUserId) return false;
     
-    const tempId = 'file_' + Date.now();
+    const tempId = 'file_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
     const fileSize = formatFileSize(file.size);
     const fileName = file.name;
     
@@ -3180,17 +3232,21 @@ async function uploadAndSendFile(file, fileType) {
                 receiverId: chatWithUserId,
                 message: result.message
             });
+
+            return true;
             
         } else {
             showToast('Erro: ' + (result.error || 'Falha no upload'));
             const tempMsg = document.querySelector(`[data-temp-id="${tempId}"]`);
             if (tempMsg) tempMsg.remove();
+            return false;
         }
     } catch (error) {
         console.error('Erro no upload:', error);
         showToast('Erro ao enviar arquivo');
         const tempMsg = document.querySelector(`[data-temp-id="${tempId}"]`);
         if (tempMsg) tempMsg.remove();
+        return false;
     }
 }
 
