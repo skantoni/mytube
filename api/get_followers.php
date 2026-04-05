@@ -93,6 +93,7 @@ try {
             $avatar = 'default.webp';
         }
         $u['profile_picture'] = $avatar;
+        $u['profile_picture_url'] = avatar_url($avatar);
     }
     unset($u);
 

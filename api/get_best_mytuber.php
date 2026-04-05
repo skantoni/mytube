@@ -54,7 +54,7 @@ try {
             $winners = $stmt->fetchAll();
             
             foreach ($winners as &$w) {
-                $w['profile_picture_url'] = 'assets/images/avatars/' . ($w['profile_picture'] ?? 'default.webp');
+                $w['profile_picture_url'] = avatar_url($w['profile_picture'] ?? null);
                 $w['total_score'] = (float)$w['total_score'];
                 $w['is_badge_active'] = true;
             }
@@ -98,7 +98,7 @@ try {
             
             $badge_active = false;
             foreach ($winners as &$w) {
-                $w['profile_picture_url'] = 'assets/images/avatars/' . ($w['profile_picture'] ?? 'default.webp');
+                $w['profile_picture_url'] = avatar_url($w['profile_picture'] ?? null);
                 $w['total_score'] = (float)$w['total_score'];
                 $w['is_badge_active'] = ($now_str >= $w['badge_visible_from'] && $now_str <= $w['badge_visible_until']);
                 if ($w['is_badge_active']) $badge_active = true;
@@ -201,7 +201,7 @@ try {
             $history = $stmt->fetchAll();
             
             foreach ($history as &$h) {
-                $h['profile_picture_url'] = 'assets/images/avatars/' . ($h['profile_picture'] ?? 'default.webp');
+                $h['profile_picture_url'] = avatar_url($h['profile_picture'] ?? null);
             }
             
             echo json_encode([
@@ -257,7 +257,7 @@ try {
             $candidates = $stmt->fetchAll();
             
             foreach ($candidates as &$cnd) {
-                $cnd['profile_picture_url'] = 'assets/images/avatars/' . ($cnd['profile_picture'] ?? 'default.webp');
+                $cnd['profile_picture_url'] = avatar_url($cnd['profile_picture'] ?? null);
             }
             
             echo json_encode([

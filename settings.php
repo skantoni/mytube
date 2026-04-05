@@ -671,7 +671,7 @@ if (!$user) {
     <main class="settings-main">
         <!-- User card -->
         <div class="settings-user-card" onclick="window.location.href='profile.php'">
-            <img src="assets/images/avatars/<?php echo htmlspecialchars($user['profile_picture'] ?? 'default.webp'); ?>" alt="">
+            <img src="<?php echo htmlspecialchars(avatar_url($user['profile_picture'] ?? null)); ?>" alt="">
             <div class="settings-user-info">
                 <h3><?php echo htmlspecialchars($user['full_name']); ?></h3>
                 <p>@<?php echo htmlspecialchars($user['username']); ?></p>

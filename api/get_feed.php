@@ -680,6 +680,7 @@ if ($guest_mode) {
                     'username' => htmlspecialchars($video['username']),
                     'full_name' => htmlspecialchars($video['full_name'] ?? $video['username']),
                     'profile_picture' => $video['profile_picture'] ?? 'default.webp',
+                    'profile_picture_url' => avatar_url($video['profile_picture'] ?? null),
                     'is_verified' => (bool)$video['is_verified'],
                 ],
             ];
@@ -926,6 +927,7 @@ try {
                 'username' => htmlspecialchars($video['username']),
                 'full_name' => htmlspecialchars($video['full_name'] ?? $video['username']),
                 'profile_picture' => $video['profile_picture'] ?? 'default.webp',
+                'profile_picture_url' => avatar_url($video['profile_picture'] ?? null),
                 'is_verified' => (bool)$video['is_verified'],
             ],
         ];

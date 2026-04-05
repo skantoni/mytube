@@ -542,7 +542,7 @@ class FeedManager {
                 <div class="video-info-overlay">
                     <div class="video-author-row">
                         <a href="perfil.php?id=${video.user.id}" class="video-author-link">
-                            <img src="assets/images/avatars/${video.user.profile_picture}" 
+                            <img src="${video.user.profile_picture_url || 'assets/images/avatars/' + video.user.profile_picture}" 
                                  alt="${video.user.username}" 
                                  class="video-author-avatar"
                                  loading="lazy">
@@ -572,7 +572,7 @@ class FeedManager {
                 <div class="video-info">
                     <div class="video-author">
                         <a href="perfil.php?id=${video.user.id}" class="avatar-link">
-                            <img src="assets/images/avatars/${video.user.profile_picture}" 
+                            <img src="${video.user.profile_picture_url || 'assets/images/avatars/' + video.user.profile_picture}" 
                                  alt="${video.user.username}" 
                                  class="author-avatar"
                                  loading="lazy">

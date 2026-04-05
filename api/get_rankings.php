@@ -220,6 +220,7 @@ function get_my_rank($pdo, int $userId): array {
 
     $myPoints = (int)$myData['ranking_points'];
     $myData['points'] = $myPoints;
+    $myData['profile_picture_url'] = avatar_url($myData['profile_picture'] ?? null);
 
     // Posição global — 1 query indexed (usa idx_ranking_points)
     $stmtRank = $pdo->prepare("SELECT COUNT(*) + 1 AS global_rank FROM users WHERE ranking_points > ?");
@@ -308,7 +309,7 @@ function get_top_creators($pdo, string $period, int $limit): array {
     $creators = $stmt->fetchAll();
     foreach ($creators as $i => &$c) {
         $c['position'] = $i + 1;
-        $c['profile_picture_url'] = 'assets/images/avatars/' . ($c['profile_picture'] ?? 'default.webp');
+        $c['profile_picture_url'] = avatar_url($c['profile_picture'] ?? null);
         $c['points'] = (int)$c['points'];
     }
 
@@ -347,7 +348,7 @@ function get_school_creators($pdo, int $school_id, int $limit): array {
 
     foreach ($creators as $i => &$c) {
         $c['position'] = $i + 1;
-        $c['profile_picture_url'] = 'assets/images/avatars/' . ($c['profile_picture'] ?? 'default.webp');
+        $c['profile_picture_url'] = avatar_url($c['profile_picture'] ?? null);
         $c['points'] = (int)$c['points'];
     }
 
@@ -469,7 +470,7 @@ function get_dominant_school($pdo): array {
         $stmtV->execute([$dominant['id']]);
         $top_videos = $stmtV->fetchAll();
         foreach ($top_videos as &$vid) {
-            $vid['profile_picture_url'] = 'assets/images/avatars/' . ($vid['profile_picture'] ?? 'default.webp');
+            $vid['profile_picture_url'] = avatar_url($vid['profile_picture'] ?? null);
         }
     }
 
@@ -540,7 +541,7 @@ function get_trending_videos($pdo, int $limit): array {
 
     foreach ($videos as $i => &$vid) {
         $vid['position'] = $i + 1;
-        $vid['profile_picture_url'] = 'assets/images/avatars/' . ($vid['profile_picture'] ?? 'default.webp');
+        $vid['profile_picture_url'] = avatar_url($vid['profile_picture'] ?? null);
         $vid['score'] = (int)$vid['score'];
     }
 
@@ -574,7 +575,7 @@ function get_best_mytuber_current($pdo): array {
     $winners = $stmt->fetchAll();
 
     foreach ($winners as &$w) {
-        $w['profile_picture_url'] = 'assets/images/avatars/' . ($w['profile_picture'] ?? 'default.webp');
+        $w['profile_picture_url'] = avatar_url($w['profile_picture'] ?? null);
         $w['total_score'] = (float)$w['total_score'];
         $w['is_badge_active'] = true;
     }

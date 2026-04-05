@@ -1827,7 +1827,7 @@ class CommentsSystem {
     
     createCommentHTML(comment) {
         let html = '<div class="comment-item" data-comment-id="' + comment.id + '">';
-        html += '<img src="assets/images/avatars/' + (comment.profile_picture || 'default.webp') + '" alt="' + comment.full_name + '" class="comment-avatar" loading="lazy">';
+        html += '<img src="' + (comment.profile_picture_url || 'assets/images/avatars/' + (comment.profile_picture || 'default.webp')) + '" alt="' + comment.full_name + '" class="comment-avatar" loading="lazy">';
         html += '<div class="comment-content">';
         html += '<div class="comment-header">';
         html += '<a href="perfil.php?id=' + comment.user_id + '" class="comment-username" data-username="' + (comment.username || '') + '">' + (comment.full_name || comment.username) + '</a>';
@@ -1877,7 +1877,7 @@ class CommentsSystem {
     
     createReplyHTML(reply) {
         let html = '<div class="reply-item" data-comment-id="' + reply.id + '">';
-        html += '<img src="assets/images/avatars/' + (reply.profile_picture || 'default.webp') + '" alt="' + reply.full_name + '" class="reply-avatar" loading="lazy">';
+        html += '<img src="' + (reply.profile_picture_url || 'assets/images/avatars/' + (reply.profile_picture || 'default.webp')) + '" alt="' + reply.full_name + '" class="reply-avatar" loading="lazy">';
         html += '<div class="comment-content">';
         html += '<div class="comment-header">';
         html += '<a href="perfil.php?id=' + reply.user_id + '" class="comment-username" data-username="' + (reply.username || '') + '">' + (reply.full_name || reply.username) + '</a>';

@@ -49,14 +49,8 @@ try {
     
     // Ajustar caminho das imagens
     foreach ($users as &$user) {
-        if (!empty($user['profile_picture']) && !str_starts_with($user['profile_picture'], 'http')) {
-            // Se não for URL completa, garantir que tenha o prefixo correto
-            $user['profile_picture'] = 'assets/images/avatars/' . basename($user['profile_picture']);
-        }
-        // Se não tiver imagem, usar default
-        if (empty($user['profile_picture'])) {
-            $user['profile_picture'] = 'assets/images/default-avatar.svg';
-        }
+        $user['profile_picture'] = avatar_url($user['profile_picture'] ?? null);
+        // Compatibilidade: tiktok.js usa profile_picture directamente como URL completa
     }
     
     echo json_encode([

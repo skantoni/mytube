@@ -107,7 +107,7 @@
         const card = document.getElementById('myRankCard');
         if (!card || !data.user) return;
         const u = data.user;
-        const pic = 'assets/images/avatars/' + (u.profile_picture || 'default.webp');
+        const pic = u.profile_picture_url || 'assets/images/avatars/' + (u.profile_picture || 'default.webp');
         card.innerHTML = `
             <div class="my-rank-content">
                 <img src="${pic}" class="my-rank-avatar" alt="${esc(u.full_name)}">
@@ -305,7 +305,7 @@
                 if (!data.success) return;
                 const card = document.getElementById('myRankCard');
                 const u = data.user;
-                const pic = 'assets/images/avatars/' + (u.profile_picture || 'default.webp');
+                const pic = u.profile_picture_url || 'assets/images/avatars/' + (u.profile_picture || 'default.webp');
                 
                 card.innerHTML = `
                     <div class="my-rank-content">
@@ -896,7 +896,7 @@
 
         results.innerHTML = '<div class="ranking-search-list">' +
             users.map(function(u) {
-                const pic = 'assets/images/avatars/' + (u.profile_picture || 'default.webp');
+                const pic = u.profile_picture_url || 'assets/images/avatars/' + (u.profile_picture || 'default.webp');
                 const verified = u.is_verified ? ' <i class="fas fa-check-circle" style="color:#20d5ec;font-size:11px"></i>' : '';
                 const school = u.school_name || 'Sem escola';
                 const pts = u.ranking_points || 0;

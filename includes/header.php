@@ -60,7 +60,7 @@ echo r2_js_config();
 
                 <div class="user-menu">
                     <button class="user-menu-btn" onclick="toggleUserMenu()">
-                        <img src="assets/images/avatars/<?php echo $user_data['profile_picture'] ?? 'default.webp'; ?>"
+                        <img src="<?php echo htmlspecialchars(avatar_url($user_data['profile_picture'] ?? null)); ?>"
                             alt="Avatar" class="user-avatar">
                         <span class="user-name"><?php echo htmlspecialchars($user_data['username']); ?></span>
                         <i class="fas fa-chevron-down"></i>

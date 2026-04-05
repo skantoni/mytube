@@ -53,11 +53,8 @@ $is_admin = ($current_user['username'] === 'Admin');
                 <i class="fas fa-search"></i>
             </button>
             <?php 
-            $profile_pic = $_SESSION['profile_picture'] ?? 'default.webp';
-            $profile_pic_path = 'assets/images/avatars/' . $profile_pic;
-            if (empty($profile_pic) || !file_exists($profile_pic_path)) {
-                $profile_pic_path = 'assets/images/avatars/default.webp';
-            }
+            $profile_pic = $_SESSION['profile_picture'] ?? null;
+            $profile_pic_path = avatar_url($profile_pic);
             ?>
             <button class="header-btn profile-btn" onclick="window.location.href='profile.php'" title="Perfil">
                 <img src="<?php echo htmlspecialchars($profile_pic_path); ?>" alt="Perfil" class="header-profile-pic">

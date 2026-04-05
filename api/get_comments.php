@@ -134,6 +134,7 @@ try {
     
     // Formatar dados
     foreach ($comments as &$comment) {
+        $comment['profile_picture_url'] = avatar_url($comment['profile_picture'] ?? null);
         $comment['user_liked'] = in_array($comment['id'], $user_likes);
         $comment['is_verified'] = (bool)$comment['is_verified'];
         $comment['time_ago'] = timeAgo($comment['created_at']);

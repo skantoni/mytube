@@ -225,7 +225,7 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
                     <i class="fas fa-arrow-left"></i>
                 </button>
                 <a href="perfil.php?id=<?php echo $profile_user_id; ?>" class="profile-header-info">
-                    <img src="assets/images/avatars/<?php echo $profile_user['profile_picture'] ?? 'default.webp'; ?>" 
+                    <img src="<?php echo htmlspecialchars(avatar_url($profile_user['profile_picture'] ?? null)); ?>" 
                          alt="<?php echo htmlspecialchars($profile_user['username']); ?>" 
                          class="profile-header-avatar">
                     <div class="profile-header-text">
@@ -255,12 +255,7 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
                 </button>
                 <?php endif; ?>
                 <?php 
-                $profile_pic = $_SESSION['profile_picture'] ?? 'default.webp';
-                $profile_pic_path = 'assets/images/avatars/' . $profile_pic;
-                // Se o arquivo não existe ou está vazio, usa default.webp
-                if (empty($profile_pic) || !file_exists($profile_pic_path)) {
-                    $profile_pic_path = 'assets/images/avatars/default.webp';
-                }
+                $profile_pic_path = avatar_url($_SESSION['profile_picture'] ?? null);
                 ?>
                 <button class="header-btn profile-btn" onclick="toggleProfile()" title="Perfil">
                     <img src="<?php echo htmlspecialchars($profile_pic_path); ?>" alt="Perfil" class="header-profile-pic">

@@ -161,7 +161,7 @@ $boosted_views = array_sum(array_map(static fn($video) => (int) $video['views_co
                             <div class="boosted-video-body">
                                 <div class="boosted-author-row">
                                     <a href="perfil.php?id=<?php echo (int) $video['user_id']; ?>" class="boosted-author-link">
-                                        <img src="assets/images/avatars/<?php echo htmlspecialchars($video['profile_picture'] ?? 'default.webp'); ?>"
+                                        <img src="<?php echo htmlspecialchars(avatar_url($video['profile_picture'] ?? null)); ?>"
                                              alt="<?php echo htmlspecialchars($video['username']); ?>"
                                              class="boosted-author-avatar"
                                              loading="lazy">

@@ -2031,7 +2031,7 @@ function renderSearchResults(users, videos, hashtags = []) {
                 <div class="search-section-title">Usuários</div>
                 ${users.map(user => `
                     <div class="search-result-item" onclick="window.location.href='perfil.php?id=${user.id}'">
-                        <img src="assets/images/avatars/${user.profile_picture}" 
+                        <img src="${user.profile_picture_url || 'assets/images/avatars/' + user.profile_picture}" 
                              alt="${user.username}" 
                              class="search-result-avatar"
                              loading="lazy">

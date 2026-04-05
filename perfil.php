@@ -764,7 +764,7 @@ try {
             </button>`;
 
         return `<div class="follow-item">
-            <img src="assets/images/avatars/${u.profile_picture}" alt="" class="follow-avatar" loading="lazy"
+            <img src="${u.profile_picture_url || 'assets/images/avatars/' + u.profile_picture}" alt="" class="follow-avatar" loading="lazy"
                  onclick="window.location.href='perfil.php?id=${u.id}'" style="cursor:pointer">
             <div class="follow-info" onclick="window.location.href='perfil.php?id=${u.id}'" style="cursor:pointer">
                 <span class="follow-name">${escHtml(u.full_name)}${verified}</span>

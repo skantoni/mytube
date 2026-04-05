@@ -73,6 +73,7 @@ try {
             'username' => $user['username'],
             'full_name' => $user['full_name'],
             'profile_picture' => $user['profile_picture'] ?? 'default.webp',
+            'profile_picture_url' => avatar_url($user['profile_picture'] ?? null),
             'is_verified' => (bool)$user['is_verified'],
             'followers_count' => (int)$user['followers_count'],
             'videos_count' => (int)$user['videos_count'],
@@ -99,6 +100,7 @@ try {
                 'id' => $video['user_id'],
                 'username' => $video['username'],
                 'profile_picture' => $video['profile_picture'] ?? 'default.webp',
+                'profile_picture_url' => avatar_url($video['profile_picture'] ?? null),
                 'is_verified' => (bool)$video['is_verified'],
             ],
         ];
