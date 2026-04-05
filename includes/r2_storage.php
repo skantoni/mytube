@@ -125,6 +125,29 @@ function r2_strip_prefix(string $video_path): string {
 }
 
 /**
+ * Gera URL de vídeo local com cache-busting baseado na data de modificação.
+ *
+ * @param string $video_path Nome/caminho do ficheiro guardado no banco
+ * @return string URL relativa para o vídeo local
+ */
+function resolve_local_video_url(string $video_path): string {
+    $relative_url = 'uploads/videos/' . ltrim($video_path, '/\\');
+    $absolute_path = dirname(__DIR__) . DIRECTORY_SEPARATOR
+        . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relative_url);
+
+    if (!is_file($absolute_path)) {
+        return $relative_url;
+    }
+
+    $mtime = @filemtime($absolute_path);
+    if ($mtime === false) {
+        return $relative_url;
+    }
+
+    return $relative_url . '?v=' . (int)$mtime;
+}
+
+/**
  * Resolver a URL completa de um vídeo
  * 
  * - Vídeos R2: retorna URL pública do R2
@@ -144,7 +167,7 @@ function resolve_video_url(string $video_path): string {
     }
     
     // Vídeo local (compatibilidade com vídeos antigos)
-    return 'uploads/videos/' . $video_path;
+    return resolve_local_video_url($video_path);
 }
 
 /**
