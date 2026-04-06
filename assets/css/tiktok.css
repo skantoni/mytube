@@ -1009,6 +1009,26 @@ body * {
     transform: translateY(-2px);
 }
 
+@media (max-width: 360px) {
+    .share-menu {
+        padding: 14px 10px;
+    }
+    .share-options {
+        gap: 8px;
+    }
+    .share-option {
+        padding: 10px 4px;
+    }
+    .share-option span {
+        font-size: 0.68rem;
+        word-break: break-word;
+        text-align: center;
+    }
+    .share-option i {
+        font-size: 1.2rem;
+    }
+}
+
 /* Chat Share Modal */
 .chat-share-overlay {
     display: none;
