@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 $file_extension = strtolower(pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION));
-                $allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
+                $allowed_types = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'heic', 'heif'];
                 
                 if (in_array($file_extension, $allowed_types)) {
                     $new_filename = 'user_' . $user_id . '_' . time() . '.' . $file_extension;
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $error = 'Erro ao fazer upload da foto.';
                     }
                 } else {
-                    $error = 'Tipo de arquivo não permitido. Use JPG, PNG ou GIF.';
+                    $error = 'Tipo de arquivo não permitido. Use JPG, PNG, GIF ou WEBP.';
                 }
             }
             
