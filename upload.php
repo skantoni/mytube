@@ -25,6 +25,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($isAjax) {
         ob_start();
     }
+
+    // Sem limite de tempo: FFmpeg + upload R2 podem demorar mais de 30s
+    set_time_limit(300);
+
+    // ── Auto-migração: garantir colunas de música na tabela ──
+    // Corre UMA vez por request e é muito rápido (SELECT LIMIT 0)
+    $has_music_cols = false;
+    try {
+        $pdo->query("SELECT music_name FROM videos LIMIT 0");
+        $has_music_cols = true;
+    } catch (Throwable $e) {
+        // Colunas não existem — tentar criar automaticamente
+        try {
+            $pdo->exec("ALTER TABLE videos ADD COLUMN music_name VARCHAR(255) NOT NULL DEFAULT '' AFTER hashtags");
+            $pdo->exec("ALTER TABLE videos ADD COLUMN music_artist VARCHAR(255) NOT NULL DEFAULT '' AFTER music_name");
+            $has_music_cols = true;
+            error_log('upload.php: colunas music_name/music_artist adicionadas automaticamente');
+        } catch (Throwable $e2) {
+            $has_music_cols = false;
+            error_log('upload.php: falha ao adicionar colunas de música: ' . $e2->getMessage());
+        }
+    }
+
     $title = sanitize($_POST['title']);
     $description = mb_substr(sanitize($_POST['description']), 0, 400);
     $hashtags_input = isset($_POST['hashtags']) ? trim((string)$_POST['hashtags']) : '';
@@ -196,27 +219,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 try {
                     $pdo->beginTransaction();
 
-                    // Tentar INSERT com colunas de música; fallback sem elas se não existirem
-                    $inserted = false;
-                    try {
+                    // INSERT com ou sem colunas de música (detectado por auto-migração acima)
+                    if ($has_music_cols) {
                         $stmt = $pdo->prepare("
                             INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, music_name, music_artist, created_at) 
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
                         ");
-                        $inserted = $stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public, $music_name, $music_artist]);
-                    } catch (Throwable $colErr) {
-                        // Colunas music_name/music_artist podem não existir — fallback
-                        error_log('INSERT com music columns falhou, tentando sem: ' . $colErr->getMessage());
-                        if ($pdo->inTransaction()) { $pdo->rollBack(); $pdo->beginTransaction(); }
+                        if (!$stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public, $music_name, $music_artist])) {
+                            throw new RuntimeException('Erro ao salvar vídeo no banco de dados.');
+                        }
+                    } else {
                         $stmt = $pdo->prepare("
                             INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, created_at) 
                             VALUES (?, ?, ?, ?, ?, ?, NOW())
                         ");
-                        $inserted = $stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public]);
-                    }
-
-                    if (!$inserted) {
-                        throw new RuntimeException('Erro ao salvar vídeo no banco de dados.');
+                        if (!$stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public])) {
+                            throw new RuntimeException('Erro ao salvar vídeo no banco de dados.');
+                        }
                     }
 
                     $video_id = (int)$pdo->lastInsertId();
