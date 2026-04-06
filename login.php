@@ -135,7 +135,45 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyTube - Login</title>
+    <title>MyTube - Sua rede social de vídeos</title>
+    <meta name="description" content="MyTube é a rede social de vídeos onde criadores competem e se destacam. Partilhe os seus vídeos, ganhe seguidores e descubra talentos incríveis!">
+    <meta name="keywords" content="mytube, rede social vídeos, partilhar vídeos, criadores de conteúdo, social media">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.mytube.social/login.php">
+
+    <!-- Open Graph (Facebook, WhatsApp, etc.) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.mytube.social/login.php">
+    <meta property="og:title" content="MyTube - Aqui os criadores competem">
+    <meta property="og:description" content="MyTube é a rede social de vídeos onde criadores competem e se destacam. Partilhe os seus vídeos, ganhe seguidores e descubra talentos incríveis!">
+    <meta property="og:image" content="https://www.mytube.social/assets/images/pwa-icon-512.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:site_name" content="MyTube">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="MyTube - Aqui os criadores competem">
+    <meta name="twitter:description" content="Partilhe os seus vídeos, ganhe seguidores e descubra talentos incríveis na MyTube!">
+    <meta name="twitter:image" content="https://www.mytube.social/assets/images/pwa-icon-512.png">
+
+    <!-- Schema.org structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "MyTube",
+      "url": "https://www.mytube.social",
+      "description": "Rede social de vídeos onde criadores competem e se destacam",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://www.mytube.social/index.php?search={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
     <link rel="stylesheet" href="<?php echo asset('assets/css/auth.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
     <?php include __DIR__ . '/includes/favicon.php'; ?>

@@ -1,0 +1,25 @@
+User-agent: *
+Allow: /
+Allow: /login.php
+Allow: /assets/css/
+Allow: /assets/images/
+
+# Bloquear conteúdo privado e técnico
+Disallow: /api/
+Disallow: /uploads/
+Disallow: /cache/
+Disallow: /logs/
+Disallow: /database/
+Disallow: /includes/
+Disallow: /chat-server/
+Disallow: /install_*.php
+Disallow: /update_*.php
+Disallow: /migrate_*.php
+Disallow: /check_*.php
+Disallow: /test_*.php
+Disallow: /create_*.php
+Disallow: /*.php.OLD
+Disallow: /*.php.BAK
+
+# Sitemap
+Sitemap: https://www.mytube.social/sitemap.xml
