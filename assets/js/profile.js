@@ -155,10 +155,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/heic', 'image/heif'];
                 if (!allowedTypes.includes(file.type)) {
                     e.preventDefault();
-                    showAlert('Formato de imagem não suportado. Use JPG, PNG ou GIF.', 'error');
+                    showAlert('Formato de imagem não suportado. Use JPG, PNG, GIF ou WEBP.', 'error');
                     return;
                 }
             }

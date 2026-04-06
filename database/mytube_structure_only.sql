@@ -539,7 +539,7 @@ CREATE TABLE `videos` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'Skeny','skenito2@gmail.com','$2y$10$nuz/JfzECaCDy9/QvwmYCeAKH8hVrsJNIjHi/.S76XAdcFlNb2WOC','Skeny António','Luzia Laura Leonardo LLL','Minha biografia gente\r\n@teste @admin h','user_1_1768139358.jpeg',2,1,21,1,33,1392,'2025-12-07 16:06:29','2026-04-05 16:58:14'),(2,'Admin','imperioanonimo123@gmail.com','$2y$10$wtLUPVwFG1vXF4Z/KcZzK.Bhxdo5pBzHv9sAbqC7oEBTZNn0LHqXe','Admin',NULL,'Nha Bio!','user_2_1769709141.jpg',1,1,9,0,NULL,1983,'2025-12-07 16:07:56','2026-04-05 23:43:51');
+INSERT INTO `users` VALUES (1,'Skeny','skenito2@gmail.com','$2y$10$nuz/JfzECaCDy9/QvwmYCeAKH8hVrsJNIjHi/.S76XAdcFlNb2WOC','Skeny António',NULL,NULL,'default.jpg',0,0,0,1,NULL,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),(2,'Admin','imperioanonimo123@gmail.com','$2y$10$wtLUPVwFG1vXF4Z/KcZzK.Bhxdo5pBzHv9sAbqC7oEBTZNn0LHqXe','Admin',NULL,NULL,'default.jpg',0,0,0,0,NULL,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
