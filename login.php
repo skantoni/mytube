@@ -118,10 +118,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
                     $stmt = $pdo->prepare("INSERT INTO users (username, email, full_name, password, instituicao) VALUES (?, ?, ?, ?, ?)");
                     
-                    if ($stmt->execute([$username, $email, $full_name, $hashed_password, $instituicao])) {
-                        $success = 'Conta criada com sucesso! Faça login.';
-                    } else {
-                        $error = 'Erro ao criar conta. Tente novamente.';
+                    try {
+                        if ($stmt->execute([$username, $email, $full_name, $hashed_password, $instituicao])) {
+                            $success = 'Conta criada com sucesso! Faça login.';
+                        } else {
+                            $error = 'Erro ao criar conta. Tente novamente.';
+                        }
+                    } catch (PDOException $e) {
+                        if ($e->getCode() == 23000) {
+                            $error = 'Este e-mail já está registado.';
+                        } else {
+                            $error = 'Erro ao criar conta. Tente novamente.';
+                        }
                     }
                 }
             }
