@@ -22,7 +22,14 @@ function r2_get_client() {
             throw new RuntimeException('Extensão mbstring não está ativa no PHP.');
         }
 
-        require_once __DIR__ . '/../aws.phar';
+        $aws_phar = __DIR__ . '/../aws.phar';
+        if (!file_exists($aws_phar)) {
+            throw new RuntimeException(
+                'aws.phar não encontrado em ' . realpath(__DIR__ . '/..') . '/aws.phar — ' .
+                'Corre: cd /var/www/mytube.social && wget https://github.com/aws/aws-sdk-php/releases/download/3.338.2/aws.phar'
+            );
+        }
+        require_once $aws_phar;
         
         $client = new Aws\S3\S3Client([
             'region' => R2_REGION,
