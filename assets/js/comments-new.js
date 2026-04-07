@@ -1860,11 +1860,11 @@ class CommentsSystem {
                 // Limpar modo edição
                 this.cancelEdit();
             } else {
-                alert(data.error || 'Erro ao editar comentário');
+                showMessage(data.error || 'Erro ao editar comentário', 'error');
             }
         } catch (error) {
             console.error('Erro ao editar:', error);
-            alert('Erro de conexão ao editar comentário');
+            showMessage('Erro de conexão ao editar comentário', 'error');
         } finally {
             input.disabled = false;
             if (submitBtn) submitBtn.disabled = false;
@@ -1885,33 +1885,61 @@ class CommentsSystem {
         document.querySelectorAll('.comment-options-wrapper.active').forEach(w => w.classList.remove('active'));
     }
 
-    async deleteComment(commentId) {
-        if (!confirm('Tens a certeza que queres eliminar este comentário?')) return;
+    deleteComment(commentId) {
+        this._showConfirm('Eliminar comentário?', async () => {
+            try {
+                const response = await fetch('api/delete_comment.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comment_id: parseInt(commentId) })
+                });
 
-        try {
-            const response = await fetch('api/delete_comment.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ comment_id: parseInt(commentId) })
-            });
+                let data;
+                try { data = await response.json(); } catch (_) { data = {}; }
 
-            const data = await response.json();
-
-            if (data.success) {
-                const commentEl = document.querySelector(`.comment-item[data-comment-id="${commentId}"], .reply-item[data-comment-id="${commentId}"]`);
-                if (commentEl) {
-                    commentEl.style.opacity = '0';
-                    commentEl.style.transform = 'translateX(-10px)';
-                    commentEl.style.transition = 'all 0.3s ease';
-                    setTimeout(() => commentEl.remove(), 300);
+                if (response.ok && data.success) {
+                    const commentEl = document.querySelector(`.comment-item[data-comment-id="${commentId}"], .reply-item[data-comment-id="${commentId}"]`);
+                    if (commentEl) {
+                        commentEl.style.opacity = '0';
+                        commentEl.style.transform = 'translateX(-10px)';
+                        commentEl.style.transition = 'all 0.3s ease';
+                        setTimeout(() => commentEl.remove(), 300);
+                    }
+                } else {
+                    showMessage(data.message || 'Erro ao eliminar comentário', 'error');
                 }
-            } else {
-                alert(data.message || 'Erro ao eliminar comentário');
+            } catch (error) {
+                console.error('Erro ao eliminar:', error);
+                showMessage('Erro de conexão ao eliminar comentário', 'error');
             }
-        } catch (error) {
-            console.error('Erro ao eliminar:', error);
-            alert('Erro de conexão ao eliminar comentário');
-        }
+        });
+    }
+
+    _showConfirm(message, onConfirm) {
+        // Remove existing confirm if any
+        document.querySelector('.comment-confirm-overlay')?.remove();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'comment-confirm-overlay';
+        overlay.innerHTML = `
+            <div class="comment-confirm-box">
+                <p>${message}</p>
+                <div class="comment-confirm-actions">
+                    <button class="comment-confirm-cancel">Cancelar</button>
+                    <button class="comment-confirm-ok">Eliminar</button>
+                </div>
+            </div>
+        `;
+
+        overlay.querySelector('.comment-confirm-cancel').addEventListener('click', () => overlay.remove());
+        overlay.querySelector('.comment-confirm-ok').addEventListener('click', () => {
+            overlay.remove();
+            onConfirm();
+        });
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+        document.body.appendChild(overlay);
+        requestAnimationFrame(() => overlay.classList.add('active'));
     }
 
     createCommentHTML(comment) {

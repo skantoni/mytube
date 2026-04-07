@@ -1,5 +1,83 @@
 /* Sistema de Comentários - MyTube */
 
+/* === CONFIRM DIALOG === */
+.comment-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.comment-confirm-overlay.active {
+    opacity: 1;
+}
+
+.comment-confirm-box {
+    background: #1a1a2e;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 24px 20px 16px;
+    min-width: 260px;
+    max-width: 320px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    transform: scale(0.93);
+    transition: transform 0.18s ease;
+}
+
+.comment-confirm-overlay.active .comment-confirm-box {
+    transform: scale(1);
+}
+
+.comment-confirm-box p {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.92rem;
+    margin: 0 0 18px;
+    text-align: center;
+}
+
+.comment-confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.comment-confirm-cancel {
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 8px 18px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.15s;
+}
+
+.comment-confirm-cancel:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+}
+
+.comment-confirm-ok {
+    background: #ff4757;
+    border: none;
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: background 0.15s;
+}
+
+.comment-confirm-ok:hover {
+    background: #ff6470;
+}
+
 /* 
  * Modal Mobile - Correções para UX perfeita:
  * 
