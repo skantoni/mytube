@@ -423,7 +423,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <form method="POST" enctype="multipart/form-data" class="upload-form" id="uploadForm">
                     <!-- Área de drop de arquivo -->
                     <div class="file-drop-area" id="fileDropArea">
-                        <input type="file" name="video" id="videoInput" accept="video/*" required>
+                        <input type="file" name="video" id="videoInput" accept="video/*">
                         <div class="file-drop-content">
                             <i class="fas fa-cloud-upload-alt"></i>
                             <h3>Arraste seu vídeo aqui</h3>
