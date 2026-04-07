@@ -23,8 +23,7 @@ class TikTokPlayer {
         this.videos = [];
         this.isScrolling = false;
         this.isSnapping = false;
-        this.scrollEndDelay = 180;
-        this.snapTolerancePx = 2;
+        this.scrollEndDelay = 250;
         this._snapUnlockTimer = null;
         this.initialized = false;
         this.controlsSetup = false;
@@ -647,7 +646,8 @@ class TikTokPlayer {
     handleScrollEnd() {
         if (this.isSnapping) return;
 
-        // Encontrar qual vídeo está mais visível
+        // CSS scroll-snap handles physical alignment.
+        // JS only identifies which video is most visible and activates it.
         const container = document.querySelector('.tiktok-container');
         if (!container || this.videos.length === 0) return;
 
@@ -657,7 +657,7 @@ class TikTokPlayer {
         this.videos.forEach((videoData, index) => {
             const rect = videoData.element.getBoundingClientRect();
             const containerRect = container.getBoundingClientRect();
-            
+
             const visibleTop = Math.max(rect.top, containerRect.top);
             const visibleBottom = Math.min(rect.bottom, containerRect.bottom);
             const visibleHeight = Math.max(0, visibleBottom - visibleTop);
@@ -670,15 +670,6 @@ class TikTokPlayer {
         });
 
         if (mostVisible === null) return;
-
-        const targetEl = this.videos[mostVisible]?.element;
-        if (!targetEl) return;
-
-        const needsSettle = Math.abs(container.scrollTop - targetEl.offsetTop) > this.snapTolerancePx;
-        if (needsSettle) {
-            this.snapToVideo(mostVisible, 'smooth');
-            return;
-        }
 
         this.activateVideoAtIndex(mostVisible);
         this.enforceMaxMaterialized();
@@ -705,22 +696,15 @@ class TikTokPlayer {
             this.materializeVideo(videoData);
         }
 
-        const targetTop = videoData.element.offsetTop;
-        const currentTop = container.scrollTop;
-        if (Math.abs(currentTop - targetTop) <= this.snapTolerancePx) {
-            this.activateVideoAtIndex(index);
-            return;
-        }
-
         this.isSnapping = true;
-        container.scrollTo({ top: targetTop, behavior });
+        videoData.element.scrollIntoView({ behavior, block: 'start' });
 
         clearTimeout(this._snapUnlockTimer);
         this._snapUnlockTimer = setTimeout(() => {
             this.isSnapping = false;
             this.activateVideoAtIndex(index);
             this.enforceMaxMaterialized();
-        }, behavior === 'smooth' ? 260 : 0);
+        }, behavior === 'smooth' ? 350 : 50);
     }
 
     loadCurrentVideo() {

@@ -1,0 +1,3 @@
+<?php
+header('Location: /assets/images/logo_icon.png', true, 301);
+exit;
