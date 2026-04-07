@@ -70,6 +70,11 @@ class CommentsSystem {
                     this.openComments(videoId);
                 }
             }
+            
+            // Fechar menus de opções ao clicar fora
+            if (!e.target.closest('.comment-options-wrapper')) {
+                this._closeAllOptionsMenus();
+            }
         });
     }
     
@@ -652,12 +657,29 @@ class CommentsSystem {
                 return;
             }
             
-            if (target.closest('.comment-edit-btn')) {
+            if (target.closest('.comment-options-btn')) {
                 e.preventDefault();
                 e.stopPropagation();
-                const button = target.closest('.comment-edit-btn');
-                const commentId = button.dataset.commentId;
-                this.editComment(commentId);
+                const button = target.closest('.comment-options-btn');
+                this._toggleOptionsMenu(button);
+                return;
+            }
+
+            if (target.closest('.comment-option-edit')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const button = target.closest('.comment-option-edit');
+                this._closeAllOptionsMenus();
+                this.editComment(button.dataset.commentId);
+                return;
+            }
+
+            if (target.closest('.comment-option-delete')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const button = target.closest('.comment-option-delete');
+                this._closeAllOptionsMenus();
+                this.deleteComment(button.dataset.commentId);
                 return;
             }
         };
@@ -1046,11 +1068,29 @@ class CommentsSystem {
                 return;
             }
             
-            if (target.closest('.comment-edit-btn')) {
+            if (target.closest('.comment-options-btn')) {
                 e.preventDefault();
                 e.stopPropagation();
-                const button = target.closest('.comment-edit-btn');
+                const button = target.closest('.comment-options-btn');
+                this._toggleOptionsMenu(button);
+                return;
+            }
+
+            if (target.closest('.comment-option-edit')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const button = target.closest('.comment-option-edit');
+                this._closeAllOptionsMenus();
                 this.editComment(button.dataset.commentId);
+                return;
+            }
+
+            if (target.closest('.comment-option-delete')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const button = target.closest('.comment-option-delete');
+                this._closeAllOptionsMenus();
+                this.deleteComment(button.dataset.commentId);
                 return;
             }
         });
@@ -1804,10 +1844,16 @@ class CommentsSystem {
                         commentTextDiv.innerHTML = this.formatMentions(savedText);
                     }
                     
-                    // Remover botão de editar se o tempo expirou
-                    const editBtn = commentItem.querySelector('.comment-edit-btn');
-                    if (editBtn && data.edit_time_left <= 0) {
-                        editBtn.remove();
+                    // Remover opção de editar se o tempo expirou
+                    if (data.edit_time_left <= 0) {
+                        const editOption = commentItem.querySelector('.comment-option-edit');
+                        if (editOption) {
+                            const wrapper = editOption.closest('.comment-options-wrapper');
+                            editOption.remove();
+                            if (wrapper && !wrapper.querySelector('.comment-option-delete')) {
+                                wrapper.remove();
+                            }
+                        }
                     }
                 }
                 
@@ -1825,6 +1871,49 @@ class CommentsSystem {
         }
     }
     
+    _toggleOptionsMenu(btn) {
+        const wrapper = btn.closest('.comment-options-wrapper');
+        if (!wrapper) return;
+        const isOpen = wrapper.classList.contains('active');
+        this._closeAllOptionsMenus();
+        if (!isOpen) {
+            wrapper.classList.add('active');
+        }
+    }
+
+    _closeAllOptionsMenus() {
+        document.querySelectorAll('.comment-options-wrapper.active').forEach(w => w.classList.remove('active'));
+    }
+
+    async deleteComment(commentId) {
+        if (!confirm('Tens a certeza que queres eliminar este comentário?')) return;
+
+        try {
+            const response = await fetch('api/delete_comment.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comment_id: parseInt(commentId) })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const commentEl = document.querySelector(`.comment-item[data-comment-id="${commentId}"], .reply-item[data-comment-id="${commentId}"]`);
+                if (commentEl) {
+                    commentEl.style.opacity = '0';
+                    commentEl.style.transform = 'translateX(-10px)';
+                    commentEl.style.transition = 'all 0.3s ease';
+                    setTimeout(() => commentEl.remove(), 300);
+                }
+            } else {
+                alert(data.message || 'Erro ao eliminar comentário');
+            }
+        } catch (error) {
+            console.error('Erro ao eliminar:', error);
+            alert('Erro de conexão ao eliminar comentário');
+        }
+    }
+
     createCommentHTML(comment) {
         let html = '<div class="comment-item" data-comment-id="' + comment.id + '">';
         html += '<img src="' + (comment.profile_picture_url || 'assets/images/avatars/' + (comment.profile_picture || 'default.webp')) + '" alt="' + comment.full_name + '" class="comment-avatar" loading="lazy">';
@@ -1845,17 +1934,6 @@ class CommentsSystem {
         html += '<button class="comment-reply-btn" data-comment-id="' + comment.id + '">';
         html += '<i class="fas fa-reply"></i> Responder';
         html += '</button>';
-        if (comment.can_edit) {
-            const timeLeft = comment.edit_time_left || 0;
-            const isExpiringSoon = timeLeft <= 30;
-            
-            html += '<button class="comment-edit-btn' + (isExpiringSoon ? ' expiring' : '') + '" data-comment-id="' + comment.id + '" data-time-left="' + timeLeft + '">';
-            html += '<i class="fas fa-edit"></i> Editar';
-            if (isExpiringSoon && timeLeft > 0) {
-                html += ' (' + timeLeft + 's)';
-            }
-            html += '</button>';
-        }
         html += '</div>';
         
         // Botão "Ver respostas" — respostas carregam sob demanda via API
@@ -1869,8 +1947,30 @@ class CommentsSystem {
             html += '</div>';
         }
         
-        html += '</div>';
-        html += '</div>';
+        html += '</div>'; // close comment-content
+        
+        if (comment.can_edit || comment.can_delete) {
+            const timeLeft = comment.edit_time_left || 0;
+            const isExpiringSoon = timeLeft <= 30;
+            html += '<div class="comment-options-wrapper">';
+            html += '<button class="comment-options-btn" data-comment-id="' + comment.id + '"><i class="fas fa-ellipsis-v"></i></button>';
+            html += '<div class="comment-options-menu">';
+            if (comment.can_edit) {
+                html += '<button class="comment-option-edit' + (isExpiringSoon ? ' expiring' : '') + '" data-comment-id="' + comment.id + '" data-time-left="' + timeLeft + '">';
+                html += '<i class="fas fa-edit"></i> Editar';
+                if (isExpiringSoon && timeLeft > 0) {
+                    html += ' (' + timeLeft + 's)';
+                }
+                html += '</button>';
+            }
+            if (comment.can_delete) {
+                html += '<button class="comment-option-delete" data-comment-id="' + comment.id + '"><i class="fas fa-trash"></i> Eliminar</button>';
+            }
+            html += '</div>';
+            html += '</div>';
+        }
+        
+        html += '</div>'; // close comment-item
         
         return html;
     }
@@ -1895,20 +1995,31 @@ class CommentsSystem {
         html += '<button class="comment-reply-btn" data-comment-id="' + reply.id + '">';
         html += '<i class="fas fa-reply"></i> Responder';
         html += '</button>';
-        if (reply.can_edit) {
+        html += '</div>';
+        html += '</div>'; // close comment-content
+        
+        if (reply.can_edit || reply.can_delete) {
             const timeLeft = reply.edit_time_left || 0;
             const isExpiringSoon = timeLeft <= 30;
-            
-            html += '<button class="comment-edit-btn' + (isExpiringSoon ? ' expiring' : '') + '" data-comment-id="' + reply.id + '" data-time-left="' + timeLeft + '">';
-            html += '<i class="fas fa-edit"></i> Editar';
-            if (isExpiringSoon && timeLeft > 0) {
-                html += ' (' + timeLeft + 's)';
+            html += '<div class="comment-options-wrapper">';
+            html += '<button class="comment-options-btn" data-comment-id="' + reply.id + '"><i class="fas fa-ellipsis-v"></i></button>';
+            html += '<div class="comment-options-menu">';
+            if (reply.can_edit) {
+                html += '<button class="comment-option-edit' + (isExpiringSoon ? ' expiring' : '') + '" data-comment-id="' + reply.id + '" data-time-left="' + timeLeft + '">';
+                html += '<i class="fas fa-edit"></i> Editar';
+                if (isExpiringSoon && timeLeft > 0) {
+                    html += ' (' + timeLeft + 's)';
+                }
+                html += '</button>';
             }
-            html += '</button>';
+            if (reply.can_delete) {
+                html += '<button class="comment-option-delete" data-comment-id="' + reply.id + '"><i class="fas fa-trash"></i> Eliminar</button>';
+            }
+            html += '</div>';
+            html += '</div>';
         }
-        html += '</div>';
-        html += '</div>';
-        html += '</div>';
+        
+        html += '</div>'; // close reply-item
         
         return html;
     }
@@ -2440,7 +2551,7 @@ class CommentsSystem {
         }
         
         this.editTimerInterval = setInterval(() => {
-            const editButtons = document.querySelectorAll('.comment-edit-btn[data-time-left]');
+            const editButtons = document.querySelectorAll('.comment-option-edit[data-time-left]');
             
             if (editButtons.length === 0) {
                 clearInterval(this.editTimerInterval);
@@ -2452,7 +2563,11 @@ class CommentsSystem {
                 let timeLeft = parseInt(button.dataset.timeLeft);
                 
                 if (timeLeft <= 0) {
+                    const wrapper = button.closest('.comment-options-wrapper');
                     button.remove();
+                    if (wrapper && !wrapper.querySelector('.comment-option-delete')) {
+                        wrapper.remove();
+                    }
                     return;
                 }
                 

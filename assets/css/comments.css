@@ -1177,7 +1177,97 @@
 
 /* === SISTEMA DE EDIÇÃO DE COMENTÁRIOS === */
 
-/* Botão Editar */
+/* Botão de três pontos (opções) */
+.comment-options-wrapper {
+    position: relative;
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 2px;
+}
+
+.comment-options-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.35);
+    cursor: pointer;
+    padding: 4px 7px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    line-height: 1;
+    transition: color 0.2s ease, background 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.comment-options-btn:hover {
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.comment-options-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: #1a1a2e;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    overflow: hidden;
+    min-width: 130px;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.95) translateY(-4px);
+    transform-origin: top right;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.comment-options-wrapper.active .comment-options-menu {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1) translateY(0);
+}
+
+.comment-option-edit,
+.comment-option-delete {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+    white-space: nowrap;
+}
+
+.comment-option-edit {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.comment-option-edit:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.comment-option-edit.expiring {
+    color: #ff6b7a;
+    animation: pulse-warning 2s infinite;
+}
+
+.comment-option-delete {
+    color: #ff4757;
+}
+
+.comment-option-delete:hover {
+    background: rgba(255, 71, 87, 0.15);
+    color: #ff6b7a;
+}
+
+/* Botão Editar (legado, mantido para compatibilidade) */
 .comment-edit-btn {
     background: none;
     border: none;

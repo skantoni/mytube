@@ -263,6 +263,7 @@ try {
             'parent_comment_id' => $comment['parent_comment_id'],
             'root_comment_id' => $root_comment_id, // ID do comentário raiz
             'can_edit' => $is_author && $within_edit_window,
+            'can_delete' => $is_author,
             'edit_time_left' => $within_edit_window ? (120 - $time_since_created) : 0
         ];
         

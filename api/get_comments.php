@@ -145,6 +145,7 @@ try {
         $within_edit_window = $time_since_created <= 120;
         
         $comment['can_edit'] = $is_author && $within_edit_window;
+        $comment['can_delete'] = $is_author;
         $comment['edit_time_left'] = $within_edit_window ? (120 - $time_since_created) : 0;
     }
     

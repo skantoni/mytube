@@ -97,6 +97,7 @@ try {
             'is_verified'       => (bool)$reply['is_verified'],
             'user_liked'        => in_array($reply['id'], $user_likes),
             'can_edit'          => $is_author && $within_edit,
+            'can_delete'        => $is_author,
             'edit_time_left'    => $within_edit ? (120 - $time_since) : 0,
         ];
     }
