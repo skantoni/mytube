@@ -107,7 +107,7 @@ $current_user = $stmt->fetch();
                     <button class="back-btn" onclick="closeMobileChat()">
                         <i class="fas fa-arrow-left"></i>
                     </button>
-                    <div class="chat-header-user">
+                    <a class="chat-header-user" href="perfil.php?id=<?php echo $chat_with_user_id; ?>" style="text-decoration:none;cursor:pointer;">
                         <img src="<?php echo htmlspecialchars($chat_user_info['profile_picture'] ?: 'assets/images/default-avatar.svg'); ?>" 
                              alt="<?php echo htmlspecialchars($chat_user_info['username']); ?>">
                         <div class="chat-header-info">
@@ -128,7 +128,7 @@ $current_user = $stmt->fetch();
                                 digitando...
                             </span>
                         </div>
-                    </div>
+                    </a>
                     <div class="chat-header-actions">
                         <button onclick="makeVideoCall(<?php echo $chat_with_user_id; ?>)">
                             <i class="fas fa-video"></i>
