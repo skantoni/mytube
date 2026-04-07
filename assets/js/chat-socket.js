@@ -2282,6 +2282,12 @@ function openChat(userId) {
 function updateChatHeader(userId, username, avatar, isVerified = false) {
     const chatHeader = document.querySelector('.chat-header');
     if (!chatHeader) return;
+
+    // Atualizar link do perfil
+    const headerUser = chatHeader.querySelector('.chat-header-user');
+    if (headerUser && headerUser.tagName === 'A') {
+        headerUser.href = `perfil.php?id=${userId}`;
+    }
     
     // Atualizar avatar
     const headerImg = chatHeader.querySelector('.chat-header-user img');
@@ -2367,7 +2373,7 @@ function createChatAreaHTML() {
             <button class="back-btn" onclick="closeMobileChat()">
                 <i class="fas fa-arrow-left"></i>
             </button>
-            <div class="chat-header-user">
+            <a class="chat-header-user" href="#" style="text-decoration:none;cursor:pointer;">
                 <img src="${DEFAULT_AVATAR}" alt="Usuário">
                 <div class="chat-header-info">
                     <h3>Carregando...</h3>
@@ -2382,7 +2388,7 @@ function createChatAreaHTML() {
                         digitando...
                     </span>
                 </div>
-            </div>
+            </a>
             <div class="chat-header-actions">
                 <button onclick="makeVideoCall()">
                     <i class="fas fa-video"></i>

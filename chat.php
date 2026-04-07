@@ -257,6 +257,12 @@ $current_user = $stmt->fetch();
         let chatWithUsername = <?php echo $chat_user_info ? "'" . addslashes($chat_user_info['username']) . "'" : 'null'; ?>;
         let chatWithIsVerified = <?php echo $chat_user_info ? (!empty($chat_user_info['is_verified']) ? 'true' : 'false') : 'false'; ?>;
         const fromPage = '<?php echo $from_page; ?>';
+
+        // Guardar userId no estado do histórico para que o botão voltar
+        // do browser dispare popstate com o userId correto
+        if (chatWithUserId) {
+            history.replaceState({ userId: chatWithUserId }, '', window.location.href);
+        }
         
         // Event delegation é feito no chat-socket.js (setupConversationClickListener)
     </script>
