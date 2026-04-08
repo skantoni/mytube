@@ -26,6 +26,19 @@ if ($receiver_id <= 0) {
     exit;
 }
 
+// Verificar se são amigos
+$fr_check = $pdo->prepare("
+    SELECT id FROM friend_requests 
+    WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
+      AND status = 'accepted'
+    LIMIT 1
+");
+$fr_check->execute([$_SESSION['user_id'], $receiver_id, $receiver_id, $_SESSION['user_id']]);
+if (!$fr_check->fetch()) {
+    echo json_encode(['success' => false, 'error' => 'Precisas ser amigo deste utilizador para enviar ficheiros.']);
+    exit;
+}
+
 try {
     // Upload do arquivo
     $upload_result = uploadChatFile($_FILES['file'], $type);

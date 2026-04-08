@@ -374,6 +374,9 @@ function initializeSocket() {
     
     // Erros
     socket.on('error', handleError);
+
+    // Mensagem bloqueada (não são amigos)
+    socket.on('message_blocked', handleMessageBlocked);
 }
 
 function setupEventListeners() {
@@ -416,6 +419,8 @@ function setupConversationClickListener() {
     const conversationsList = document.getElementById('conversationsList');
     if (conversationsList) {
         conversationsList.addEventListener('click', function(e) {
+            // Ignorar clique nos 3 pontos
+            if (e.target.closest('.conv-more-btn')) return;
             const conversationItem = e.target.closest('.conversation-item');
             if (conversationItem && conversationItem.dataset.userId) {
                 const userId = parseInt(conversationItem.dataset.userId);
@@ -756,9 +761,159 @@ function renderConversationsList(conversations) {
                         ${unreadBadge}
                     </div>
                 </div>
+                <button class="conv-more-btn" onclick="event.stopPropagation(); showConvContextMenu(event, ${conv.conversation_id}, ${conv.other_user_id})">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
             </div>
         `;
     }).join('');
+
+    // Setup long-press para mobile
+    setupConversationLongPress();
+}
+
+// ========================================
+// MENU DE CONTEXTO DE CONVERSA
+// ========================================
+
+let convContextMenuActive = null;
+
+function showConvContextMenu(event, conversationId, userId) {
+    closeConvContextMenu();
+
+    const menu = document.createElement('div');
+    menu.className = 'conv-context-menu';
+    menu.id = 'convContextMenu';
+    menu.innerHTML = `
+        <button onclick="hideConversation(${conversationId}); closeConvContextMenu();">
+            <i class="fas fa-eye-slash"></i> Esconder conversa
+        </button>
+    `;
+
+    document.body.appendChild(menu);
+    convContextMenuActive = menu;
+
+    // Posicionar o menu
+    const btn = event.target.closest ? event.target.closest('.conv-more-btn') : null;
+    const rect = btn ? btn.getBoundingClientRect() 
+                 : { top: event.clientY, left: event.clientX, right: event.clientX + 10, bottom: event.clientY };
+    
+    menu.style.position = 'fixed';
+    menu.style.zIndex = '9999';
+    
+    // Calcular posição — preferir abaixo do botão
+    const menuHeight = 48;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    
+    if (spaceBelow >= menuHeight + 8) {
+        menu.style.top = rect.bottom + 4 + 'px';
+    } else {
+        menu.style.top = (rect.top - menuHeight - 4) + 'px';
+    }
+    
+    // Desktop: alinhar à direita do botão; Mobile: centralizar
+    if (btn) {
+        menu.style.right = (window.innerWidth - rect.right) + 'px';
+    } else {
+        menu.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
+    }
+
+    // Fechar ao clicar/tocar fora
+    setTimeout(() => {
+        document.addEventListener('click', closeConvContextMenuOnClickOutside);
+        document.addEventListener('touchstart', closeConvContextMenuOnClickOutside);
+        document.addEventListener('scroll', closeConvContextMenu, true);
+    }, 10);
+}
+
+function closeConvContextMenu() {
+    const menu = document.getElementById('convContextMenu');
+    if (menu) menu.remove();
+    convContextMenuActive = null;
+    document.removeEventListener('click', closeConvContextMenuOnClickOutside);
+    document.removeEventListener('touchstart', closeConvContextMenuOnClickOutside);
+    document.removeEventListener('scroll', closeConvContextMenu, true);
+}
+
+function closeConvContextMenuOnClickOutside(e) {
+    if (convContextMenuActive && !convContextMenuActive.contains(e.target)) {
+        closeConvContextMenu();
+    }
+}
+
+function hideConversation(conversationId) {
+    const formData = new FormData();
+    formData.append('conversation_id', conversationId);
+
+    fetch('api/hide_conversation.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Remover da lista visualmente
+                const item = document.querySelector(`.conversation-item[data-conversation-id="${conversationId}"]`);
+                if (item) {
+                    item.style.transition = 'opacity 0.3s, transform 0.3s';
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateX(-100%)';
+                    setTimeout(() => item.remove(), 300);
+                }
+                // Se era a conversa ativa, voltar à lista
+                if (currentConversationId == conversationId) {
+                    showConversationsList();
+                }
+                // Remover do cache local
+                if (cachedConversations) {
+                    cachedConversations = cachedConversations.filter(c => c.conversation_id != conversationId);
+                }
+            }
+        })
+        .catch(() => {});
+}
+
+// Long-press para mobile
+let longPressTimer = null;
+let longPressTarget = null;
+
+function setupConversationLongPress() {
+    const conversationsList = document.getElementById('conversationsList');
+    if (!conversationsList || conversationsList.dataset.longPressSetup) return;
+    conversationsList.dataset.longPressSetup = 'true';
+
+    conversationsList.addEventListener('touchstart', function(e) {
+        const item = e.target.closest('.conversation-item');
+        if (!item) return;
+
+        longPressTarget = item;
+        longPressTimer = setTimeout(() => {
+            // Prevenir que o click normal abra o chat
+            e.preventDefault();
+            const convId = parseInt(item.dataset.conversationId);
+            const userId = parseInt(item.dataset.userId);
+            // Vibrar levemente
+            if (navigator.vibrate) navigator.vibrate(30);
+            // Mostrar menu na posição do toque
+            showConvContextMenu({ 
+                clientY: e.touches[0].clientY, 
+                clientX: e.touches[0].clientX,
+                target: item
+            }, convId, userId);
+            longPressTarget = null;
+        }, 500);
+    }, { passive: false });
+
+    conversationsList.addEventListener('touchend', function() {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+    });
+
+    conversationsList.addEventListener('touchmove', function() {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+    });
 }
 
 function handleConversationStarted(data) {
@@ -1256,6 +1411,31 @@ function handleMessageNotification(data) {
 function handleError(data) {
     console.error('Erro do servidor:', data.message);
     showToast(data.message, 'error');
+}
+
+function handleMessageBlocked(data) {
+    console.warn('🚫 Mensagem bloqueada:', data.message);
+    // Remover mensagem otimista
+    if (data.tempId) {
+        const tempMsg = document.querySelector(`[data-temp-id="${data.tempId}"]`);
+        if (tempMsg) tempMsg.remove();
+    }
+    // Mostrar aviso na área de chat
+    showChatBlockedWarning(data.message);
+}
+
+function showChatBlockedWarning(message) {
+    const chatMessages = document.getElementById('chatMessages');
+    if (!chatMessages) return;
+    // Remover aviso anterior se existir
+    const existing = chatMessages.querySelector('.chat-blocked-warning');
+    if (existing) existing.remove();
+    
+    const warning = document.createElement('div');
+    warning.className = 'chat-blocked-warning';
+    warning.innerHTML = `<i class="fas fa-lock"></i> ${message}`;
+    chatMessages.appendChild(warning);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 // ========================================
@@ -2432,7 +2612,7 @@ function createChatAreaHTML() {
             <div class="input-wrapper">
                 <textarea 
                     id="messageInput" 
-                    placeholder="Digite uma mensagem..." 
+                    placeholder="Mete dica..." 
                     rows="1"></textarea>
                 <button class="emoji-btn" onclick="showEmojiPicker()">
                     <i class="fas fa-smile"></i>

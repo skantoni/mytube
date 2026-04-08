@@ -78,6 +78,26 @@ try {
         $follows_you_stmt = $pdo->prepare("SELECT id FROM follows WHERE follower_id = ? AND following_id = ?");
         $follows_you_stmt->execute([$profile_user_id, $_SESSION['user_id']]);
         $follows_you = $follows_you_stmt->fetch() !== false;
+
+        // Verificar estado de amizade
+        $fr_stmt = $pdo->prepare("
+            SELECT id, sender_id, receiver_id, status FROM friend_requests 
+            WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
+            LIMIT 1
+        ");
+        $fr_stmt->execute([$_SESSION['user_id'], $profile_user_id, $profile_user_id, $_SESSION['user_id']]);
+        $friend_request = $fr_stmt->fetch();
+        
+        $friendship_status = 'none'; // none, pending_sent, pending_received, friends
+        $friend_request_id = null;
+        if ($friend_request) {
+            if ($friend_request['status'] === 'accepted') {
+                $friendship_status = 'friends';
+            } elseif ($friend_request['status'] === 'pending') {
+                $friendship_status = ($friend_request['sender_id'] == $_SESSION['user_id']) ? 'pending_sent' : 'pending_received';
+                $friend_request_id = $friend_request['id'];
+            }
+        }
     }
 
     // Verificar se o usuário logado é admin
@@ -234,10 +254,27 @@ try {
                                 <i class="fas <?php echo $is_following ? 'fa-check' : 'fa-plus'; ?>"></i>
                                 <span><?php echo $is_following ? 'Seguindo' : ($follows_you ? 'Seguir de volta' : 'Seguir'); ?></span>
                             </button>
-                            <button class="btn btn-chat" onclick="openChat(<?php echo $profile_user_id; ?>, '<?php echo htmlspecialchars($user_data['username']); ?>')">
-                                <i class="fas fa-envelope"></i>
-                                Mensagem
-                            </button>
+                            <?php if ($friendship_status === 'friends'): ?>
+                                <button class="btn btn-chat" onclick="openChat(<?php echo $profile_user_id; ?>, '<?php echo htmlspecialchars($user_data['username']); ?>')">
+                                    <i class="fas fa-envelope"></i>
+                                    Mensagem
+                                </button>
+                            <?php elseif ($friendship_status === 'pending_sent'): ?>
+                                <button class="btn btn-chat btn-pending" disabled>
+                                    <i class="fas fa-clock"></i>
+                                    Pedido enviado
+                                </button>
+                            <?php elseif ($friendship_status === 'pending_received'): ?>
+                                <button class="btn btn-chat btn-accept-fr" onclick="acceptFriendRequestFromProfile(<?php echo $friend_request_id; ?>, this)">
+                                    <i class="fas fa-check"></i>
+                                    Aceitar pedido
+                                </button>
+                            <?php else: ?>
+                                <button class="btn btn-chat btn-send-fr" onclick="sendFriendRequestFromProfile(<?php echo $profile_user_id; ?>, this)">
+                                    <i class="fas fa-user-plus"></i>
+                                    Enviar pedido
+                                </button>
+                            <?php endif; ?>
                             <?php if ($is_admin): ?>
                                 <button
                                     type="button"
@@ -665,8 +702,64 @@ try {
         
         // Função para abrir chat
         function openChat(userId, username) {
-            // Redirecionar para a página de chat com o usuário
             window.location.href = `chat.php?user_id=${userId}&from=perfil`;
+        }
+
+        // Enviar pedido de amizade
+        function sendFriendRequestFromProfile(userId, btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+            
+            const formData = new FormData();
+            formData.append('receiver_id', userId);
+            
+            fetch('api/send_friend_request.php', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        btn.innerHTML = '<i class="fas fa-clock"></i> Pedido enviado';
+                        btn.classList.add('btn-pending');
+                    } else {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-user-plus"></i> Enviar pedido';
+                        alert(data.error || 'Erro ao enviar pedido');
+                    }
+                })
+                .catch(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-user-plus"></i> Enviar pedido';
+                });
+        }
+
+        // Aceitar pedido de amizade do perfil
+        function acceptFriendRequestFromProfile(requestId, btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            const formData = new FormData();
+            formData.append('request_id', requestId);
+            formData.append('action', 'accept');
+            
+            fetch('api/respond_friend_request.php', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        btn.className = 'btn btn-chat';
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-envelope"></i> Mensagem';
+                        btn.onclick = function() {
+                            openChat(<?php echo $profile_user_id; ?>, '<?php echo htmlspecialchars($user_data['username'] ?? ''); ?>');
+                        };
+                    } else {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-check"></i> Aceitar pedido';
+                        alert(data.error || 'Erro');
+                    }
+                })
+                .catch(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check"></i> Aceitar pedido';
+                });
         }
     </script>
     

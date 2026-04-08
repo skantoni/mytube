@@ -73,6 +73,10 @@ $current_user = $stmt->fetch();
                     <i class="fas fa-arrow-left"></i>
                 </button>
                 <h2>Mensagens</h2>
+                <button class="friend-requests-btn" onclick="showFriendRequestsModal()" title="Pedidos de amizade">
+                    <i class="fas fa-user-friends"></i>
+                    <span class="friend-requests-badge" id="friendRequestsBadge" style="display:none;">0</span>
+                </button>
                 <button class="new-chat-btn" onclick="showNewChatModal()">
                     <i class="fas fa-edit"></i>
                 </button>
@@ -272,5 +276,161 @@ $current_user = $stmt->fetch();
     
     <!-- Chat Socket.IO Client -->
     <script src="<?php echo asset('assets/js/chat-socket.js'); ?>"></script>
+
+    <!-- Modal de Pedidos de Amizade -->
+    <div class="modal" id="friendRequestsModal" style="display:none;" onclick="if(event.target===this)closeFriendRequestsModal()">
+        <div class="modal-content friend-requests-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-friends"></i> Pedidos de Amizade</h3>
+                <button onclick="closeFriendRequestsModal()">&times;</button>
+            </div>
+            <div class="modal-tabs">
+                <button class="modal-tab active" onclick="switchFRTab('received', this)">Recebidos</button>
+                <button class="modal-tab" onclick="switchFRTab('sent', this)">Enviados</button>
+            </div>
+            <div class="modal-body" id="friendRequestsList">
+                <div class="fr-loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ========================================
+    // SISTEMA DE PEDIDOS DE AMIZADE
+    // ========================================
+    let currentFRTab = 'received';
+
+    function showFriendRequestsModal() {
+        document.getElementById('friendRequestsModal').style.display = 'flex';
+        currentFRTab = 'received';
+        loadFriendRequests('received');
+    }
+
+    function closeFriendRequestsModal() {
+        document.getElementById('friendRequestsModal').style.display = 'none';
+    }
+
+    function switchFRTab(tab, btn) {
+        currentFRTab = tab;
+        document.querySelectorAll('.modal-tabs .modal-tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+        loadFriendRequests(tab);
+    }
+
+    function loadFriendRequests(type) {
+        const container = document.getElementById('friendRequestsList');
+        container.innerHTML = '<div class="fr-loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
+
+        fetch(`api/get_friend_requests.php?type=${type}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success || !data.requests.length) {
+                    container.innerHTML = '<div class="fr-empty"><i class="fas fa-inbox"></i><p>Nenhum pedido</p></div>';
+                    return;
+                }
+                let html = '';
+                data.requests.forEach(req => {
+                    const avatar = getAvatarUrl(req.profile_picture);
+                    const verified = req.is_verified ? '<i class="fas fa-check-circle chat-verified-icon"></i>' : '';
+                    const time = formatFRTime(req.created_at);
+
+                    if (type === 'received') {
+                        html += `
+                            <div class="fr-item" id="fr-${req.id}">
+                                <img src="${avatar}" alt="${req.username}" class="fr-avatar" onerror="this.src='assets/images/default-avatar.svg'" onclick="window.location.href='perfil.php?id=${req.sender_id}'">
+                                <div class="fr-info">
+                                    <span class="fr-name">${escapeHtml(req.username)} ${verified}</span>
+                                    <span class="fr-time">${time}</span>
+                                </div>
+                                <div class="fr-actions">
+                                    <button class="fr-accept" onclick="respondFriendRequest(${req.id}, 'accept')">
+                                        <i class="fas fa-check"></i> Aceitar
+                                    </button>
+                                    <button class="fr-reject" onclick="respondFriendRequest(${req.id}, 'reject')">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>`;
+                    } else {
+                        html += `
+                            <div class="fr-item">
+                                <img src="${avatar}" alt="${req.username}" class="fr-avatar" onerror="this.src='assets/images/default-avatar.svg'" onclick="window.location.href='perfil.php?id=${req.receiver_id}'">
+                                <div class="fr-info">
+                                    <span class="fr-name">${escapeHtml(req.username)} ${verified}</span>
+                                    <span class="fr-time">${time}</span>
+                                </div>
+                                <div class="fr-status-label">Pendente</div>
+                            </div>`;
+                    }
+                });
+                container.innerHTML = html;
+            })
+            .catch(() => {
+                container.innerHTML = '<div class="fr-empty"><p>Erro ao carregar pedidos</p></div>';
+            });
+    }
+
+    function respondFriendRequest(requestId, action) {
+        const item = document.getElementById('fr-' + requestId);
+        if (item) item.style.opacity = '0.5';
+
+        const formData = new FormData();
+        formData.append('request_id', requestId);
+        formData.append('action', action);
+
+        fetch('api/respond_friend_request.php', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    if (item) {
+                        item.innerHTML = `<div class="fr-responded">${action === 'accept' ? '✅ Aceite' : '❌ Rejeitado'}</div>`;
+                        item.style.opacity = '1';
+                        setTimeout(() => item.remove(), 1500);
+                    }
+                    loadFriendRequestsCount();
+                } else {
+                    if (item) item.style.opacity = '1';
+                    alert(data.error || 'Erro ao processar pedido');
+                }
+            })
+            .catch(() => { if (item) item.style.opacity = '1'; });
+    }
+
+    function loadFriendRequestsCount() {
+        fetch('api/get_friend_requests.php?type=received')
+            .then(r => r.json())
+            .then(data => {
+                const badge = document.getElementById('friendRequestsBadge');
+                if (data.success && data.pending_count > 0) {
+                    badge.textContent = data.pending_count;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(() => {});
+    }
+
+    function formatFRTime(dateStr) {
+        const d = new Date(dateStr);
+        const now = new Date();
+        const diff = Math.floor((now - d) / 1000);
+        if (diff < 60) return 'Agora';
+        if (diff < 3600) return Math.floor(diff / 60) + ' min';
+        if (diff < 86400) return Math.floor(diff / 3600) + ' h';
+        return Math.floor(diff / 86400) + ' d';
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Carregar contagem ao abrir o chat
+    document.addEventListener('DOMContentLoaded', loadFriendRequestsCount);
+    // Atualizar a cada 30s
+    setInterval(loadFriendRequestsCount, 30000);
+    </script>
 </body>
 </html>

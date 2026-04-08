@@ -261,6 +261,24 @@ async function getUserById(userId) {
 }
 
 /**
+ * Verificar se dois utilizadores são amigos (pedido aceite)
+ */
+async function areFriends(userId1, userId2) {
+    try {
+        const [rows] = await pool.execute(`
+            SELECT id FROM friend_requests 
+            WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
+              AND status = 'accepted'
+            LIMIT 1
+        `, [userId1, userId2, userId2, userId1]);
+        return rows.length > 0;
+    } catch (error) {
+        console.error('Erro ao verificar amizade:', error.message);
+        return false;
+    }
+}
+
+/**
  * Salvar mensagem no banco de dados
  */
 async function saveMessage(conversationId, senderId, receiverId, content, replyToId = null) {
@@ -275,6 +293,11 @@ async function saveMessage(conversationId, senderId, receiverId, content, replyT
             UPDATE conversations 
             SET updated_at = NOW()
             WHERE id = ?
+        `, [conversationId]);
+
+        // Remover conversa da lista de escondidas (para ambos os utilizadores)
+        await pool.execute(`
+            DELETE FROM hidden_conversations WHERE conversation_id = ?
         `, [conversationId]);
         
         return result.insertId;
@@ -414,9 +437,10 @@ async function getUserConversations(userId) {
             FROM conversations c
             JOIN users u ON (CASE WHEN c.user1_id = ? THEN c.user2_id ELSE c.user1_id END) = u.id
             LEFT JOIN user_online_status uo ON u.id = uo.user_id
-            WHERE c.user1_id = ? OR c.user2_id = ?
+            WHERE (c.user1_id = ? OR c.user2_id = ?)
+              AND c.id NOT IN (SELECT conversation_id FROM hidden_conversations WHERE user_id = ?)
             ORDER BY c.updated_at DESC
-                `, [userId, userId, userId, userId, userId, userId, userId, userId, userId]);
+                `, [userId, userId, userId, userId, userId, userId, userId, userId, userId, userId]);
         
         // Enriquecer com status online da memória (fonte de verdade)
         rows.forEach(row => {
@@ -965,6 +989,16 @@ io.on('connection', (socket) => {
         
         if (!senderId || !receiverId || !content?.trim()) {
             socket.emit('error', { message: 'Dados inválidos para enviar mensagem' });
+            return;
+        }
+
+        // Verificar se são amigos
+        const friends = await areFriends(senderId, receiverId);
+        if (!friends) {
+            socket.emit('message_blocked', { 
+                tempId,
+                message: 'Precisas ser amigo deste utilizador para enviar mensagens. Envia um pedido de amizade primeiro!' 
+            });
             return;
         }
         
