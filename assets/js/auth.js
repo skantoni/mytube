@@ -194,8 +194,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Verificar se há parâmetros na URL (ex: ?register=1)
+    // Mas não redirecionar para cadastro se já houve sucesso no registo
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('register') === '1') {
+    const hasSuccess = document.querySelector('.alert-success') !== null;
+    if (urlParams.get('register') === '1' && !hasSuccess) {
         showRegister();
     }
 });

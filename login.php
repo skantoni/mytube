@@ -10,6 +10,11 @@ $error = '';
 $success = '';
 $error_from = ''; // 'login' ou 'register'
 
+// Mensagem de sucesso após registo (Post/Redirect/Get)
+if (isset($_GET['registered']) && $_GET['registered'] === '1') {
+    $success = 'Conta criada com sucesso! Faça login.';
+}
+
 // Preservar dados do formulário de cadastro
 $reg_username = '';
 $reg_email = '';
@@ -120,7 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     
                     try {
                         if ($stmt->execute([$username, $email, $full_name, $hashed_password, $instituicao])) {
-                            $success = 'Conta criada com sucesso! Faça login.';
+                            header('Location: login.php?registered=1');
+                            exit;
                         } else {
                             $error = 'Erro ao criar conta. Tente novamente.';
                         }
