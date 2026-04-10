@@ -32,8 +32,31 @@ try {
     $stmt = $pdo->prepare("UPDATE friend_requests SET status = ?, updated_at = NOW() WHERE id = ?");
     $stmt->execute([$new_status, $request_id]);
 
-    $msg = ($action === 'accept') ? 'Pedido aceite! Agora podem conversar.' : 'Pedido rejeitado.';
-    echo json_encode(['success' => true, 'message' => $msg, 'action' => $action]);
+    $response = ['success' => true, 'action' => $action];
+
+    if ($action === 'accept') {
+        // Buscar info do sender para mostrar no frontend
+        $senderStmt = $pdo->prepare("SELECT id, username, profile_picture, is_verified FROM users WHERE id = ?");
+        $senderStmt->execute([$request['sender_id']]);
+        $sender = $senderStmt->fetch();
+        $response['message'] = 'Pedido aceite! Agora podem conversar.';
+        $response['sender'] = $sender;
+
+        // Notificar o sender de que o pedido foi aceite
+        try {
+            $notifStmt = $pdo->prepare("
+                INSERT INTO notifications (user_id, actor_id, type, reference_id, created_at) 
+                VALUES (?, ?, 'friend_accept', ?, NOW())
+            ");
+            $notifStmt->execute([$request['sender_id'], $current_user_id, $current_user_id]);
+        } catch (Exception $e) {
+            error_log("⚠️ Erro ao criar notificação friend_accept: " . $e->getMessage());
+        }
+    } else {
+        $response['message'] = 'Pedido rejeitado.';
+    }
+
+    echo json_encode($response);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => 'Erro ao processar pedido']);
 }

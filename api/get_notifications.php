@@ -100,6 +100,12 @@ try {
             case 'unfollow':
                 $message = 'parou de seguir você';
                 break;
+            case 'friend_request':
+                $message = 'enviou-te um pedido de amizade';
+                break;
+            case 'friend_accept':
+                $message = 'aceitou o seu pedido de amizade';
+                break;
             case 'mention':
                 $message = 'mencionou você em um comentário';
                 break;

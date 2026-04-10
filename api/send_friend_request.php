@@ -46,6 +46,15 @@ try {
                 WHERE id = ?
             ");
             $stmt->execute([$current_user_id, $receiver_id, $existing['id']]);
+
+            // Notificar o receiver
+            try {
+                $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, actor_id, type, reference_id, created_at) VALUES (?, ?, 'friend_request', ?, NOW())");
+                $notifStmt->execute([$receiver_id, $current_user_id, $current_user_id]);
+            } catch (Exception $e) {
+                error_log('⚠️ Erro notificação friend_request: ' . $e->getMessage());
+            }
+
             echo json_encode(['success' => true, 'message' => 'Pedido de amizade reenviado']);
             exit;
         }
@@ -54,6 +63,14 @@ try {
     // Criar novo pedido
     $stmt = $pdo->prepare("INSERT INTO friend_requests (sender_id, receiver_id, status) VALUES (?, ?, 'pending')");
     $stmt->execute([$current_user_id, $receiver_id]);
+
+    // Notificar o receiver
+    try {
+        $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, actor_id, type, reference_id, created_at) VALUES (?, ?, 'friend_request', ?, NOW())");
+        $notifStmt->execute([$receiver_id, $current_user_id, $current_user_id]);
+    } catch (Exception $e) {
+        error_log('⚠️ Erro notificação friend_request: ' . $e->getMessage());
+    }
 
     echo json_encode(['success' => true, 'message' => 'Pedido de amizade enviado']);
 } catch (Exception $e) {

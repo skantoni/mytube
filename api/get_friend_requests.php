@@ -34,6 +34,19 @@ try {
             ORDER BY fr.created_at DESC
         ");
         $stmt->execute([$current_user_id]);
+    } elseif ($type === 'friends') {
+        // Lista de amigos (aceites), ordenados por mais recentemente aceites primeiro
+        $stmt = $pdo->prepare("
+            SELECT fr.id, 
+                   CASE WHEN fr.sender_id = ? THEN fr.receiver_id ELSE fr.sender_id END as friend_id,
+                   fr.updated_at as accepted_at,
+                   u.username, u.profile_picture, u.is_verified
+            FROM friend_requests fr
+            JOIN users u ON u.id = CASE WHEN fr.sender_id = ? THEN fr.receiver_id ELSE fr.sender_id END
+            WHERE (fr.sender_id = ? OR fr.receiver_id = ?) AND fr.status = 'accepted'
+            ORDER BY fr.updated_at DESC
+        ");
+        $stmt->execute([$current_user_id, $current_user_id, $current_user_id, $current_user_id]);
     } else {
         echo json_encode(['success' => false, 'error' => 'Tipo inválido']);
         exit;

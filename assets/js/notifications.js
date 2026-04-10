@@ -127,12 +127,15 @@ const NotificationSystem = (function() {
             const iconClass = (notif.type === 'like' || notif.type === 'comment_like') ? 'like' : 
                               (notif.type === 'mention' || notif.type === 'bio_mention') ? 'mention' :
                               (notif.type === 'comment' || notif.type === 'reply') ? 'comment' : 
-                              notif.type === 'unfollow' ? 'unfollow' : 'follow';
+                              notif.type === 'unfollow' ? 'unfollow' : 
+                              (notif.type === 'friend_accept' || notif.type === 'friend_request') ? 'follow' : 'follow';
             const icon = notif.type === 'like' ? 'fa-heart' : 
                          notif.type === 'comment' ? 'fa-comment' : 
                          notif.type === 'reply' ? 'fa-reply' : 
                          (notif.type === 'mention' || notif.type === 'bio_mention') ? 'fa-at' :
                          notif.type === 'comment_like' ? 'fa-heart' : 
+                         notif.type === 'friend_request' ? 'fa-user-plus' :
+                         notif.type === 'friend_accept' ? 'fa-user-check' :
                          notif.type === 'unfollow' ? 'fa-user-minus' : 'fa-user-plus';
             
             return `
@@ -357,7 +360,10 @@ const NotificationSystem = (function() {
         } else if (type === 'bio_mention') {
             // Redirecionar para o perfil de quem mencionou
             if (actorUsername) window.location.href = `perfil.php?username=${actorUsername}`;
-        } else if (type === 'follow' || type === 'unfollow') {
+        } else if (type === 'friend_request') {
+            // Abrir chat onde pode aceitar o pedido
+            if (refId) window.location.href = `chat.php?from=feed`;
+        } else if (type === 'follow' || type === 'unfollow' || type === 'friend_accept') {
             if (refId) window.location.href = `perfil.php?id=${refId}`;
         } else if (type === 'best_mytuber_global') {
             window.location.href = `ranking.php`;

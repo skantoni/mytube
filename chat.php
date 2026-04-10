@@ -287,6 +287,7 @@ $current_user = $stmt->fetch();
             <div class="modal-tabs">
                 <button class="modal-tab active" onclick="switchFRTab('received', this)">Recebidos</button>
                 <button class="modal-tab" onclick="switchFRTab('sent', this)">Enviados</button>
+                <button class="modal-tab" onclick="switchFRTab('friends', this)">Amigos</button>
             </div>
             <div class="modal-body" id="friendRequestsList">
                 <div class="fr-loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
@@ -325,14 +326,16 @@ $current_user = $stmt->fetch();
             .then(r => r.json())
             .then(data => {
                 if (!data.success || !data.requests.length) {
-                    container.innerHTML = '<div class="fr-empty"><i class="fas fa-inbox"></i><p>Nenhum pedido</p></div>';
+                    const emptyMsg = type === 'friends' ? 'Nenhum amigo ainda' : 'Nenhum pedido';
+                    const emptyIcon = type === 'friends' ? 'fa-user-friends' : 'fa-inbox';
+                    container.innerHTML = `<div class="fr-empty"><i class="fas ${emptyIcon}"></i><p>${emptyMsg}</p></div>`;
                     return;
                 }
                 let html = '';
                 data.requests.forEach(req => {
                     const avatar = getAvatarUrl(req.profile_picture);
                     const verified = req.is_verified ? '<i class="fas fa-check-circle chat-verified-icon"></i>' : '';
-                    const time = formatFRTime(req.created_at);
+                    const time = formatFRTime(req.created_at || req.accepted_at);
 
                     if (type === 'received') {
                         html += `
@@ -351,7 +354,7 @@ $current_user = $stmt->fetch();
                                     </button>
                                 </div>
                             </div>`;
-                    } else {
+                    } else if (type === 'sent') {
                         html += `
                             <div class="fr-item">
                                 <img src="${avatar}" alt="${req.username}" class="fr-avatar" onerror="this.src='assets/images/default-avatar.svg'" onclick="window.location.href='perfil.php?id=${req.receiver_id}'">
@@ -361,12 +364,26 @@ $current_user = $stmt->fetch();
                                 </div>
                                 <div class="fr-status-label">Pendente</div>
                             </div>`;
+                    } else if (type === 'friends') {
+                        html += `
+                            <div class="fr-item">
+                                <img src="${avatar}" alt="${req.username}" class="fr-avatar" onerror="this.src='assets/images/default-avatar.svg'" onclick="window.location.href='perfil.php?id=${req.friend_id}'">
+                                <div class="fr-info">
+                                    <span class="fr-name">${escapeHtml(req.username)} ${verified}</span>
+                                    <span class="fr-time">${time}</span>
+                                </div>
+                                <div class="fr-actions">
+                                    <button class="fr-message-btn" onclick="window.location.href='chat.php?user_id=${req.friend_id}'">
+                                        <i class="fas fa-comment"></i> Mensagem
+                                    </button>
+                                </div>
+                            </div>`;
                     }
                 });
                 container.innerHTML = html;
             })
             .catch(() => {
-                container.innerHTML = '<div class="fr-empty"><p>Erro ao carregar pedidos</p></div>';
+                container.innerHTML = '<div class="fr-empty"><p>Erro ao carregar</p></div>';
             });
     }
 
@@ -383,9 +400,28 @@ $current_user = $stmt->fetch();
             .then(data => {
                 if (data.success) {
                     if (item) {
-                        item.innerHTML = `<div class="fr-responded">${action === 'accept' ? '✅ Aceite' : '❌ Rejeitado'}</div>`;
-                        item.style.opacity = '1';
-                        setTimeout(() => item.remove(), 1500);
+                        if (action === 'accept' && data.sender) {
+                            // Mostrar info do utilizador com botão de mensagem
+                            const avatar = getAvatarUrl(data.sender.profile_picture);
+                            const verified = data.sender.is_verified ? '<i class="fas fa-check-circle chat-verified-icon"></i>' : '';
+                            item.innerHTML = `
+                                <img src="${avatar}" alt="${escapeHtml(data.sender.username)}" class="fr-avatar" onerror="this.src='assets/images/default-avatar.svg'" onclick="window.location.href='perfil.php?id=${data.sender.id}'">
+                                <div class="fr-info">
+                                    <span class="fr-name">${escapeHtml(data.sender.username)} ${verified}</span>
+                                    <span class="fr-accepted-label"><i class="fas fa-check"></i> Amigos agora!</span>
+                                </div>
+                                <div class="fr-actions">
+                                    <button class="fr-message-btn" onclick="window.location.href='chat.php?user_id=${data.sender.id}'">
+                                        <i class="fas fa-comment"></i> Mensagem
+                                    </button>
+                                </div>
+                            `;
+                            item.style.opacity = '1';
+                        } else {
+                            item.innerHTML = `<div class="fr-responded">❌ Rejeitado</div>`;
+                            item.style.opacity = '1';
+                            setTimeout(() => item.remove(), 1500);
+                        }
                     }
                     loadFriendRequestsCount();
                 } else {
