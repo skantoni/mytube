@@ -376,13 +376,54 @@ function clearForgotMessage() {
     }
 }
 
-// STEP 1: Send code
+// STEP 1: Send code — rate limit helpers
+const RESET_CODE_COOLDOWN_MS = 60000; // 60 seconds
+const RESET_CODE_COOLDOWN_KEY = 'resetCodeLastSent';
+let _resetCodeCooldownTimer = null;
+
+function _getRemainingCooldown() {
+    const last = parseInt(localStorage.getItem(RESET_CODE_COOLDOWN_KEY) || '0', 10);
+    return Math.max(0, Math.ceil((last + RESET_CODE_COOLDOWN_MS - Date.now()) / 1000));
+}
+
+function _startSendCodeCooldownUI() {
+    const btn = document.getElementById('btnSendCode');
+    if (!btn) return;
+    if (_resetCodeCooldownTimer) clearInterval(_resetCodeCooldownTimer);
+    _resetCodeCooldownTimer = setInterval(() => {
+        const remaining = _getRemainingCooldown();
+        if (remaining <= 0) {
+            clearInterval(_resetCodeCooldownTimer);
+            _resetCodeCooldownTimer = null;
+            btn.disabled = false;
+            btn.textContent = 'Enviar Código';
+        } else {
+            btn.disabled = true;
+            btn.textContent = 'Aguardar ' + remaining + 's';
+        }
+    }, 500);
+}
+
+// On page load, restore cooldown if still active
+(function() {
+    if (_getRemainingCooldown() > 0) {
+        _startSendCodeCooldownUI();
+    }
+})();
+
 async function sendResetCode() {
     const emailInput = document.getElementById('resetEmail');
     const btn = document.getElementById('btnSendCode');
     const email = emailInput.value.trim();
-    
+
     clearForgotMessage();
+
+    // Frontend rate limit check
+    const remaining = _getRemainingCooldown();
+    if (remaining > 0) {
+        showForgotMessage('Aguarde ' + remaining + ' segundos antes de tentar novamente.');
+        return;
+    }
     
     if (!email) {
         showForgotMessage('Por favor, insira seu e-mail.');
@@ -424,6 +465,10 @@ async function sendResetCode() {
         
         if (data.success) {
             resetEmail = email;
+
+            // Record timestamp and start cooldown
+            localStorage.setItem(RESET_CODE_COOLDOWN_KEY, Date.now().toString());
+            _startSendCodeCooldownUI();
             
             // Mostrar email no step 2
             document.getElementById('emailDisplay').textContent = email;
@@ -452,9 +497,14 @@ async function sendResetCode() {
         showForgotMessage('Erro de conexão. Tente novamente.');
         console.error('Reset error:', error);
     } finally {
-        btn.disabled = false;
-        btn.textContent = 'Enviar Código';
-        btn.classList.remove('loading');
+        // Only re-enable if not in cooldown (cooldown is started on success)
+        if (_getRemainingCooldown() <= 0) {
+            btn.disabled = false;
+            btn.textContent = 'Enviar Código';
+            btn.classList.remove('loading');
+        } else {
+            btn.classList.remove('loading');
+        }
     }
 }
 
