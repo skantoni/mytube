@@ -1566,6 +1566,16 @@ body * {
         background: transparent;
         -webkit-backdrop-filter: none;
         backdrop-filter: none;
+        pointer-events: none;
+    }
+
+    .tiktok-header .tiktok-logo,
+    .tiktok-header .header-actions,
+    .tiktok-header .header-btn,
+    .tiktok-header .profile-header-info,
+    .tiktok-header a,
+    .tiktok-header button {
+        pointer-events: auto;
     }
 
     .video-player {
