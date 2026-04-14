@@ -697,7 +697,7 @@ body {
 
 .message-forwarded i {
     font-size: 10px;
-    transform: scaleX(-1);
+
 }
 
 .message-forwarded strong {
