@@ -344,6 +344,9 @@ async function getMessages(conversationId, limit = 50, beforeId = null, userId =
         let query = `
             SELECT m.*, 
                    m.is_edited,
+                   m.forwarded_from_message_id,
+                   m.forwarded_from_user_id,
+                   m.forwarded_from_username,
                    u.username as sender_username, 
                    u.profile_picture as sender_avatar,
                    rm.message as reply_content,
@@ -1021,6 +1024,9 @@ io.on('connection', (socket) => {
         // Buscar dados completos da mensagem
         const [messageRows] = await pool.execute(`
             SELECT m.*, 
+                   m.forwarded_from_message_id,
+                   m.forwarded_from_user_id,
+                   m.forwarded_from_username,
                    u.username as sender_username, 
                    u.profile_picture as sender_avatar,
                    rm.message as reply_content,
@@ -1565,6 +1571,92 @@ app.post('/api/notify-message', async (req, res) => {
         
     } catch (error) {
         console.error('❌ Erro em /api/notify-message:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * Notificação de mensagem reencaminhada (chamado pelo PHP)
+ */
+app.post('/api/notify-forward', async (req, res) => {
+    try {
+        const { 
+            message_id, conversation_id, sender_id, receiver_id, 
+            message, type, file_url,
+            forwarded_from_message_id, forwarded_from_user_id, forwarded_from_username,
+            sender_username, sender_avatar 
+        } = req.body;
+        
+        if (!message_id || !conversation_id || !sender_id || !receiver_id) {
+            return res.status(400).json({ success: false, error: 'Dados incompletos' });
+        }
+        
+        console.log(`🔀 Notificação de reencaminhamento: msg ${message_id} de ${sender_id} para ${receiver_id}`);
+        
+        // Montar objeto da mensagem
+        const messageObj = {
+            id: message_id,
+            conversation_id: conversation_id,
+            sender_id: sender_id,
+            receiver_id: receiver_id,
+            message: message,
+            content: message,
+            sender_username: sender_username,
+            sender_avatar: sender_avatar,
+            status: 'sent',
+            created_at: new Date().toISOString(),
+            type: type || 'text',
+            file_url: file_url || null,
+            forwarded_from_message_id: forwarded_from_message_id,
+            forwarded_from_user_id: forwarded_from_user_id,
+            forwarded_from_username: forwarded_from_username
+        };
+        
+        // Verificar se destinatário está online
+        const receiverSocketId = userSockets.get(parseInt(receiver_id));
+        
+        if (receiverSocketId) {
+            await pool.execute('UPDATE messages SET status = ? WHERE id = ?', ['delivered', message_id]);
+            messageObj.status = 'delivered';
+            console.log(`📬 Destinatário ${receiver_id} está online, marcando como delivered`);
+        }
+        
+        // Emitir para a sala da conversa
+        io.to(`conversation_${conversation_id}`).emit('new_message', {
+            conversationId: conversation_id,
+            message: messageObj
+        });
+        
+        // Notificar destinatário (sidebar)
+        io.to(`user_${receiver_id}`).emit('message_notification', {
+            conversationId: conversation_id,
+            senderId: sender_id,
+            senderUsername: sender_username,
+            senderAvatar: sender_avatar,
+            content: '🔀 ' + (message || '').substring(0, 100)
+        });
+        
+        // Atualizar lista de conversas
+        const senderConversations = await getUserConversations(sender_id);
+        const receiverConversations = await getUserConversations(receiver_id);
+        
+        io.to(`user_${sender_id}`).emit('conversations_list', senderConversations);
+        io.to(`user_${receiver_id}`).emit('conversations_list', receiverConversations);
+        await emitUnreadMessagesCountToUser(receiver_id);
+        
+        // Emitir status update
+        if (receiverSocketId) {
+            io.to(`user_${sender_id}`).emit('message_status_update', {
+                messageId: message_id,
+                conversationId: conversation_id,
+                status: 'delivered'
+            });
+        }
+        
+        res.json({ success: true, delivered: !!receiverSocketId });
+        
+    } catch (error) {
+        console.error('❌ Erro em /api/notify-forward:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

@@ -1913,6 +1913,18 @@ function createMessageElement(msg, isTemp = false) {
         div.setAttribute('data-message-id', msg.id);
     }
     
+    // Indicador de mensagem reencaminhada
+    let forwardedHTML = '';
+    if (msg.forwarded_from_message_id || msg.forwarded_from_user_id) {
+        const forwardedUsername = msg.forwarded_from_username || 'alguém';
+        forwardedHTML = `
+            <div class="message-forwarded">
+                <i class="fas fa-share"></i>
+                <span>Reencaminhada de <strong>${escapeHtml(forwardedUsername)}</strong></span>
+            </div>
+        `;
+    }
+    
     let replyHTML = '';
     const replyId = msg.reply_to_id || msg.reply_to_message_id;
     if (replyId && msg.reply_content) {
@@ -2044,6 +2056,7 @@ function createMessageElement(msg, isTemp = false) {
             ${moreOptionsHTML}
             <div class="message-bubble-wrapper">
                 <div class="message-bubble">
+                    ${forwardedHTML}
                     ${replyHTML}
                     <div class="message-text">${messageContent}</div>
                     <div class="message-meta">
@@ -2267,31 +2280,271 @@ function copyMessageText(text) {
 
 function forwardMessage(messageId) {
     closeMessageOptions();
-    // Guardar mensagem para reencaminhar
+    closeLongPressMenu();
+    
     const msgElement = document.querySelector(`[data-message-id="${messageId}"]`);
-    if (msgElement) {
-        const content = msgElement.querySelector('.message-text')?.textContent || '';
-        sessionStorage.setItem('forwardMessage', content);
-        showToast('Selecione uma conversa para reencaminhar');
-        // Mostrar lista de conversas para selecionar
-        closeMobileChat();
+    if (!msgElement) return;
+    
+    // Guardar dados da mensagem original para reencaminhar
+    window._forwardMessageId = messageId;
+    window._forwardSelectedUsers = new Map(); // userId -> userData
+    
+    // Extrair conteúdo para preview
+    const msgText = msgElement.querySelector('.message-text')?.textContent?.trim() || '';
+    const isAudio = !!msgElement.querySelector('.audio-message');
+    const isImage = !!msgElement.querySelector('.chat-image');
+    const isVideo = !!msgElement.querySelector('.chat-video-container');
+    const isFile = !!msgElement.querySelector('.chat-file-container');
+    
+    let previewContent = '';
+    let previewIcon = '';
+    
+    if (isAudio) {
+        previewIcon = '<i class="fas fa-microphone"></i>';
+        previewContent = 'Mensagem de áudio';
+    } else if (isImage) {
+        previewIcon = '<i class="fas fa-image"></i>';
+        previewContent = 'Foto';
+    } else if (isVideo) {
+        previewIcon = '<i class="fas fa-video"></i>';
+        previewContent = 'Vídeo';
+    } else if (isFile) {
+        previewIcon = '<i class="fas fa-file"></i>';
+        previewContent = msgElement.querySelector('.chat-file-name')?.textContent || 'Ficheiro';
+    } else {
+        previewIcon = '<i class="fas fa-comment"></i>';
+        previewContent = msgText.length > 120 ? msgText.substring(0, 120) + '...' : msgText;
     }
+    
+    // Preencher preview
+    const previewEl = document.getElementById('forwardMessagePreview');
+    if (previewEl) {
+        previewEl.innerHTML = `
+            <div class="forward-preview-content">
+                <span class="forward-preview-icon">${previewIcon}</span>
+                <span class="forward-preview-text">${escapeHtml(previewContent)}</span>
+            </div>
+        `;
+    }
+    
+    // Limpar estado
+    const selectedContainer = document.getElementById('forwardSelectedUsers');
+    if (selectedContainer) {
+        selectedContainer.innerHTML = '';
+        selectedContainer.style.display = 'none';
+    }
+    document.getElementById('forwardCount').textContent = '0 selecionados';
+    document.getElementById('forwardSendBtn').disabled = true;
+    document.getElementById('forwardSearchUsers').value = '';
+    
+    // Abrir modal
+    document.getElementById('forwardModal').style.display = 'flex';
+    
+    // Carregar contactos (conversas recentes + amigos)
+    loadForwardContacts();
 }
 
-function checkForForwardMessage() {
-    const forwardContent = sessionStorage.getItem('forwardMessage');
-    if (forwardContent) {
-        // Colocar o texto no input
-        const messageInput = document.getElementById('messageInput');
-        if (messageInput) {
-            messageInput.value = forwardContent;
-            messageInput.focus();
-            autoResizeTextarea(messageInput);
-        }
-        // Limpar do storage
-        sessionStorage.removeItem('forwardMessage');
-        showToast('Mensagem pronta para reencaminhar');
+function closeForwardModal() {
+    document.getElementById('forwardModal').style.display = 'none';
+    window._forwardMessageId = null;
+    window._forwardSelectedUsers = new Map();
+}
+
+function loadForwardContacts() {
+    const container = document.getElementById('forwardUsersList');
+    container.innerHTML = '<div class="fr-loading"><i class="fas fa-spinner fa-spin"></i> Carregando contactos...</div>';
+    
+    // Usar as conversas já carregadas na sidebar
+    const conversationItems = document.querySelectorAll('.conversation-item');
+    
+    if (conversationItems.length === 0) {
+        // Fallback: buscar amigos via API
+        fetch('api/get_friend_requests.php?type=friends')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.requests.length > 0) {
+                    renderForwardContacts(data.requests.map(req => ({
+                        id: req.friend_id,
+                        username: req.username,
+                        avatar: req.profile_picture,
+                        is_verified: req.is_verified
+                    })));
+                } else {
+                    container.innerHTML = '<div class="fr-empty"><i class="fas fa-users"></i><p>Nenhum contacto encontrado</p></div>';
+                }
+            })
+            .catch(() => {
+                container.innerHTML = '<div class="fr-empty"><p>Erro ao carregar contactos</p></div>';
+            });
+        return;
     }
+    
+    // Extrair dados das conversas existentes
+    const contacts = [];
+    conversationItems.forEach(item => {
+        const userId = item.dataset.userId;
+        const username = item.dataset.username;
+        const avatar = item.dataset.avatar || item.querySelector('img')?.src || DEFAULT_AVATAR;
+        const isVerified = item.dataset.isVerified === '1';
+        
+        if (userId && parseInt(userId) !== currentUserId) {
+            contacts.push({ id: parseInt(userId), username, avatar, is_verified: isVerified });
+        }
+    });
+    
+    renderForwardContacts(contacts);
+}
+
+function renderForwardContacts(contacts) {
+    const container = document.getElementById('forwardUsersList');
+    
+    if (contacts.length === 0) {
+        container.innerHTML = '<div class="fr-empty"><i class="fas fa-users"></i><p>Nenhum contacto encontrado</p></div>';
+        return;
+    }
+    
+    container.innerHTML = contacts.map(contact => {
+        const avatar = getAvatarUrl(contact.avatar);
+        const verified = contact.is_verified ? '<i class="fas fa-check-circle chat-verified-icon"></i>' : '';
+        const isSelected = window._forwardSelectedUsers.has(contact.id);
+        
+        return `
+            <div class="forward-user-item ${isSelected ? 'selected' : ''}" 
+                 data-user-id="${contact.id}"
+                 onclick="toggleForwardUser(${contact.id}, '${escapeHtml(contact.username).replace(/'/g, "\\'")}', '${escapeHtml(avatar).replace(/'/g, "\\'")}', ${contact.is_verified ? 'true' : 'false'})">
+                <img src="${avatar}" 
+                     onerror="this.src='${DEFAULT_AVATAR}'" 
+                     alt="${escapeHtml(contact.username)}">
+                <div class="forward-user-info">
+                    <h4><span>${escapeHtml(contact.username)}</span> ${verified}</h4>
+                </div>
+                <div class="forward-user-check">
+                    <i class="fas ${isSelected ? 'fa-check-circle' : 'fa-circle'}"></i>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleForwardUser(userId, username, avatar, isVerified) {
+    if (window._forwardSelectedUsers.has(userId)) {
+        window._forwardSelectedUsers.delete(userId);
+    } else {
+        window._forwardSelectedUsers.set(userId, { id: userId, username, avatar, is_verified: isVerified });
+    }
+    
+    // Atualizar UI do item
+    const item = document.querySelector(`.forward-user-item[data-user-id="${userId}"]`);
+    if (item) {
+        item.classList.toggle('selected');
+        const checkIcon = item.querySelector('.forward-user-check i');
+        if (checkIcon) {
+            checkIcon.className = window._forwardSelectedUsers.has(userId) ? 'fas fa-check-circle' : 'fas fa-circle';
+        }
+    }
+    
+    // Atualizar chips de selecionados
+    updateForwardSelectedChips();
+    
+    // Atualizar botão e contagem
+    const count = window._forwardSelectedUsers.size;
+    document.getElementById('forwardCount').textContent = `${count} selecionado${count !== 1 ? 's' : ''}`;
+    document.getElementById('forwardSendBtn').disabled = count === 0;
+}
+
+function updateForwardSelectedChips() {
+    const container = document.getElementById('forwardSelectedUsers');
+    const selected = window._forwardSelectedUsers;
+    
+    if (selected.size === 0) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.style.display = 'flex';
+    container.innerHTML = Array.from(selected.values()).map(user => `
+        <div class="forward-chip" onclick="toggleForwardUser(${user.id}, '${escapeHtml(user.username).replace(/'/g, "\\'")}', '${escapeHtml(user.avatar).replace(/'/g, "\\'")}', ${user.is_verified})">
+            <img src="${getAvatarUrl(user.avatar)}" onerror="this.src='${DEFAULT_AVATAR}'" alt="${escapeHtml(user.username)}">
+            <span>${escapeHtml(user.username)}</span>
+            <i class="fas fa-times"></i>
+        </div>
+    `).join('');
+}
+
+function searchForwardUsers(query) {
+    if (!query || query.length < 2) {
+        loadForwardContacts();
+        return;
+    }
+    
+    const container = document.getElementById('forwardUsersList');
+    container.innerHTML = '<div class="fr-loading"><i class="fas fa-spinner fa-spin"></i> Pesquisando...</div>';
+    
+    fetch(`api/search_chat_users.php?search=${encodeURIComponent(query)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.users && data.users.length > 0) {
+                renderForwardContacts(data.users.map(u => ({
+                    id: u.id,
+                    username: u.username,
+                    avatar: u.avatar || u.profile_picture,
+                    is_verified: u.is_verified || false
+                })));
+            } else {
+                container.innerHTML = '<div class="fr-empty"><i class="fas fa-search"></i><p>Nenhum resultado</p></div>';
+            }
+        })
+        .catch(() => {
+            container.innerHTML = '<div class="fr-empty"><p>Erro na pesquisa</p></div>';
+        });
+}
+
+function executeForward() {
+    const messageId = window._forwardMessageId;
+    const selectedUsers = window._forwardSelectedUsers;
+    
+    if (!messageId || selectedUsers.size === 0) return;
+    
+    const receiverIds = Array.from(selectedUsers.keys()).join(',');
+    const sendBtn = document.getElementById('forwardSendBtn');
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+    
+    const formData = new FormData();
+    formData.append('message_id', messageId);
+    formData.append('receiver_ids', receiverIds);
+    
+    fetch('api/forward_message.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const count = data.forwarded_count || 1;
+            closeForwardModal();
+            showToast(`✅ Mensagem reencaminhada para ${count} conversa${count !== 1 ? 's' : ''}!`);
+            
+            // Se reencaminhou para a conversa aberta, recarregar mensagens
+            if (data.forwarded_messages) {
+                data.forwarded_messages.forEach(fw => {
+                    if (fw.receiver_id === chatWithUserId) {
+                        // A mensagem será recebida via Socket.IO
+                    }
+                });
+            }
+        } else {
+            showToast(data.error || 'Erro ao reencaminhar');
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar';
+        }
+    })
+    .catch(() => {
+        showToast('Erro ao reencaminhar mensagem');
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar';
+    });
 }
 
 function showToast(message) {
@@ -2442,9 +2695,6 @@ function openChat(userId) {
     
     // Iniciar/entrar na conversa via Socket
     startConversation(userId);
-    
-    // Verificar se há mensagem para reencaminhar
-    checkForForwardMessage();
     
     // Verificar se o usuário está digitando (do Map guardado)
     const normalizedUserId = parseInt(userId);

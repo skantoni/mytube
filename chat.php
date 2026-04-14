@@ -295,6 +295,34 @@ $current_user = $stmt->fetch();
         </div>
     </div>
 
+    <!-- Modal de Reencaminhamento de Mensagem -->
+    <div class="modal" id="forwardModal" style="display:none;" onclick="if(event.target===this)closeForwardModal()">
+        <div class="modal-content forward-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-share"></i> Reencaminhar para...</h3>
+                <button onclick="closeForwardModal()">&times;</button>
+            </div>
+            <div class="forward-message-preview" id="forwardMessagePreview">
+                <!-- Preview da mensagem a reencaminhar -->
+            </div>
+            <div class="modal-body">
+                <input type="text" id="forwardSearchUsers" placeholder="Pesquisar contactos..." oninput="searchForwardUsers(this.value)">
+                <div class="forward-selected-users" id="forwardSelectedUsers" style="display:none;">
+                    <!-- Chips dos utilizadores selecionados -->
+                </div>
+                <div id="forwardUsersList" class="users-list">
+                    <div class="fr-loading"><i class="fas fa-spinner fa-spin"></i> Carregando contactos...</div>
+                </div>
+            </div>
+            <div class="forward-modal-footer">
+                <span class="forward-count" id="forwardCount">0 selecionados</span>
+                <button class="forward-send-btn" id="forwardSendBtn" onclick="executeForward()" disabled>
+                    <i class="fas fa-paper-plane"></i> Enviar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
     // ========================================
     // SISTEMA DE PEDIDOS DE AMIZADE
