@@ -19,8 +19,8 @@
  * CRON (todo domingo às 23:59):
  *   59 23 * * 0 php /caminho/para/mytube/api/reset_weekly_rankings.php >> /caminho/para/mytube/logs/reset_ranking.log 2>&1
  */
-require_once '../includes/config.php';
-require_once '../includes/ranking_cache.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/ranking_cache.php';
 
 $is_cli  = (php_sapi_name() === 'cli');
 $is_cron = $is_cli || (
