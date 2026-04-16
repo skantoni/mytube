@@ -1,23 +1,23 @@
 <?php
 /**
  * ═══════════════════════════════════════════════════════════════
- * API: Reset Semanal dos Ranking Points
+ * API: Snapshot Semanal dos Rankings
  * ═══════════════════════════════════════════════════════════════
  * 
- * Deve ser executado todo DOMINGO às 23:59 (via cron ou admin)
+ * Pode ser executado todo DOMINGO às 23:59 (via cron ou admin)
  * 
  * O que faz:
  * 1. Guarda snapshot dos pontos atuais na tabela ranking_weekly_history
- * 2. Zera ranking_points de todos os utilizadores
- * 3. Limpa o cache de rankings
+ * 2. Limpa o cache de rankings
+ * 
+ * NOTA: Os ranking_points NÃO são zerados. Os rankings são calculados
+ * dinamicamente por período (semana, mês, 3 meses) com base na data
+ * de criação dos vídeos.
  * 
  * Execução:
  *   CLI:   php api/reset_weekly_rankings.php
  *   HTTP:  api/reset_weekly_rankings.php?secret=CRON_SECRET
  *   Admin: api/reset_weekly_rankings.php (logado como Admin)
- * 
- * CRON (todo domingo às 23:59):
- *   59 23 * * 0 php /caminho/para/mytube/api/reset_weekly_rankings.php >> /caminho/para/mytube/logs/reset_ranking.log 2>&1
  */
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/ranking_cache.php';
@@ -108,11 +108,6 @@ try {
 
     $saved_count = $pdo->query("SELECT ROW_COUNT()")->fetchColumn();
 
-    // ═══════════════════════════════════════
-    // 4. Zerar ranking_points de todos
-    // ═══════════════════════════════════════
-    $reset = $pdo->exec("UPDATE users SET ranking_points = 0 WHERE username != 'Admin'");
-
     $pdo->commit();
 
     // ═══════════════════════════════════════
@@ -125,17 +120,15 @@ try {
     // ═══════════════════════════════════════
     $result = [
         'success' => true,
-        'message' => 'Ranking points resetados com sucesso!',
+        'message' => 'Snapshot semanal guardado com sucesso!',
         'week' => $week_label,
         'snapshot_at' => $snapshot_time,
         'users_saved' => (int)$saved_count,
-        'users_reset' => $reset,
     ];
 
     if ($is_cli) {
-        echo "[OK] Reset semanal concluído — Semana: $week_label\n";
-        echo "     Utilizadores com snapshot: $saved_count\n";
-        echo "     Utilizadores resetados: $reset\n";
+        echo "[OK] Snapshot semanal concluído — Semana: $week_label\n";
+        echo "     Utilizadores guardados: $saved_count\n";
         echo "     Hora: $snapshot_time\n";
     } else {
         echo json_encode($result, JSON_PRETTY_PRINT);

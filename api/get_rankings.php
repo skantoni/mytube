@@ -203,13 +203,18 @@ try {
 function get_my_rank($pdo, int $userId): array {
     if (!$userId) return ['success' => false, 'error' => 'Não autenticado'];
 
-    // Dados do utilizador (1 query simples, indexed by PK)
+    // Dados do utilizador com pontos calculados dinamicamente (últimos 3 meses)
     $stmt = $pdo->prepare("
-        SELECT u.id, u.username, u.full_name, u.profile_picture, u.school_id, u.ranking_points,
+        SELECT u.id, u.username, u.full_name, u.profile_picture, u.school_id,
                s.name AS school_name, s.short_name AS school_short,
-               (SELECT COUNT(*) FROM videos WHERE user_id = u.id AND is_public = 1) AS total_videos,
-               (SELECT COALESCE(SUM(likes_count), 0) FROM videos WHERE user_id = u.id AND is_public = 1) AS total_likes,
-               (SELECT COALESCE(SUM(views_count), 0) FROM videos WHERE user_id = u.id AND is_public = 1) AS total_views
+               (SELECT COUNT(*) FROM videos WHERE user_id = u.id AND is_public = 1 AND created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)) AS total_videos,
+               (SELECT COALESCE(SUM(likes_count), 0) FROM videos WHERE user_id = u.id AND is_public = 1 AND created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)) AS total_likes,
+               (SELECT COALESCE(SUM(views_count), 0) FROM videos WHERE user_id = u.id AND is_public = 1 AND created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)) AS total_views,
+               (SELECT COALESCE(SUM(comments_count), 0) FROM videos WHERE user_id = u.id AND is_public = 1 AND created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)) AS total_comments,
+               COALESCE((
+                   SELECT COUNT(*) * 10 + COALESCE(SUM(v.likes_count), 0) * 2 + COALESCE(SUM(v.comments_count), 0) * 3 + COALESCE(SUM(v.views_count), 0) * 1
+                   FROM videos v WHERE v.user_id = u.id AND v.is_public = 1 AND v.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
+               ), 0) AS calculated_points
         FROM users u
         LEFT JOIN schools s ON u.school_id = s.id
         WHERE u.id = ?
@@ -218,19 +223,31 @@ function get_my_rank($pdo, int $userId): array {
     $myData = $stmt->fetch();
     if (!$myData) return ['success' => false, 'error' => 'Utilizador não encontrado'];
 
-    $myPoints = (int)$myData['ranking_points'];
+    $myPoints = (int)$myData['calculated_points'];
     $myData['points'] = $myPoints;
     $myData['profile_picture_url'] = avatar_url($myData['profile_picture'] ?? null);
 
-    // Posição global — 1 query indexed (usa idx_ranking_points)
-    $stmtRank = $pdo->prepare("SELECT COUNT(*) + 1 AS global_rank FROM users WHERE ranking_points > ?");
+    // Posição global — baseada em pontos dinâmicos dos últimos 3 meses
+    $stmtRank = $pdo->prepare("
+        SELECT COUNT(*) + 1 AS global_rank FROM users u2
+        WHERE u2.username != 'Admin' AND COALESCE((
+            SELECT COUNT(*) * 10 + COALESCE(SUM(v.likes_count), 0) * 2 + COALESCE(SUM(v.comments_count), 0) * 3 + COALESCE(SUM(v.views_count), 0) * 1
+            FROM videos v WHERE v.user_id = u2.id AND v.is_public = 1 AND v.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
+        ), 0) > ?
+    ");
     $stmtRank->execute([$myPoints]);
     $globalRank = (int)$stmtRank->fetchColumn();
 
-    // Posição na escola — 1 query indexed
+    // Posição na escola — dinâmica
     $schoolRank = null;
     if ($myData['school_id']) {
-        $stmtSR = $pdo->prepare("SELECT COUNT(*) + 1 AS school_rank FROM users WHERE school_id = ? AND ranking_points > ?");
+        $stmtSR = $pdo->prepare("
+            SELECT COUNT(*) + 1 AS school_rank FROM users u2
+            WHERE u2.school_id = ? AND u2.username != 'Admin' AND COALESCE((
+                SELECT COUNT(*) * 10 + COALESCE(SUM(v.likes_count), 0) * 2 + COALESCE(SUM(v.comments_count), 0) * 3 + COALESCE(SUM(v.views_count), 0) * 1
+                FROM videos v WHERE v.user_id = u2.id AND v.is_public = 1 AND v.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
+            ), 0) > ?
+        ");
         $stmtSR->execute([$myData['school_id'], $myPoints]);
         $schoolRank = (int)$stmtSR->fetchColumn();
     }
@@ -255,30 +272,14 @@ function get_top_creators($pdo, string $period, int $limit): array {
     if ($cached !== null) return $cached;
 
     if ($period === 'all') {
-        // OTIMIZADO: usa ranking_points pré-calculado, sem JOIN em videos
-        $sql = "
-            SELECT 
-                u.id, u.username, u.full_name, u.profile_picture, u.is_verified,
-                u.ranking_points AS points,
-                s.name AS school_name, s.short_name AS school_short, s.id AS school_id,
-                (SELECT COUNT(*) FROM videos WHERE user_id = u.id AND is_public = 1) AS total_videos,
-                (SELECT COALESCE(SUM(likes_count), 0) FROM videos WHERE user_id = u.id AND is_public = 1) AS total_likes,
-                (SELECT COALESCE(SUM(views_count), 0) FROM videos WHERE user_id = u.id AND is_public = 1) AS total_views,
-                (SELECT COALESCE(SUM(comments_count), 0) FROM videos WHERE user_id = u.id AND is_public = 1) AS total_comments
-            FROM users u
-            LEFT JOIN schools s ON u.school_id = s.id
-            WHERE u.username != 'Admin' AND u.ranking_points > 0
-            ORDER BY u.ranking_points DESC
-            LIMIT ?
-        ";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$limit]);
+        $where_period = "AND v.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)";
+    } elseif ($period === 'week') {
+        $where_period = "AND v.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
     } else {
-        $where_period = $period === 'week'
-            ? "AND v.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
-            : "AND v.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
-        
-        $sql = "
+        $where_period = "AND v.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+    }
+
+    $sql = "
             SELECT 
                 u.id, u.username, u.full_name, u.profile_picture, u.is_verified,
                 u.ranking_points,
@@ -304,7 +305,6 @@ function get_top_creators($pdo, string $period, int $limit): array {
         ";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$limit]);
-    }
 
     $creators = $stmt->fetchAll();
     foreach ($creators as $i => &$c) {
@@ -325,17 +325,25 @@ function get_school_creators($pdo, int $school_id, int $limit): array {
     $cached = ranking_cache_get($cache_key, 300);
     if ($cached !== null) return $cached;
 
-    // Usa ranking_points para ORDER (indexed)
+    // Calcula pontos dinâmicamente dos últimos 3 meses
     $sql = "
         SELECT 
             u.id, u.username, u.full_name, u.profile_picture, u.is_verified,
-            u.ranking_points AS points,
-            (SELECT COUNT(*) FROM videos WHERE user_id = u.id AND is_public = 1) AS total_videos,
-            (SELECT COALESCE(SUM(likes_count), 0) FROM videos WHERE user_id = u.id AND is_public = 1) AS total_likes,
-            (SELECT COALESCE(SUM(views_count), 0) FROM videos WHERE user_id = u.id AND is_public = 1) AS total_views
+            COUNT(DISTINCT v.id) AS total_videos,
+            COALESCE(SUM(v.likes_count), 0) AS total_likes,
+            COALESCE(SUM(v.views_count), 0) AS total_views,
+            (
+                COUNT(DISTINCT v.id) * 10 +
+                COALESCE(SUM(v.likes_count), 0) * 2 +
+                COALESCE(SUM(v.comments_count), 0) * 3 +
+                COALESCE(SUM(v.views_count), 0) * 1
+            ) AS points
         FROM users u
-        WHERE u.school_id = ? AND u.username != 'Admin' AND u.ranking_points > 0
-        ORDER BY u.ranking_points DESC
+        LEFT JOIN videos v ON v.user_id = u.id AND v.is_public = 1 AND v.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
+        WHERE u.school_id = ? AND u.username != 'Admin'
+        GROUP BY u.id
+        HAVING total_videos > 0
+        ORDER BY points DESC
         LIMIT ?
     ";
     $stmt = $pdo->prepare($sql);
@@ -369,18 +377,21 @@ function get_top_schools($pdo, int $limit): array {
         SELECT 
             s.id, s.name, s.short_name, s.logo_path, s.city,
             COUNT(DISTINCT u.id) AS total_students,
-            COALESCE(SUM(u.ranking_points), 0) AS points,
-            (SELECT COUNT(*) FROM videos v INNER JOIN users u2 ON v.user_id = u2.id 
-             WHERE u2.school_id = s.id AND v.is_public = 1) AS total_videos,
-            (SELECT COALESCE(SUM(v.likes_count), 0) FROM videos v INNER JOIN users u2 ON v.user_id = u2.id 
-             WHERE u2.school_id = s.id AND v.is_public = 1) AS total_likes,
-            (SELECT COALESCE(SUM(v.views_count), 0) FROM videos v INNER JOIN users u2 ON v.user_id = u2.id 
-             WHERE u2.school_id = s.id AND v.is_public = 1) AS total_views
+            COUNT(DISTINCT v.id) AS total_videos,
+            COALESCE(SUM(v.likes_count), 0) AS total_likes,
+            COALESCE(SUM(v.views_count), 0) AS total_views,
+            (
+                COUNT(DISTINCT v.id) * 10 +
+                COALESCE(SUM(v.likes_count), 0) * 2 +
+                COALESCE(SUM(v.comments_count), 0) * 3 +
+                COALESCE(SUM(v.views_count), 0) * 1
+            ) AS points
         FROM schools s
         LEFT JOIN users u ON u.school_id = s.id
+        LEFT JOIN videos v ON v.user_id = u.id AND v.is_public = 1 AND v.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
         WHERE s.is_active = 1
         GROUP BY s.id
-        HAVING points > 0
+        HAVING total_videos > 0
         ORDER BY points DESC
         LIMIT ?
     ";
