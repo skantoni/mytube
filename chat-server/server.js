@@ -1662,6 +1662,87 @@ app.post('/api/notify-forward', async (req, res) => {
 });
 
 // ==========================================
+// WEB PUSH NOTIFICATIONS
+// ==========================================
+
+const webpush = (() => {
+    try {
+        const wp = require('web-push');
+        const vapidPublic = process.env.VAPID_PUBLIC_KEY;
+        const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
+        const vapidEmail = process.env.VAPID_EMAIL || 'mailto:admin@mytube.com';
+
+        if (vapidPublic && vapidPrivate) {
+            wp.setVapidDetails(vapidEmail, vapidPublic, vapidPrivate);
+            console.log('🔔 Web Push configurado com sucesso');
+            return wp;
+        } else {
+            console.log('⚠️ Web Push: VAPID keys não configuradas no .env');
+            return null;
+        }
+    } catch (e) {
+        console.log('⚠️ Web Push: módulo web-push não instalado (npm install web-push)');
+        return null;
+    }
+})();
+
+/**
+ * Endpoint para enviar push notifications (chamado pelo PHP)
+ * Body: { subscriptions: [{endpoint, p256dh, auth}], notification: {title, body, url, icon} }
+ */
+app.post('/api/send-push', async (req, res) => {
+    if (!webpush) {
+        return res.status(503).json({ success: false, error: 'Web Push não configurado' });
+    }
+
+    try {
+        const { subscriptions, notification } = req.body;
+
+        if (!subscriptions || !Array.isArray(subscriptions) || !notification) {
+            return res.status(400).json({ success: false, error: 'Dados incompletos' });
+        }
+
+        const payload = JSON.stringify({
+            title: notification.title || 'MyTube',
+            body: notification.body || '',
+            url: notification.url || '/my/index.php',
+            icon: notification.icon || '/my/assets/images/logo_icon.png',
+        });
+
+        const expired = [];
+        const results = await Promise.allSettled(
+            subscriptions.map(async (sub) => {
+                const pushSub = {
+                    endpoint: sub.endpoint,
+                    keys: { p256dh: sub.p256dh, auth: sub.auth }
+                };
+                try {
+                    await webpush.sendNotification(pushSub, payload, { TTL: 86400 });
+                    return 'sent';
+                } catch (err) {
+                    if (err.statusCode === 404 || err.statusCode === 410) {
+                        // Subscrição expirada/inválida
+                        expired.push(sub.endpoint);
+                        return 'expired';
+                    }
+                    console.error('❌ Push error:', err.statusCode, err.message);
+                    return 'failed';
+                }
+            })
+        );
+
+        const sent = results.filter(r => r.value === 'sent').length;
+        console.log(`🔔 Push enviado: ${sent}/${subscriptions.length} sucesso, ${expired.length} expirados`);
+
+        res.json({ success: true, sent, expired });
+
+    } catch (error) {
+        console.error('❌ Erro em /api/send-push:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ==========================================
 // INICIAR SERVIDOR
 // ==========================================
 

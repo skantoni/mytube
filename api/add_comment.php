@@ -3,6 +3,7 @@ ob_start(); // Capturar output para evitar problemas com headers
 session_start();
 require_once '../includes/config.php';
 require_once '../includes/ranking_cache.php';
+require_once '../includes/push_helper.php';
 
 // Limpar qualquer output anterior
 ob_end_clean();
@@ -141,6 +142,10 @@ try {
                     VALUES (?, ?, 'comment', ?, ?)
                 ");
                 $notifStmt->execute([$video_owner_id, $user_id, $video_id, $comment_id]);
+                
+                // Push notification
+                $actorName = $_SESSION['username'] ?? 'Alguém';
+                sendPushNotification($pdo, (int)$video_owner_id, 'Novo comentário 💬', "$actorName comentou no teu vídeo", "/my/index.php?v=$video_id");
             } catch (Exception $e) {
                 error_log("add_comment.php: Erro ao criar notificação de comentário - " . $e->getMessage());
             }
@@ -162,6 +167,10 @@ try {
                         VALUES (?, ?, 'reply', ?, ?)
                     ");
                     $notifStmt->execute([$parent_comment_owner_id, $user_id, $video_id, $comment_id]);
+                    
+                    // Push notification de resposta
+                    $actorName = $_SESSION['username'] ?? 'Alguém';
+                    sendPushNotification($pdo, (int)$parent_comment_owner_id, 'Nova resposta 💬', "$actorName respondeu ao teu comentário", "/my/index.php?v=$video_id");
                 }
             } catch (Exception $e) {
                 error_log("add_comment.php: Erro ao criar notificação de resposta - " . $e->getMessage());
@@ -199,6 +208,10 @@ try {
                         try {
                             $mentionNotifStmt->execute([$mentionedId, $user_id, $video_id, $comment_id]);
                             $alreadyNotified[] = $mentionedId; // Evitar duplicatas entre menções
+                            
+                            // Push notification de menção
+                            $actorName = $_SESSION['username'] ?? 'Alguém';
+                            sendPushNotification($pdo, $mentionedId, 'Mencionado 📢', "$actorName mencionou-te num comentário", "/my/index.php?v=$video_id");
                         } catch (Exception $e) {
                             error_log("add_comment.php: Erro ao criar notificação de menção para user {$mentionedId} - " . $e->getMessage());
                         }

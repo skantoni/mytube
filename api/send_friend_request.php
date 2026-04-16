@@ -1,6 +1,7 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once '../includes/config.php';
+require_once '../includes/push_helper.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id'])) {
@@ -51,6 +52,9 @@ try {
             try {
                 $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, actor_id, type, reference_id, created_at) VALUES (?, ?, 'friend_request', ?, NOW())");
                 $notifStmt->execute([$receiver_id, $current_user_id, $current_user_id]);
+                
+                $actorName = $_SESSION['username'] ?? 'Alguém';
+                sendPushNotification($pdo, (int)$receiver_id, 'Pedido de amizade 🤝', "$actorName enviou-te um pedido de amizade", '/my/chat.php');
             } catch (Exception $e) {
                 error_log('⚠️ Erro notificação friend_request: ' . $e->getMessage());
             }
@@ -68,6 +72,9 @@ try {
     try {
         $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, actor_id, type, reference_id, created_at) VALUES (?, ?, 'friend_request', ?, NOW())");
         $notifStmt->execute([$receiver_id, $current_user_id, $current_user_id]);
+        
+        $actorName = $_SESSION['username'] ?? 'Alguém';
+        sendPushNotification($pdo, (int)$receiver_id, 'Pedido de amizade 🤝', "$actorName enviou-te um pedido de amizade", '/my/chat.php');
     } catch (Exception $e) {
         error_log('⚠️ Erro notificação friend_request: ' . $e->getMessage());
     }

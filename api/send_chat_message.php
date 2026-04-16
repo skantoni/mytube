@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../includes/config.php';
+require_once '../includes/push_helper.php';
 
 header('Content-Type: application/json');
 
@@ -96,6 +97,11 @@ try {
     ]);
     curl_exec($ch);
     curl_close($ch);
+
+    // Push notification para o destinatário
+    $senderName = $sender['username'] ?? 'Alguém';
+    $msgPreview = mb_substr($message, 0, 80);
+    sendPushNotification($pdo, $receiver_id, "💬 $senderName", $msgPreview, "/my/chat.php?user=$receiver_id");
 
     echo json_encode([
         'success' => true,

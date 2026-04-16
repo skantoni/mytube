@@ -1,5 +1,6 @@
 <?php
 require_once '../includes/config.php';
+require_once '../includes/push_helper.php';
 
 header('Content-Type: application/json');
 
@@ -93,6 +94,10 @@ try {
             ");
             $notifStmt->execute([$following_id, $follower_id, $follower_id]);
             error_log("✅ Notificação criada");
+            
+            // Push notification
+            $actorName = $_SESSION['username'] ?? 'Alguém';
+            sendPushNotification($pdo, (int)$following_id, 'Novo seguidor 👤', "$actorName começou a seguir-te", "/my/profile.php?user=$actorName");
         } catch (Exception $e) {
             error_log("⚠️ Erro ao criar notificação: " . $e->getMessage());
             // Silently fail - não bloquear o follow se notificação falhar

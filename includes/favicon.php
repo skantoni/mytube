@@ -74,3 +74,7 @@ window.installPWA = function() {
     }
 };
 </script>
+
+<?php if (function_exists('isLoggedIn') && isLoggedIn()): ?>
+<script src="assets/js/push-notifications.js" defer></script>
+<?php endif; ?>

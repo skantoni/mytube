@@ -15,6 +15,7 @@ const STATIC_ASSETS = [
   '/assets/js/modal-mobile-helper.js',
   '/assets/js/avatar-fallback.js',
   '/assets/js/notifications.js',
+  '/assets/js/push-notifications.js',
   '/assets/js/like-sync.js',
   '/assets/js/comment-sync.js',
   '/assets/images/logo.png',
@@ -105,20 +106,24 @@ self.addEventListener('fetch', event => {
   }
 });
 
-// ─── Push Notifications (base para futuro) ───────────────────────────────────
+// ─── Push Notifications ──────────────────────────────────────────────────────
 self.addEventListener('push', event => {
   if (!event.data) return;
   let data = {};
   try { data = event.data.json(); } catch (e) { data = { title: 'MyTube', body: event.data.text() }; }
 
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/assets/images/logo_icon.png',
+    badge: '/assets/images/logo_icon.png',
+    data: { url: data.url || '/my/index.php' },
+    vibrate: [200, 100, 200],
+    tag: data.tag || 'mytube-notification',
+    renotify: true,
+  };
+
   event.waitUntil(
-    self.registration.showNotification(data.title || 'MyTube', {
-      body: data.body || '',
-      icon: '/my/assets/images/logo_icon.png',
-      badge: '/my/assets/images/logo_icon.png',
-      data: data.url ? { url: data.url } : {},
-      vibrate: [200, 100, 200],
-    })
+    self.registration.showNotification(data.title || 'MyTube', options)
   );
 });
 

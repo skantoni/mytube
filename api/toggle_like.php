@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/config.php';
 require_once '../includes/ranking_cache.php';
+require_once '../includes/push_helper.php';
 
 header('Content-Type: application/json');
 
@@ -86,6 +87,10 @@ try {
                         VALUES (?, ?, 'like', ?)
                     ");
                     $notifStmt->execute([$video_owner_id, $user_id, $video_id]);
+                    
+                    // Push notification
+                    $actorName = $_SESSION['username'] ?? 'Alguém';
+                    sendPushNotification($pdo, (int)$video_owner_id, 'Novo like ❤️', "$actorName curtiu o teu vídeo", "/my/index.php?v=$video_id");
                 } catch (Exception $e) {
                     // Silently fail
                 }

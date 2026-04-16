@@ -7,6 +7,7 @@
 session_start();
 require_once '../includes/config.php';
 require_once '../includes/ranking_cache.php';
+require_once '../includes/push_helper.php';
 
 header('Content-Type: application/json');
 header('Cache-Control: no-cache, no-store, must-revalidate');
@@ -105,6 +106,12 @@ try {
                 $vid_owner = $ownerStmt->fetchColumn();
                 if ($vid_owner) {
                     ranking_points_increment($pdo, (int)$vid_owner, $liked ? 2 : -2);
+                    
+                    // Push notification de like (só quando é like, não unlike)
+                    if ($liked && (int)$vid_owner !== $user_id) {
+                        $actorName = $_SESSION['username'] ?? 'Alguém';
+                        sendPushNotification($pdo, (int)$vid_owner, 'Novo like ❤️', "$actorName curtiu o teu vídeo", "/my/index.php?v=$video_id");
+                    }
                 }
                 
                 // Buscar contagem atualizada
