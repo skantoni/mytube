@@ -2348,6 +2348,11 @@ function closeForwardModal() {
     document.getElementById('forwardModal').style.display = 'none';
     window._forwardMessageId = null;
     window._forwardSelectedUsers = new Map();
+    const sendBtn = document.getElementById('forwardSendBtn');
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar';
+    }
 }
 
 function loadForwardContacts() {
