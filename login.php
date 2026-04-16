@@ -328,7 +328,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <button type="submit" name="register" class="btn btn-primary">Criar Conta</button>
                 <p class="terms">
                     Ao cadastrar-se, você concorda com nossos 
-                    <a href="#" onclick="alert('Termos em desenvolvimento!')">Termos de Uso</a>
+                    <a href="termos.php" target="_blank">Termos de Uso</a>
                 </p>
             </form>
         </div>
