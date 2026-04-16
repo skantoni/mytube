@@ -96,9 +96,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $old_instituicao = $currentData['instituicao'] ?? '';
                 $new_instituicao = $instituicao ?: null;
                 if (($new_instituicao ?? '') !== $old_instituicao) {
-                    $changedFields[] = "instituicao = ?";
-                    $params[] = $new_instituicao;
-
                     // Resolver school_id a partir da instituição selecionada
                     $resolved_school_id = null;
                     if (!empty($instituicao)) {
@@ -107,10 +104,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $schoolRow = $schoolStmt->fetch();
                         if ($schoolRow) {
                             $resolved_school_id = $schoolRow['id'];
+                        } else {
+                            // Validação: Escola não existe no banco de dados
+                            $error = 'Por favor, selecione uma instituição válida da lista de sugestões.';
                         }
                     }
-                    $changedFields[] = "school_id = ?";
-                    $params[] = $resolved_school_id;
+                    
+                    // Só atualizar se não houver erro de validação
+                    if (empty($error)) {
+                        $changedFields[] = "instituicao = ?";
+                        $params[] = $new_instituicao;
+                        $changedFields[] = "school_id = ?";
+                        $params[] = $resolved_school_id;
+                    }
                 }
                 
                 if ($profile_picture) {
@@ -517,7 +523,8 @@ $has_more_videos = $total_user_videos > count($user_videos);
                                oninput="filterSchoolSuggestions(this.value)">
                         <div id="schoolSuggestions" class="school-suggestions" style="display:none;"></div>
                     </div>
-                    <small style="color:#64748b; display:block; margin-top:4px;">Selecione da lista para vincular ao ranking</small>
+                    <small id="schoolHelp" style="color:#64748b; display:block; margin-top:4px;">Selecione da lista para vincular ao ranking</small>
+                    <small id="schoolError" style="color:#ff4444; display:none; margin-top:4px;"><i class="fas fa-exclamation-circle"></i> Selecione uma instituição válida da lista</small>
                 </div>
                 
                 <div class="modal-actions">
@@ -1207,6 +1214,19 @@ $has_more_videos = $total_user_videos > count($user_videos);
     }
     .school-suggestions::-webkit-scrollbar { width: 4px; }
     .school-suggestions::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+    
+    /* Estilo para campo inválido */
+    .invalid-school {
+        border-color: #ff4444 !important;
+        box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.2) !important;
+        animation: shake 0.3s ease;
+    }
+    
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
     </style>
 
     <script>
@@ -1276,7 +1296,59 @@ $has_more_videos = $total_user_videos > count($user_videos);
     function selectSchoolSuggestion(name) {
         const input = document.getElementById('instituicao');
         input.value = name;
+        clearSchoolError();
         document.getElementById('schoolSuggestions').style.display = 'none';
+    }
+
+    function showSchoolError() {
+        const input = document.getElementById('instituicao');
+        const errorEl = document.getElementById('schoolError');
+        const helpEl = document.getElementById('schoolHelp');
+        
+        input.classList.add('invalid-school');
+        if (errorEl) {
+            errorEl.style.display = 'block';
+        }
+        if (helpEl) {
+            helpEl.style.display = 'none';
+        }
+    }
+
+    function clearSchoolError() {
+        const input = document.getElementById('instituicao');
+        const errorEl = document.getElementById('schoolError');
+        const helpEl = document.getElementById('schoolHelp');
+        
+        input.classList.remove('invalid-school');
+        if (errorEl) {
+            errorEl.style.display = 'none';
+        }
+        if (helpEl) {
+            helpEl.style.display = 'block';
+        }
+    }
+
+    function validateSchoolField() {
+        const input = document.getElementById('instituicao');
+        const val = input.value.trim();
+        
+        if (!val) {
+            clearSchoolError();
+            return true;
+        }
+        
+        if (!schoolsLoaded) {
+            return true; // Não validar se ainda não carregou
+        }
+        
+        const exists = allSchoolsList.some(s => s.name === val);
+        if (!exists) {
+            showSchoolError();
+            return false;
+        }
+        
+        clearSchoolError();
+        return true;
     }
 
     function escText(s) {
@@ -1287,6 +1359,37 @@ $has_more_videos = $total_user_videos > count($user_videos);
     function escAttr(s) {
         return s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
+
+    // Validar escola ao sair do campo (sem alertas)
+    document.addEventListener('DOMContentLoaded', function() {
+        const instituicaoInput = document.getElementById('instituicao');
+        if (instituicaoInput) {
+            // Validar ao sair do campo
+            instituicaoInput.addEventListener('blur', function() {
+                setTimeout(() => validateSchoolField(), 200);
+            });
+
+            // Limpar erro ao começar a digitar
+            instituicaoInput.addEventListener('input', function() {
+                if (this.classList.contains('invalid-school')) {
+                    clearSchoolError();
+                }
+            });
+
+            // Validar antes de submeter o formulário
+            const form = instituicaoInput.closest('form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    if (!validateSchoolField()) {
+                        e.preventDefault();
+                        instituicaoInput.focus();
+                        instituicaoInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        return false;
+                    }
+                });
+            }
+        }
+    });
 
     // Close dropdown when clicking outside
     document.addEventListener('click', function(e) {
