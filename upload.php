@@ -549,8 +549,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <input type="hidden" name="music_start" id="musicStartOffset" value="0">
                         </div>
                         
-                        <div class="form-group">
-                            <div class="checkbox-group" hidden>
+                        <div class="form-group" style="display: none;">
+                            <div class="checkbox-group">
                                 <input type="checkbox" name="is_public" id="isPublic" checked>
                                 <label for="isPublic" class="checkbox-label">
                                     <i class="fas fa-globe"></i>
