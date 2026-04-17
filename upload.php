@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         switch ($uploadError) {
             case UPLOAD_ERR_INI_SIZE:
             case UPLOAD_ERR_FORM_SIZE:
-                $error = 'Arquivo muito grande. Tamanho máximo permitido: 100MB';
+                $error = 'Arquivo muito grande. Tamanho máximo permitido: 50MB';
                 break;
             case UPLOAD_ERR_PARTIAL:
                 $error = 'Upload interrompido. O arquivo foi enviado parcialmente.';
@@ -96,8 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $allowedTypes = ['mp4', 'avi', 'mov', 'wmv', 'webm'];
         if (!in_array($videoType, $allowedTypes)) {
             $error = 'Tipo de arquivo não permitido. Use: MP4, AVI, MOV, WMV, WebM';
-        } elseif ($videoSize > 100 * 1024 * 1024) {
-            $error = 'Arquivo muito grande. Tamanho máximo: 100MB';
+        } elseif ($videoSize > 50 * 1024 * 1024) {
+            $error = 'Arquivo muito grande. Tamanho máximo: 50MB';
         } else {
             $processing_result = video_prepare_for_storage($videoTmp, $videoType);
             if (!$processing_result['success']) {
@@ -430,7 +430,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <p>ou clique para selecionar</p>
                             <div class="file-size-limit">
                                 <i class="fas fa-info-circle"></i>
-                                Formatos: MP4, AVI, MOV, WMV, WebM &bull; Tamanho máximo: <strong>100MB</strong>
+                                Formatos: MP4, AVI, MOV, WMV, WebM &bull; Tamanho máximo: <strong>50MB</strong>
                             </div>
                         </div>
                         <div class="file-info" id="fileInfo" style="display: none;">
