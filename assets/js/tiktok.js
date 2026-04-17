@@ -1587,6 +1587,30 @@ class TikTokPlayer {
     }
 }
 
+// Helper: registar partilha no servidor e atualizar contador na UI
+function recordShare(videoId, platform) {
+    const formData = new FormData();
+    formData.append('video_id', videoId);
+    formData.append('platform', platform);
+
+    fetch('api/record_share.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && !data.duplicate) {
+                // Atualizar contador na UI
+                const btn = document.querySelector(`.share-btn[data-video-id="${videoId}"]`);
+                if (btn) {
+                    const countEl = btn.querySelector('.share-count, .action-count');
+                    if (countEl) {
+                        const count = data.shares_count || 0;
+                        countEl.textContent = count >= 1000 ? (count / 1000).toFixed(1).replace('.0', '') + 'K' : count;
+                    }
+                }
+            }
+        })
+        .catch(() => { /* silenciar */ });
+}
+
 // Helper: gerar URL real do vídeo (funciona em qualquer domínio/servidor)
 function getVideoShareUrl(videoId) {
     // Pegar o base path automaticamente a partir do pathname actual
@@ -1602,6 +1626,7 @@ function shareToWhatsApp() {
     const url = getVideoShareUrl(videoId);
     const text = 'Confira este vídeo no MyTube!';
     window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+    recordShare(videoId, 'whatsapp');
     closeShareMenu();
 }
 
@@ -1609,6 +1634,7 @@ function shareToFacebook() {
     const videoId = document.getElementById('shareMenu').dataset.videoId;
     const url = getVideoShareUrl(videoId);
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+    recordShare(videoId, 'facebook');
     closeShareMenu();
 }
 
@@ -1710,6 +1736,7 @@ function sendVideoToChat(userId, username) {
     .then(data => {
         if (data.success) {
             closeChatShareModal();
+            recordShare(videoId, 'chat');
             showMessage('✅ Vídeo enviado para @' + username + '!', 'success');
         } else {
             showMessage('❌ ' + (data.error || 'Erro ao enviar'), 'error');
@@ -1744,6 +1771,7 @@ function copyLink() {
         document.body.removeChild(input);
         showMessage('📋 Link copiado!', 'success');
     });
+    recordShare(videoId, 'copy_link');
     closeShareMenu();
 }
 
