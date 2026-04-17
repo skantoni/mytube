@@ -550,7 +550,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         </div>
                         
                         <div class="form-group">
-                            <div class="checkbox-group">
+                            <div class="checkbox-group" hidden>
                                 <input type="checkbox" name="is_public" id="isPublic" checked>
                                 <label for="isPublic" class="checkbox-label">
                                     <i class="fas fa-globe"></i>
