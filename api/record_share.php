@@ -17,8 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $video_id = isset($_POST['video_id']) ? (int) $_POST['video_id'] : 0;
 $platform = isset($_POST['platform']) ? trim($_POST['platform']) : 'unknown';
 
-// Validar plataforma
-$allowed_platforms = ['whatsapp', 'facebook', 'chat', 'copy_link'];
+// Validar plataforma — copy_link não conta como partilha real
+$allowed_platforms = ['whatsapp', 'facebook', 'chat'];
 if (!in_array($platform, $allowed_platforms)) {
     $platform = 'unknown';
 }

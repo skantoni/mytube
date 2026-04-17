@@ -1771,7 +1771,7 @@ function copyLink() {
         document.body.removeChild(input);
         showMessage('📋 Link copiado!', 'success');
     });
-    recordShare(videoId, 'copy_link');
+    // Copiar link não conta como partilha — não há garantia que foi enviado a alguém
     closeShareMenu();
 }
 
