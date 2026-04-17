@@ -43,6 +43,18 @@ try {
         exit;
     }
 
+    // Verificar se são amigos
+    $stmt = $pdo->prepare("
+        SELECT id FROM friend_requests 
+        WHERE status = 'accepted' 
+        AND ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
+    ");
+    $stmt->execute([$sender_id, $receiver_id, $receiver_id, $sender_id]);
+    if (!$stmt->fetch()) {
+        echo json_encode(['success' => false, 'error' => 'Só podes enviar mensagens a amigos']);
+        exit;
+    }
+
     // Buscar ou criar conversa
     $stmt = $pdo->prepare("
         SELECT id FROM conversations 
