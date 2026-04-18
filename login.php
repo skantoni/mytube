@@ -30,21 +30,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (empty($username) || empty($password)) {
             $error = 'Por favor, preencha todos os campos.';
         } else {
-            // Proteção contra timing attacks: sempre buscar usuário e verificar senha
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE BINARY username = ? OR email = ? LIMIT 1");
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE BINARY username = ? OR email = ?");
             $stmt->execute([$username, $username]);
-            $user = $stmt->fetch();
+            $users = $stmt->fetchAll();
             
-            // Sempre executar password_verify mesmo se usuário não existir (previne timing attack)
-            $password_valid = false;
-            if ($user && password_verify($password, $user['password'])) {
-                $password_valid = true;
-            } elseif (!$user) {
-                // Hash dummy para manter tempo de processamento constante
-                password_verify($password, '$2y$10$dummy.hash.to.prevent.timing.attacks.xxxxxxxxxxxxxxxxxxxxxxx');
+            $user = null;
+            foreach ($users as $u) {
+                if (password_verify($password, $u['password'])) {
+                    $user = $u;
+                    break;
+                }
             }
             
-            if ($password_valid) {
+            if ($user) {
                 // Resetar status online stale no banco (pode estar preso de crash anterior)
                 try {
                     $stmt2 = $pdo->prepare("
@@ -70,11 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo "<script>window.location.href = 'index.php?splash=1';</script>";
                 exit();
             } else {
-                // Mensagem genérica para não revelar se usuário existe
                 $error = 'Usuário ou senha incorretos.';
-                
-                // Log de tentativa falhada (opcional - para análise de segurança)
-                error_log("Failed login attempt for: " . $username . " from IP: " . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
             }
         }
     } 
@@ -105,15 +99,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $error = 'Nome de usuário deve ter entre 3 e 12 caracteres.';
         } elseif (!preg_match('/^[a-zA-Z0-9_\-]+$/', $username)) {
             $error = 'Nome de usuário pode conter apenas letras, números, - e _';
+        /* EMAIL_VALIDATION_DISABLED - reativar quando Angola tiver mais uso de email
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/@.+\..+/', $email)) {
             $error = 'E-mail inválido. Verifique se contém @ e um domínio válido.';
+        */
         } elseif (strlen($password) < 6) {
             $error = 'Senha deve ter pelo menos 6 caracteres.';
         } elseif ($password !== $confirm_password) {
             $error = 'Senhas não conferem.';
+        /* EMAIL_CODE_REQUIRED_DISABLED
         } elseif (empty($email_code) || !preg_match('/^\d{6}$/', $email_code)) {
             $error = 'Por favor, verifique o seu e-mail com o código de 6 dígitos enviado.';
+        */
         } else {
+            /* EMAIL_CODE_VERIFY_DISABLED
             // Verificar código de e-mail
             $stmt_code = null;
             try {
@@ -123,10 +122,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             } catch (Exception $tableErr) {
                 $valid_code = false;
             }
-
             if (!$valid_code) {
                 $error = 'Código de verificação inválido ou expirado. Solicite um novo código.';
             } else {
+            */ {
                 // Verificar se usuário já existe
                 $stmt_user = $pdo->prepare("SELECT id FROM users WHERE username = ?");
                 $stmt_user->execute([$username]);
@@ -134,37 +133,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($stmt_user->fetch()) {
                     $error = 'Nome de usuário já existe.';
                 } else {
-                    // Marcar código como usado
-                    $stmt_use = $pdo->prepare("UPDATE email_verifications SET used = 1 WHERE id = ?");
-                    $stmt_use->execute([$valid_code['id']]);
-
-                    // Criar usuário
-                    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("INSERT INTO users (username, email, full_name, password, instituicao) VALUES (?, ?, ?, ?, ?)");
+                    // Verificar limite de contas por email (máx 3)
+                    $stmt_email = $pdo->prepare("SELECT COUNT(id) FROM users WHERE email = ?");
+                    $stmt_email->execute([$email]);
+                    $email_count = (int)$stmt_email->fetchColumn();
                     
-                    try {
-                        if ($stmt->execute([$username, $email, $full_name, $hashed_password, $instituicao])) {
-                            header('Location: login.php?registered=1');
-                            exit;
-                        } else {
-                            $error = 'Erro ao criar conta. Tente novamente.';
-                        }
-                    } catch (PDOException $e) {
-                        if ($e->getCode() == 23000) {
-                            // Verificar se é username ou email duplicado
-                            $stmt_check_email = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-                            $stmt_check_email->execute([$email]);
-                            if ($stmt_check_email->fetch()) {
+                    if ($email_count >= 3) {
+                        $error = 'Este e-mail já atingiu o limite de 3 contas.';
+                    } else {
+                        /* MARK_CODE_USED_DISABLED
+                        $stmt_use = $pdo->prepare("UPDATE email_verifications SET used = 1 WHERE id = ?");
+                        $stmt_use->execute([$valid_code['id']]);
+                        */
+
+                        // Criar usuário
+                        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                        $stmt = $pdo->prepare("INSERT INTO users (username, email, full_name, password, instituicao) VALUES (?, ?, ?, ?, ?)");
+                        
+                        try {
+                            if ($stmt->execute([$username, $email, $full_name, $hashed_password, $instituicao])) {
+                                header('Location: login.php?registered=1');
+                                exit;
+                            } else {
+                                $error = 'Erro ao criar conta. Tente novamente.';
+                            }
+                        } catch (PDOException $e) {
+                            if ($e->getCode() == 23000) {
                                 $error = 'Este e-mail já está registado.';
                             } else {
-                                $error = 'Este nome de usuário já existe.';
+                                $error = 'Erro ao criar conta. Tente novamente.';
                             }
-                        } else {
-                            $error = 'Erro ao criar conta. Tente novamente.';
                         }
                     }
                 }
-            }
+            /* } */ }
         }
     }
 }
@@ -327,9 +329,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <input type="text" name="reg_username" placeholder="Nome de usuário" maxlength="12" pattern="[a-zA-Z0-9_\-]{3,12}" title="3 a 12 caracteres. Apenas letras, números, - e _" autocomplete="off" value="<?php echo htmlspecialchars($reg_username); ?>" required>
                     <small class="field-hint">3-12 caracteres (letras, números, - e _)</small>
                 </div>
+                <!-- EMAIL_VERIFY_WIDGET_DISABLED: reativar quando necessário
                 <div class="input-group" id="emailVerifyGroup">
                     <div class="email-input-wrap">
-                        <input type="email" name="reg_email" id="regEmailInput" placeholder="E-mail" value="<?php echo htmlspecialchars($reg_email); ?>" required autocomplete="email">
+                        <input type="email" name="reg_email" id="regEmailInput" placeholder="E-mail" value="" required autocomplete="email">
                         <button type="button" id="btnSendEmailCode" class="btn-send-code" onclick="sendRegEmailCode()">Enviar código</button>
                     </div>
                     <div id="emailCodeRow" class="email-code-row" style="display:none;">
@@ -340,6 +343,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <span id="emailVerifiedBadge" class="email-verified-badge" style="display:none;">&#10003; E-mail verificado</span>
                 </div>
                 <input type="hidden" name="email_code" id="emailCodeHidden">
+                -->
+                <div class="input-group">
+                    <input type="text" name="reg_email" placeholder="E-mail (opcional)" value="<?php echo htmlspecialchars($reg_email); ?>" autocomplete="email">
+                </div>
                 <div class="input-group">
                     <input type="text" name="reg_full_name" placeholder="Nome completo" value="<?php echo htmlspecialchars($reg_full_name); ?>" required>
                 </div>
