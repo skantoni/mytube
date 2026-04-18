@@ -39,7 +39,7 @@ function r2_get_client() {
                 'key' => R2_ACCESS_KEY_ID,
                 'secret' => R2_SECRET_ACCESS_KEY,
             ],
-            'use_path_style_endpoint' => true,
+            'use_path_style_endpoint' => false,  // CORRIGIDO: R2 usa virtual-hosted style
             // Desabilitar checksum para compatibilidade com R2
             'request_checksum_calculation' => 'when_required',
             'response_checksum_validation' => 'when_required',
