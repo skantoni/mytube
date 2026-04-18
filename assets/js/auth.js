@@ -946,7 +946,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// EMAIL_VERIFICATION_DISABLED: Validação de email desabilitada
 // Intercept form submit to validate email verification
+/* DESABILITADO - Email verification não é mais obrigatório
 document.addEventListener('DOMContentLoaded', function() {
     const registerForm = document.getElementById('registerForm');
     if (!registerForm) return;
@@ -973,6 +975,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+*/
 
 // Feedback visual melhorado
 function showMessage(message, type = 'info') {
