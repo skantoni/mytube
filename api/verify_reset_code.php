@@ -58,7 +58,6 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 $_SESSION['reset_token'] = $resetToken;
 $_SESSION['reset_user_id'] = $reset['user_id'];
-$_SESSION['reset_email'] = $email;
 $_SESSION['reset_code_id'] = $reset['id'];
 
 echo json_encode([

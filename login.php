@@ -128,35 +128,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($stmt_user->fetch()) {
                     $error = 'Nome de usuário já existe.';
                 } else {
-                    // Verificar limite de contas por email (máx 3)
-                    $stmt_email = $pdo->prepare("SELECT COUNT(id) FROM users WHERE email = ?");
-                    $stmt_email->execute([$email]);
-                    $email_count = (int)$stmt_email->fetchColumn();
-                    
-                    if ($email_count >= 3) {
-                        $error = 'Este e-mail já atingiu o limite de 3 contas.';
-                    } else {
-                        // Marcar código como usado
-                        $stmt_use = $pdo->prepare("UPDATE email_verifications SET used = 1 WHERE id = ?");
-                        $stmt_use->execute([$valid_code['id']]);
+                    // Marcar código como usado
+                    $stmt_use = $pdo->prepare("UPDATE email_verifications SET used = 1 WHERE id = ?");
+                    $stmt_use->execute([$valid_code['id']]);
 
-                        // Criar usuário
-                        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                        $stmt = $pdo->prepare("INSERT INTO users (username, email, full_name, password, instituicao) VALUES (?, ?, ?, ?, ?)");
-                        
-                        try {
-                            if ($stmt->execute([$username, $email, $full_name, $hashed_password, $instituicao])) {
-                                header('Location: login.php?registered=1');
-                                exit;
-                            } else {
-                                $error = 'Erro ao criar conta. Tente novamente.';
-                            }
-                        } catch (PDOException $e) {
-                            if ($e->getCode() == 23000) {
+                    // Criar usuário
+                    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                    $stmt = $pdo->prepare("INSERT INTO users (username, email, full_name, password, instituicao) VALUES (?, ?, ?, ?, ?)");
+                    
+                    try {
+                        if ($stmt->execute([$username, $email, $full_name, $hashed_password, $instituicao])) {
+                            header('Location: login.php?registered=1');
+                            exit;
+                        } else {
+                            $error = 'Erro ao criar conta. Tente novamente.';
+                        }
+                    } catch (PDOException $e) {
+                        if ($e->getCode() == 23000) {
+                            // Verificar se é username ou email duplicado
+                            $stmt_check_email = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+                            $stmt_check_email->execute([$email]);
+                            if ($stmt_check_email->fetch()) {
                                 $error = 'Este e-mail já está registado.';
                             } else {
-                                $error = 'Erro ao criar conta. Tente novamente.';
+                                $error = 'Este nome de usuário já existe.';
                             }
+                        } else {
+                            $error = 'Erro ao criar conta. Tente novamente.';
                         }
                     }
                 }

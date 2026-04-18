@@ -64,9 +64,9 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
-    // Rate limiting: máximo 3 códigos por hora para o mesmo email
-    $stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM password_resets WHERE email = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
-    $stmt->execute([$email]);
+    // Rate limiting: máximo 3 códigos por hora por usuário
+    $stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM password_resets WHERE user_id = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+    $stmt->execute([$user['id']]);
     $count = $stmt->fetch()['cnt'];
 
     if ($count >= 3) {
@@ -74,9 +74,9 @@ try {
         exit;
     }
 
-    // Invalidar códigos anteriores
-    $stmt = $pdo->prepare("UPDATE password_resets SET used = 1 WHERE email = ? AND used = 0");
-    $stmt->execute([$email]);
+    // Invalidar códigos anteriores deste usuário
+    $stmt = $pdo->prepare("UPDATE password_resets SET used = 1 WHERE user_id = ? AND used = 0");
+    $stmt->execute([$user['id']]);
 
     // Gerar código de 6 dígitos
     $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);

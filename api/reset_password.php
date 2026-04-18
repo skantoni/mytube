@@ -39,26 +39,24 @@ if ($newPassword !== $confirmPassword) {
 
 $userId = $_SESSION['reset_user_id'];
 $codeId = $_SESSION['reset_code_id'];
-$email = $_SESSION['reset_email'];
 
-// Atualizar senha de todas as contas vinculadas a este e-mail
+// Atualizar senha apenas da conta específica (usando user_id)
 $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-$stmt = $pdo->prepare("UPDATE users SET password = ? WHERE email = ?");
-$result = $stmt->execute([$hashedPassword, $email]);
+$stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+$result = $stmt->execute([$hashedPassword, $userId]);
 
 if ($result) {
     // Marcar código como usado
     $stmt = $pdo->prepare("UPDATE password_resets SET used = 1 WHERE id = ?");
     $stmt->execute([$codeId]);
     
-    // Invalidar todos os códigos pendentes deste e-mail
-    $stmt = $pdo->prepare("UPDATE password_resets SET used = 1 WHERE email = ? AND used = 0");
-    $stmt->execute([$email]);
+    // Invalidar todos os códigos pendentes deste usuário
+    $stmt = $pdo->prepare("UPDATE password_resets SET used = 1 WHERE user_id = ? AND used = 0");
+    $stmt->execute([$userId]);
     
     // Limpar sessão de reset
     unset($_SESSION['reset_token']);
     unset($_SESSION['reset_user_id']);
-    unset($_SESSION['reset_email']);
     unset($_SESSION['reset_code_id']);
     
     echo json_encode([
