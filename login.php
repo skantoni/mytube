@@ -30,19 +30,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (empty($username) || empty($password)) {
             $error = 'Por favor, preencha todos os campos.';
         } else {
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE BINARY username = ? OR email = ?");
+            // Proteção contra timing attacks: sempre buscar usuário e verificar senha
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE BINARY username = ? OR email = ? LIMIT 1");
             $stmt->execute([$username, $username]);
-            $users = $stmt->fetchAll();
+            $user = $stmt->fetch();
             
-            $user = null;
-            foreach ($users as $u) {
-                if (password_verify($password, $u['password'])) {
-                    $user = $u;
-                    break;
-                }
+            // Sempre executar password_verify mesmo se usuário não existir (previne timing attack)
+            $password_valid = false;
+            if ($user && password_verify($password, $user['password'])) {
+                $password_valid = true;
+            } elseif (!$user) {
+                // Hash dummy para manter tempo de processamento constante
+                password_verify($password, '$2y$10$dummy.hash.to.prevent.timing.attacks.xxxxxxxxxxxxxxxxxxxxxxx');
             }
             
-            if ($user) {
+            if ($password_valid) {
                 // Resetar status online stale no banco (pode estar preso de crash anterior)
                 try {
                     $stmt2 = $pdo->prepare("
@@ -68,7 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo "<script>window.location.href = 'index.php?splash=1';</script>";
                 exit();
             } else {
+                // Mensagem genérica para não revelar se usuário existe
                 $error = 'Usuário ou senha incorretos.';
+                
+                // Log de tentativa falhada (opcional - para análise de segurança)
+                error_log("Failed login attempt for: " . $username . " from IP: " . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
             }
         }
     } 
