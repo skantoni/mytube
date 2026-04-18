@@ -86,12 +86,16 @@ openssl rand -hex 32
 
 ### Passo 5: Proteger o arquivo .env
 ```bash
-# Apenas o dono pode ler/escrever
-chmod 600 .env
+# Permissões corretas: dono lê/escreve, grupo lê (www-data precisa ler)
+chmod 640 .env
+sudo chown skeny:www-data .env
 
 # Verificar permissões
 ls -la .env
-# Deve mostrar: -rw------- (600)
+# Deve mostrar: -rw-r----- 1 skeny www-data (640)
+
+# Testar se www-data consegue ler
+sudo -u www-data cat .env
 ```
 
 ### Passo 6: Testar se carrega corretamente
