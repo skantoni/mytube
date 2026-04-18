@@ -5,6 +5,7 @@
 # === CONFIGURAÇÃO SENSÍVEL (CREDENCIAIS) ===
 # Estes ficheiros contêm passwords, API keys, etc.
 # Use os ficheiros .example como template
+.env
 includes/config.php
 includes/r2_config.php
 includes/mail_config.php

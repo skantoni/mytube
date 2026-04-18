@@ -1,0 +1,271 @@
+# 🚀 Guia de Deploy para VPS
+
+Este arquivo contém as instruções para aplicar mudanças do código local para o servidor de produção (VPS).
+
+---
+
+## 📋 PARA ESTA ATUALIZAÇÃO ESPECÍFICA (Variáveis de Ambiente)
+
+### Passo 1: Conectar na VPS
+```bash
+ssh seu-usuario@seu-servidor-ip
+cd /caminho/do/site
+```
+
+### Passo 2: Fazer backup das credenciais antigas
+```bash
+# Backup dos arquivos de config antigos (caso precise reverter)
+cp includes/config.php includes/config.php.backup
+cp includes/r2_config.php includes/r2_config.php.backup
+cp includes/mail_config.php includes/mail_config.php.backup
+```
+
+### Passo 3: Puxar as alterações do Git
+```bash
+git pull origin main
+# ou: git pull origin master (dependendo do nome da branch)
+```
+
+### Passo 4: Criar o arquivo .env em produção
+```bash
+# Copiar o template
+cp .env.example .env
+
+# Editar com as credenciais de PRODUÇÃO
+nano .env
+```
+
+**⚠️ IMPORTANTE:** No arquivo `.env` da VPS, você deve colocar:
+- As credenciais de **produção** (não localhost)
+- URL real do site (não http://localhost)
+- Credenciais R2 **NOVAS** (depois de revogar as antigas)
+- Senha de app Gmail **NOVA** (depois de revogar a antiga)
+
+Exemplo de `.env` para produção:
+```env
+# DATABASE (credenciais do banco de produção)
+DB_HOST=localhost
+DB_NAME=mytube_db_prod
+DB_USER=seu_usuario_db
+DB_PASS=senha_segura_aqui
+
+# SITE (URL real)
+SITE_URL=https://seu-dominio.com
+
+# CLOUDFLARE R2 (chaves NOVAS)
+R2_ENDPOINT=https://ed25991d995278a947d7f91d80dab70e.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=nova_chave_r2_aqui
+R2_SECRET_ACCESS_KEY=novo_secret_r2_aqui
+R2_BUCKET=mytube-videos
+R2_PUBLIC_URL=https://pub-8a68dfd4c2504827a549f70e9606ae3e.r2.dev
+
+# EMAIL (senha NOVA)
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=skenito2@gmail.com
+MAIL_PASSWORD=nova_senha_app_16_chars
+MAIL_FROM_EMAIL=skenito2@gmail.com
+MAIL_FROM_NAME=MyTube
+
+# SECURITY (gerar novos secrets)
+CRON_SECRET=gere_um_secret_aleatorio_64_chars
+JWT_SECRET=gere_outro_secret_aleatorio_64_chars
+
+# SESSION (2 horas em produção)
+SESSION_LIFETIME=7200
+```
+
+Para gerar os secrets no servidor:
+```bash
+# Gerar CRON_SECRET
+openssl rand -hex 32
+
+# Gerar JWT_SECRET
+openssl rand -hex 32
+```
+
+### Passo 5: Proteger o arquivo .env
+```bash
+# Apenas o dono pode ler/escrever
+chmod 600 .env
+
+# Verificar permissões
+ls -la .env
+# Deve mostrar: -rw------- (600)
+```
+
+### Passo 6: Testar se carrega corretamente
+```bash
+# Verificar se não há erros de PHP
+php -l includes/env_loader.php
+php -l includes/config.php
+php -l includes/r2_config.php
+php -l includes/mail_config.php
+```
+
+### Passo 7: Reiniciar PHP-FPM
+```bash
+sudo systemctl restart php8.1-fpm
+# ou
+sudo systemctl restart php-fpm
+
+# Verificar status
+sudo systemctl status php8.1-fpm
+```
+
+### Passo 8: Limpar cache (se houver)
+```bash
+rm -rf cache/rankings/*
+```
+
+### Passo 9: Testar o site
+Acesse o site no navegador e teste:
+- ✅ Login/Logout
+- ✅ Upload de vídeo (testa R2)
+- ✅ Reset de senha (testa email)
+- ✅ Qualquer funcionalidade crítica
+
+### Passo 10: Verificar logs de erro
+```bash
+# Logs do PHP
+tail -f /var/log/php8.1-fpm/error.log
+
+# Logs do Nginx
+tail -f /var/log/nginx/error.log
+
+# Logs da aplicação (se existir)
+tail -f logs/*.log
+```
+
+---
+
+## 📋 PROCESSO PADRÃO PARA QUALQUER DEPLOY FUTURO
+
+### 1. Antes de fazer git pull:
+```bash
+# Sempre fazer backup do banco (caso precise reverter)
+mysqldump -u usuario -p mytube_db > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Backup de arquivos críticos (se houver alterações)
+cp arquivo_importante.php arquivo_importante.php.backup
+```
+
+### 2. Pull das alterações:
+```bash
+git pull origin main
+```
+
+### 3. Se houver mudanças no banco de dados:
+```bash
+# Executar scripts de migração (se existirem)
+php update_database.php
+
+# Ou executar SQL manualmente
+mysql -u usuario -p mytube_db < migration.sql
+```
+
+### 4. Sempre depois do pull:
+```bash
+# Reiniciar PHP-FPM
+sudo systemctl restart php8.1-fpm
+
+# Limpar cache se existir
+rm -rf cache/*
+
+# Verificar permissões de diretórios
+chmod 755 uploads/videos
+chmod 755 uploads/chat
+chmod 755 cache
+```
+
+### 5. Verificar se tudo funciona:
+- Testar funcionalidades principais
+- Verificar logs de erro
+- Monitorar por alguns minutos
+
+---
+
+## ⚠️ CHECKLIST DE SEGURANÇA NA VPS
+
+- [ ] Arquivo `.env` existe e tem permissões 600
+- [ ] `.env` NÃO está versionado no Git (`git status` não deve mostrar .env)
+- [ ] Credenciais de produção diferentes das de desenvolvimento
+- [ ] HTTPS configurado (SSL/TLS)
+- [ ] Firewall ativo (UFW ou similar)
+- [ ] Arquivos de debug deletados ou protegidos:
+  ```bash
+  rm check_session_browser.php
+  rm check_users.php
+  rm test_r2.php
+  ```
+
+---
+
+## 🆘 TROUBLESHOOTING
+
+### Erro: "Failed to load .env file"
+```bash
+# Verificar se .env existe
+ls -la .env
+
+# Verificar se env_loader.php existe
+ls -la includes/env_loader.php
+
+# Verificar logs
+tail -f /var/log/nginx/error.log
+```
+
+### Erro: "Permission denied" ao ler .env
+```bash
+# Verificar dono do arquivo
+ls -la .env
+
+# Ajustar dono (substitua www-data pelo usuário do PHP-FPM)
+sudo chown www-data:www-data .env
+chmod 600 .env
+```
+
+### Site em branco / Erro 500
+```bash
+# Ver erro exato
+tail -f /var/log/php8.1-fpm/error.log
+tail -f /var/log/nginx/error.log
+
+# Verificar sintaxe PHP
+php -l arquivo_com_erro.php
+```
+
+### Banco de dados não conecta
+```bash
+# Testar conexão manualmente
+mysql -h localhost -u usuario_db -p
+
+# Verificar credenciais no .env
+cat .env | grep DB_
+```
+
+---
+
+## 📞 CONTATO EM CASO DE EMERGÊNCIA
+
+Se algo der errado e o site cair:
+
+### 1. Reverter para versão anterior:
+```bash
+git log --oneline  # Ver commits recentes
+git reset --hard HASH_DO_COMMIT_ANTERIOR
+sudo systemctl restart php8.1-fpm
+```
+
+### 2. Restaurar banco de dados:
+```bash
+mysql -u usuario -p mytube_db < backup_YYYYMMDD_HHMMSS.sql
+```
+
+### 3. Modo de manutenção:
+Criar arquivo `maintenance.html` na raiz e configurar Nginx para mostrar ele.
+
+---
+
+**Última atualização:** 18 de Abril, 2026
+**Versão do guia:** 1.0
