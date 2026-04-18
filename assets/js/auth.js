@@ -784,6 +784,196 @@ if (isMobile()) {
 // Funcionalidade de mostrar/ocultar senha (legacy - mantido para compatibilidade)
 // A função principal togglePassword está definida no topo do arquivo
 
+// ============================
+// REGISTRO - VERIFICAÇÃO DE E-MAIL
+// ============================
+let _regEmailVerified = false;
+let _regEmailCooldownTimer = null;
+const REG_EMAIL_COOLDOWN_MS = 60000;
+const REG_EMAIL_COOLDOWN_KEY = 'regEmailCodeLastSent';
+
+function _getRegEmailCooldownRemaining() {
+    const last = parseInt(localStorage.getItem(REG_EMAIL_COOLDOWN_KEY) || '0', 10);
+    return Math.max(0, Math.ceil((last + REG_EMAIL_COOLDOWN_MS - Date.now()) / 1000));
+}
+
+function _startRegEmailCooldown() {
+    const btn = document.getElementById('btnSendEmailCode');
+    const resendBtn = document.getElementById('btnResendEmailCode');
+    if (_regEmailCooldownTimer) clearInterval(_regEmailCooldownTimer);
+    _regEmailCooldownTimer = setInterval(() => {
+        const remaining = _getRegEmailCooldownRemaining();
+        if (remaining <= 0) {
+            clearInterval(_regEmailCooldownTimer);
+            _regEmailCooldownTimer = null;
+            if (btn) { btn.disabled = false; btn.textContent = 'Enviar código'; }
+            if (resendBtn) { resendBtn.disabled = false; resendBtn.textContent = 'Reenviar'; }
+        } else {
+            if (btn) { btn.disabled = true; btn.textContent = 'Aguardar ' + remaining + 's'; }
+            if (resendBtn) { resendBtn.disabled = true; resendBtn.textContent = 'Aguardar ' + remaining + 's'; }
+        }
+    }, 500);
+}
+
+function _showRegEmailMsg(msg, type) {
+    const el = document.getElementById('emailVerifyMsg');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'email-verify-msg ' + (type === 'success' ? 'msg-success' : type === 'warn' ? 'msg-warn' : 'msg-error');
+    el.style.display = 'block';
+}
+
+function _hideRegEmailMsg() {
+    const el = document.getElementById('emailVerifyMsg');
+    if (el) el.style.display = 'none';
+}
+
+async function sendRegEmailCode() {
+    const emailInput = document.getElementById('regEmailInput');
+    const btn = document.getElementById('btnSendEmailCode');
+    const email = emailInput ? emailInput.value.trim() : '';
+
+    _hideRegEmailMsg();
+
+    const remaining = _getRegEmailCooldownRemaining();
+    if (remaining > 0) {
+        _showRegEmailMsg('Aguarde ' + remaining + 's antes de reenviar.', 'warn');
+        return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+        _showRegEmailMsg('Insira um e-mail válido antes de enviar o código.', 'error');
+        if (emailInput) emailInput.focus();
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+
+    try {
+        const fd = new FormData();
+        fd.append('email', email);
+        const res = await fetch('api/send_email_verification.php', { method: 'POST', body: fd });
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch(e) { data = { success: false, message: 'Erro no servidor.' }; }
+
+        if (data.success) {
+            localStorage.setItem(REG_EMAIL_COOLDOWN_KEY, Date.now().toString());
+            _startRegEmailCooldown();
+
+            // Mostrar campo do código
+            const codeRow = document.getElementById('emailCodeRow');
+            const resendBtn = document.getElementById('btnResendEmailCode');
+            if (codeRow) codeRow.style.display = 'flex';
+            if (resendBtn) resendBtn.style.display = 'inline-block';
+
+            // Bloquear alteração do email enquanto aguarda o código
+            if (emailInput) emailInput.readOnly = true;
+
+            _showRegEmailMsg('Código enviado! Verifique o seu e-mail.', 'success');
+            setTimeout(_hideRegEmailMsg, 4000);
+
+            const codeInput = document.getElementById('regEmailCodeInput');
+            if (codeInput) { codeInput.value = ''; codeInput.focus(); }
+        } else {
+            _showRegEmailMsg(data.message || 'Erro ao enviar o código.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Enviar código';
+        }
+    } catch(err) {
+        _showRegEmailMsg('Erro de conexão. Tente novamente.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Enviar código';
+    }
+}
+
+async function resendRegEmailCode() {
+    _regEmailVerified = false;
+    const badge = document.getElementById('emailVerifiedBadge');
+    if (badge) badge.style.display = 'none';
+    const hidden = document.getElementById('emailCodeHidden');
+    if (hidden) hidden.value = '';
+    const codeInput = document.getElementById('regEmailCodeInput');
+    if (codeInput) { codeInput.value = ''; codeInput.classList.remove('valid', 'invalid'); }
+    await sendRegEmailCode();
+}
+
+// Auto-fill hidden field and mark verified when 6 digits entered
+document.addEventListener('DOMContentLoaded', function() {
+    const codeInput = document.getElementById('regEmailCodeInput');
+    if (!codeInput) return;
+
+    codeInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        const hidden = document.getElementById('emailCodeHidden');
+        if (hidden) hidden.value = this.value;
+
+        if (this.value.length === 6) {
+            // Visual pre-mark (actual check is server-side on submit)
+            this.classList.remove('invalid');
+            this.classList.add('valid');
+            _regEmailVerified = true;
+            const badge = document.getElementById('emailVerifiedBadge');
+            if (badge) badge.style.display = 'inline-block';
+            _hideRegEmailMsg();
+        } else {
+            this.classList.remove('valid', 'invalid');
+            _regEmailVerified = false;
+            const badge = document.getElementById('emailVerifiedBadge');
+            if (badge) badge.style.display = 'none';
+        }
+    });
+
+    // Paste support
+    codeInput.addEventListener('paste', function(e) {
+        setTimeout(() => {
+            this.value = this.value.replace(/[^0-9]/g, '').substring(0, 6);
+            this.dispatchEvent(new Event('input'));
+        }, 0);
+    });
+
+    // Restore cooldown on page load
+    if (_getRegEmailCooldownRemaining() > 0) {
+        _startRegEmailCooldown();
+        const codeRow = document.getElementById('emailCodeRow');
+        const resendBtn = document.getElementById('btnResendEmailCode');
+        if (codeRow) codeRow.style.display = 'flex';
+        if (resendBtn) resendBtn.style.display = 'inline-block';
+        const emailInput = document.getElementById('regEmailInput');
+        if (emailInput) emailInput.readOnly = true;
+    }
+});
+
+// Intercept form submit to validate email verification
+document.addEventListener('DOMContentLoaded', function() {
+    const registerForm = document.getElementById('registerForm');
+    if (!registerForm) return;
+
+    registerForm.addEventListener('submit', function(e) {
+        const codeInput = document.getElementById('regEmailCodeInput');
+        const codeRow = document.getElementById('emailCodeRow');
+        const isCodeRowVisible = codeRow && codeRow.style.display !== 'none';
+
+        if (!isCodeRowVisible) {
+            e.preventDefault();
+            _showRegEmailMsg('Clique em "Enviar código" para verificar o seu e-mail antes de criar a conta.', 'error');
+            const sendBtn = document.getElementById('btnSendEmailCode');
+            if (sendBtn) sendBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+
+        const code = codeInput ? codeInput.value.trim() : '';
+        if (!code || code.length !== 6) {
+            e.preventDefault();
+            _showRegEmailMsg('Insira o código de 6 dígitos enviado para o seu e-mail.', 'error');
+            if (codeInput) codeInput.focus();
+            return;
+        }
+    });
+});
+
 // Feedback visual melhorado
 function showMessage(message, type = 'info') {
     const messageDiv = document.createElement('div');

@@ -1,4 +1,4 @@
-/* Variáveis CSS para o tema azul */
+﻿/* VariÃ¡veis CSS para o tema azul */
 :root {
     --primary-blue: #1e40af;
     --secondary-blue: #3b82f6;
@@ -20,14 +20,14 @@
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Reset básico */
+/* Reset bÃ¡sico */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-/* Corpo da página de autenticação */
+/* Corpo da pÃ¡gina de autenticaÃ§Ã£o */
 .auth-body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     background: var(--gradient-blue);
@@ -40,7 +40,7 @@
     overflow-x: hidden;
 }
 
-/* Garantir scroll quando necessário */
+/* Garantir scroll quando necessÃ¡rio */
 @media (max-height: 750px) {
     .auth-body {
         align-items: flex-start;
@@ -76,7 +76,7 @@
     max-width: 400px;
 }
 
-/* Card de autenticação */
+/* Card de autenticaÃ§Ã£o */
 .auth-card {
     background: var(--white);
     padding: 30px 25px;
@@ -185,7 +185,7 @@
     background: rgba(30, 64, 175, 0.05);
 }
 
-/* Formulários */
+/* FormulÃ¡rios */
 .auth-form {
     display: none;
     animation: fadeInUp 0.4s ease-out;
@@ -275,7 +275,7 @@
     font-weight: 400;
 }
 
-/* Botões */
+/* BotÃµes */
 .btn {
     width: 100%;
     padding: 16px 24px;
@@ -360,7 +360,7 @@
     }
 }
 
-/* Animação de loading */
+/* AnimaÃ§Ã£o de loading */
 .loading {
     position: relative;
     overflow: hidden;
@@ -381,7 +381,7 @@
     to { left: 100%; }
 }
 
-/* Micro-interações */
+/* Micro-interaÃ§Ãµes */
 .input-group input:not(:placeholder-shown) {
     border-color: var(--light-blue);
 }
@@ -491,7 +491,7 @@
     }
 }
 
-/* Media query específica para o formulário de cadastro */
+/* Media query especÃ­fica para o formulÃ¡rio de cadastro */
 @media (max-height: 650px) {
     .auth-form:not(.active) {
         display: none;
@@ -778,5 +778,123 @@
     background: rgba(239, 68, 68, 0.08);
     border-radius: 8px;
     border: 1px solid rgba(239, 68, 68, 0.15);
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* ============================
+   Email Verification Widget
+   ============================ */
+.email-input-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.email-input-wrap input[type="email"] {
+    flex: 1;
+    min-width: 0;
+}
+
+.btn-send-code {
+    flex-shrink: 0;
+    padding: 0 14px;
+    background: #1e40af;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s, opacity 0.2s;
+}
+
+.btn-send-code:hover:not(:disabled) {
+    background: #3b82f6;
+}
+
+.btn-send-code:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.email-code-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.email-code-row input {
+    flex: 1;
+    min-width: 0;
+    letter-spacing: 4px;
+    font-size: 1.1rem;
+    text-align: center;
+    font-weight: 600;
+}
+
+.btn-resend-code {
+    flex-shrink: 0;
+    padding: 0 12px;
+    height: 48px;
+    background: transparent;
+    color: #1e40af;
+    border: 1.5px solid #1e40af;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s, color 0.2s;
+}
+
+.btn-resend-code:hover:not(:disabled) {
+    background: #1e40af;
+    color: #fff;
+}
+
+.btn-resend-code:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.email-verify-msg {
+    font-size: 0.83rem;
+    font-weight: 500;
+    margin-top: 8px;
+    padding: 7px 11px;
+    border-radius: 8px;
+    animation: fadeIn 0.25s ease-out;
+}
+
+.email-verify-msg.msg-error {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+.email-verify-msg.msg-success {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.email-verify-msg.msg-warn {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.email-verified-badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 5px 12px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
     animation: fadeIn 0.3s ease-out;
 }
