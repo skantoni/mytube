@@ -81,11 +81,13 @@ if (isset($page_seo)) {
   "dateModified": "<?php echo date('c'); ?>",
   "author": {
     "@type": "Organization",
-    "name": "<?php echo htmlspecialchars($seo_config['site_name'], ENT_QUOTES); ?>"
+    "name": "<?php echo htmlspecialchars($seo_config['site_name'], ENT_QUOTES); ?>",
+    "url": "<?php echo htmlspecialchars($seo_config['site_url'], ENT_QUOTES); ?>"
   },
   "publisher": {
     "@type": "Organization",
     "name": "<?php echo htmlspecialchars($seo_config['site_name'], ENT_QUOTES); ?>",
+    "url": "<?php echo htmlspecialchars($seo_config['site_url'], ENT_QUOTES); ?>",
     "logo": {
       "@type": "ImageObject",
       "url": "<?php echo htmlspecialchars($seo_config['site_url'], ENT_QUOTES); ?>/assets/images/logo.png"
