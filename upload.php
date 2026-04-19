@@ -98,19 +98,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $error = 'Por favor, selecione um vídeo válido.';
         }
     } elseif (!$error) {
+        require_once 'includes/upload_validation.php';
+        
         $video = $_FILES['video'];
         $videoName = $video['name'];
         $videoSize = $video['size'];
         $videoTmp = $video['tmp_name'];
         $videoType = strtolower(pathinfo($videoName, PATHINFO_EXTENSION));
 
-        $allowedTypes = ['mp4', 'avi', 'mov', 'wmv', 'webm'];
-        if (!in_array($videoType, $allowedTypes)) {
-            $error = 'Tipo de arquivo não permitido. Use: MP4, AVI, MOV, WMV, WebM';
-        } elseif ($videoSize > 50 * 1024 * 1024) {
-            $error = 'Arquivo muito grande. Tamanho máximo: 50MB';
+        // Validação segura de vídeo com MIME type checking
+        $validation = validate_video_upload(
+            $videoTmp,
+            $videoName,
+            ['mp4', 'avi', 'mov', 'wmv', 'webm'],
+            50 // 50MB máximo
+        );
+        
+        if (!$validation['valid']) {
+            $error = $validation['error'];
         } else {
-            $processing_result = video_prepare_for_storage($videoTmp, $videoType);
+            $processing_result = video_prepare_for_storage($videoTmp, $validation['extension']);
             if (!$processing_result['success']) {
                 $error = $processing_result['error'] ?: 'Erro ao processar vídeo para formato compatível.';
             }

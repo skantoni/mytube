@@ -143,6 +143,111 @@ tail -f logs/*.log
 
 ---
 
+## 📋 DEPLOY: Validação MIME de Uploads (19/04/2026)
+
+### O que mudou:
+- ✅ Criado sistema de validação segura de uploads (MIME type + extensão)
+- ✅ Arquivo criado: `includes/upload_validation.php`
+- ✅ Modificados: `profile.php`, `upload.php`, `includes/chat_upload_config.php`
+- ✅ Removidos tipos de arquivo perigosos do chat (svg, html, js, xml)
+
+### Passo 1: Conectar na VPS
+```bash
+ssh skeny@seu-servidor
+cd /var/www/mytube.social
+```
+
+### Passo 2: Puxar as alterações
+```bash
+git pull origin main
+```
+
+### Passo 3: Verificar arquivo novo
+```bash
+# Verificar se o arquivo foi criado
+ls -la includes/upload_validation.php
+
+# Verificar sintaxe
+php -l includes/upload_validation.php
+php -l profile.php
+php -l upload.php
+php -l includes/chat_upload_config.php
+```
+
+### Passo 4: Atualizar config.php manualmente
+O arquivo `includes/config.php` NÃO está no git (.gitignore).
+
+**Certifique-se que estas linhas estão presentes (devem estar do deploy anterior):**
+
+```bash
+nano includes/config.php
+```
+
+Verificar se tem estas 2 linhas **DEPOIS de session_start()**:
+```php
+// Carregar helpers de CSRF (proteção contra Cross-Site Request Forgery)
+require_once __DIR__ . '/csrf_helpers.php';
+```
+
+Se não tiver, adicionar manualmente. Salvar: Ctrl+X, Y, Enter.
+
+### Passo 5: Reiniciar PHP-FPM
+```bash
+sudo systemctl restart php8.3-fpm
+sudo systemctl status php8.3-fpm
+```
+
+### Passo 6: Testar uploads
+Acesse o site e teste:
+
+1. **Upload de Avatar:**
+   - Ir para perfil
+   - Tentar fazer upload de imagem legítima (JPG, PNG) → ✅ deve funcionar
+   - Tentar fazer upload de arquivo .txt renomeado para .jpg → ❌ deve ser rejeitado
+
+2. **Upload de Vídeo:**
+   - Tentar fazer upload de vídeo legítimo → ✅ deve funcionar
+   - Vídeo deve processar normalmente
+
+3. **Chat (se aplicável):**
+   - Enviar imagem no chat → ✅ deve funcionar
+   - Tipos perigosos (svg, html) → ❌ não são mais aceitos
+
+### Passo 7: Verificar logs
+```bash
+# Ver se não há erros
+tail -f /var/log/php8.3-fpm/error.log
+tail -f /var/log/nginx/error.log
+```
+
+### ⚠️ Problemas comuns:
+
+**Erro: "Call to undefined function finfo_open()"**
+- Causa: Extensão fileinfo não instalada
+- Solução:
+```bash
+# Verificar se fileinfo está habilitado
+php -m | grep fileinfo
+
+# Se não estiver, instalar
+sudo apt install php8.3-fileinfo
+sudo systemctl restart php8.3-fpm
+```
+
+**Upload rejeitado com erro "MIME type não permitido"**
+- Isso é normal se o arquivo for suspeito
+- Verifique se está enviando imagem/vídeo legítimo
+- Logs devem mostrar o MIME type detectado
+
+**Avatar não aparece após upload**
+- Verificar permissões da pasta:
+```bash
+chmod 755 assets/images/avatars/
+chown -R www-data:www-data assets/images/avatars/
+```
+
+---
+
 ## 📋 DEPLOY: Proteção CSRF (18/04/2026)
 
 ### O que mudou:

@@ -9,11 +9,11 @@
 
 | Severidade | Total | Resolvidas | Pendentes |
 |------------|-------|------------|-----------|
-| CRÍTICO    | 14    | 6          | 8         |
+| CRÍTICO    | 14    | 9          | 5         |
 | ALTO       | 13    | 0          | 13        |
 | MÉDIO      | 8     | 1          | 7         |
 | BAIXO      | 7     | 0          | 7         |
-| **TOTAL**  | **42**| **7**      | **35**    |
+| **TOTAL**  | **42**| **10**     | **32**    |
 
 ---
 
@@ -52,21 +52,29 @@
 
 ### ❌ 4. Upload de arquivos sem validação de conteúdo
 **Status:** ❌ **PENDENTE**  
-**Arquivos:** `upload.php`, `profile.php`  
+**Arquivos:** `profile.php`, `upload.php`, `includes/chat_upload_config.php`  
 **Problema:** Só valida extensão, não conteúdo real (permite PHP renomeado como JPG)  
-**Solução Proposta:**
-```php
-$finfo = finfo_open(FILEINFO_MIME_TYPE);
-$mime = finfo_file($finfo, $file_tmp);
-finfo_close($finfo);
-if (!in_array($mime, $allowed_mimes)) die('Invalid file type');
-```
+**Solução Implementada:**
+- Criado `includes/upload_validation.php` com funções:
+  - `validate_image_upload()` - Usa finfo_file() + getimagesize()
+  - `validate_video_upload()` - Verifica MIME type real
+  - `sanitize_filename()` - Remove caracteres perigosos
+- Validação MIME integrada em:
+  - profile.php (avatar)
+  - upload.php (vídeos)
+  - chat_upload_config.php (imagens/vídeos do chat)
+- Previne: PHP executável disfarçado, XXE, XSS em SVG
+**Data:** 19/04/2026
 
-### ❌ 5. SVG e HTML permitidos no upload do chat
-**Status:** ❌ **PENDENTE**  
+### ✅ 5. SVG e HTML permitidos no upload do chat
+**Status:** ✅ **RESOLVIDO**  
 **Arquivo:** `includes/chat_upload_config.php`  
-**Problema:** Permite `.svg`, `.html`, `.js`, `.xml` - XSS  
-**Solução:** Remover da lista de tipos permitidos
+**Problema:** Permitia `.svg`, `.html`, `.js`, `.xml`, `.json` - XSS/Code execution  
+**Solução:** Removidos tipos perigosos da lista $ALLOWED_FILE_TYPES:
+- ❌ Removidos: svg, html, css, js, xml, json, py, java, c, cpp, sql, ico
+- ✅ Mantidos: pdf, doc, docx, xls, xlsx, txt, zip, ppt (documentos seguros)
+- Adicionada validação MIME type para imagens e vídeos
+**Data:** 19/04/2026
 
 ### ❌ 6. Reset de senha atualiza TODAS contas com mesmo email
 **Status:** ❌ **PENDENTE**  

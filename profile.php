@@ -57,15 +57,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Processar upload da foto de perfil
             $profile_picture = null;
             if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
-                $upload_dir = 'assets/images/avatars/';
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0755, true);
-                }
+                require_once 'includes/upload_validation.php';
                 
-                $file_extension = strtolower(pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION));
-                $allowed_types = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'heic', 'heif'];
+                // Validar imagem com MIME type checking
+                $validation = validate_image_upload(
+                    $_FILES['profile_picture']['tmp_name'],
+                    $_FILES['profile_picture']['name'],
+                    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif']
+                );
                 
-                if (in_array($file_extension, $allowed_types)) {
+                if (!$validation['valid']) {
+                    $error = $validation['error'];
+                } else {
+                    $upload_dir = 'assets/images/avatars/';
+                    if (!is_dir($upload_dir)) {
+                        mkdir($upload_dir, 0755, true);
+                    }
+                    
+                    $file_extension = $validation['extension'];
                     $new_filename = 'user_' . $user_id . '_' . time() . '.' . $file_extension;
                     $upload_path = $upload_dir . $new_filename;
                     
@@ -74,8 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         $error = 'Erro ao fazer upload da foto.';
                     }
-                } else {
-                    $error = 'Tipo de arquivo não permitido. Use JPG, PNG, GIF ou WEBP.';
                 }
             }
             

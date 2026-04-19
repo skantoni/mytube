@@ -45,10 +45,11 @@ if (!defined('MAX_FILE_SIZE')) {
 }
 
 // Extensões permitidas
-$ALLOWED_IMAGE_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tiff', 'tif', 'heic', 'heif', 'avif'];
+$ALLOWED_IMAGE_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif', 'heic', 'heif', 'avif'];
 $ALLOWED_VIDEO_TYPES = ['mp4', 'webm', 'mov', 'avi', 'mkv', '3gp'];
 $ALLOWED_AUDIO_TYPES = ['mp3', 'wav', 'ogg', 'webm', 'm4a', 'aac', 'flac'];
-$ALLOWED_FILE_TYPES = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'zip', 'rar', '7z', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf', 'json', 'xml', 'html', 'css', 'js', 'py', 'java', 'c', 'cpp', 'sql'];
+// SEGURANÇA: Removidos svg, html, css, js, xml, json (podem executar código malicioso)
+$ALLOWED_FILE_TYPES = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'zip', 'rar', '7z', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf'];
 
 /**
  * Função para fazer upload de arquivo
@@ -73,26 +74,32 @@ function uploadChatFile($file, $type) {
     // Obter extensão
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     
+    // Validação MIME type (segurança contra arquivos maliciosos)
+    require_once __DIR__ . '/upload_validation.php';
+    
     // Verificar tipo e tamanho
     switch ($type) {
         case 'image':
         case 'sticker':
-            if (!in_array($ext, $ALLOWED_IMAGE_TYPES)) {
-                return ['success' => false, 'error' => 'Tipo de imagem não permitido'];
+            // Validação rigorosa de imagem com MIME type
+            $validation = validate_image_upload($file['tmp_name'], $file['name'], $ALLOWED_IMAGE_TYPES);
+            if (!$validation['valid']) {
+                return ['success' => false, 'error' => $validation['error']];
             }
             if ($file['size'] > MAX_IMAGE_SIZE) {
                 return ['success' => false, 'error' => 'Imagem muito grande (máx 50MB)'];
             }
+            $ext = $validation['extension']; // Usar extensão validada
             $upload_dir = $type === 'sticker' ? CHAT_STICKERS_DIR : CHAT_IMAGES_DIR;
             break;
             
         case 'video':
-            if (!in_array($ext, $ALLOWED_VIDEO_TYPES)) {
-                return ['success' => false, 'error' => 'Tipo de vídeo não permitido'];
+            // Validação rigorosa de vídeo com MIME type
+            $validation = validate_video_upload($file['tmp_name'], $file['name'], $ALLOWED_VIDEO_TYPES, 6);
+            if (!$validation['valid']) {
+                return ['success' => false, 'error' => $validation['error']];
             }
-            if ($file['size'] > MAX_VIDEO_SIZE) {
-                return ['success' => false, 'error' => 'Vídeo muito grande (máx 6MB)'];
-            }
+            $ext = $validation['extension']; // Usar extensão validada
             $upload_dir = CHAT_VIDEOS_DIR;
             break;
             
