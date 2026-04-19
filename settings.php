@@ -945,7 +945,9 @@ if (!$user) {
             const installedBadge   = document.getElementById('pwaInstalledBadge');
 
             const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-            const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+            // Detecção robusta: userAgent OU (tela touch + tela pequena) — funciona mesmo com "Solicitar site desktop"
+            const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent)
+                || ('ontouchstart' in window && screen.width <= 1024);
             const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches
                 || window.navigator.standalone === true;
 

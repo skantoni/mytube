@@ -6,8 +6,9 @@
 (function() {
     'use strict';
     
-    // Detectar se é dispositivo mobile
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    // Detectar se é dispositivo mobile (inclui "Solicitar site desktop" ativo)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+        || ('ontouchstart' in window && screen.width <= 1024);
     
     if (!isMobile) return;
     

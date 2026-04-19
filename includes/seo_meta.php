@@ -100,8 +100,5 @@ if (isset($page_seo)) {
 </script>
 
 <!-- Additional SEO -->
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#111111">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- manifest + PWA meta tags handled by favicon.php (with cache busting) -->
 <meta name="format-detection" content="telephone=no">
