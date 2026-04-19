@@ -76,6 +76,9 @@ if (isset($page_seo)) {
 {
   "@context": "https://schema.org",
   "@type": "SocialMediaPosting",
+  "url": "<?php echo htmlspecialchars($seo_config['site_url'], ENT_QUOTES); ?>",
+  "datePublished": "<?php echo date('c'); ?>",
+  "dateModified": "<?php echo date('c'); ?>",
   "author": {
     "@type": "Organization",
     "name": "<?php echo htmlspecialchars($seo_config['site_name'], ENT_QUOTES); ?>"
