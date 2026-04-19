@@ -125,7 +125,11 @@ try {
     <link rel="stylesheet" href="<?php echo asset('assets/css/interactive-buttons.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Meta tag para informar se o usuário está logado -->
-    <meta name="user-logged-in" content="<?php echo isLoggedIn() ? 'true' : 'false'; ?>"><?php 
+    <meta name="user-logged-in" content="<?php echo isLoggedIn() ? 'true' : 'false'; ?>">
+    <!-- CSRF Token para proteção de formulários AJAX -->
+    <?php echo csrf_meta(); ?>
+    <script src="<?php echo asset('assets/js/csrf.js'); ?>"></script>
+    <?php 
     // Adicionar data attribute no body também
     if (isLoggedIn()) {
         echo '<script>document.addEventListener("DOMContentLoaded", () => { document.body.dataset.userLoggedIn = "true"; });</script>';

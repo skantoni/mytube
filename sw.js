@@ -1,5 +1,6 @@
 // MyTube Service Worker — PWA
 // Versionamento automático: usa ?v=... passado no registro do SW.
+// Última atualização: 2026-04-19 - Push notifications com tags únicas
 const SW_VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
 const CACHE_NAME = `mytube-${SW_VERSION}`;
 const STATIC_ASSETS = [
@@ -129,12 +130,26 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const targetUrl = (event.notification.data && event.notification.data.url) || '/my/index.php';
+  
+  let targetUrl = (event.notification.data && event.notification.data.url) || '/index.php';
+  
+  // Garantir URL absoluto (funciona em localhost e produção)
+  if (targetUrl && !targetUrl.startsWith('http')) {
+    const base = self.location.origin;
+    targetUrl = base + (targetUrl.startsWith('/') ? targetUrl : '/' + targetUrl);
+  }
+  
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(clientList => {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      // Verificar se já existe janela aberta com URL similar
       for (const client of clientList) {
-        if (client.url === targetUrl && 'focus' in client) return client.focus();
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.focus();
+          if (client.navigate) client.navigate(targetUrl);
+          return;
+        }
       }
+      // Abrir nova janela/aba
       if (clients.openWindow) return clients.openWindow(targetUrl);
     })
   );

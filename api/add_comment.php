@@ -153,7 +153,7 @@ try {
                 
                 // Push notification
                 $actorName = $_SESSION['username'] ?? 'Alguém';
-                sendPushNotification($pdo, (int)$video_owner_id, 'Novo comentário 💬', "$actorName comentou no teu vídeo", "/my/index.php?v=$video_id");
+                sendPushNotification($pdo, (int)$video_owner_id, 'Novo comentário 💬', "$actorName comentou no teu vídeo", "/index.php?v=$video_id");
             } catch (Exception $e) {
                 error_log("add_comment.php: Erro ao criar notificação de comentário - " . $e->getMessage());
             }
@@ -178,7 +178,7 @@ try {
                     
                     // Push notification de resposta
                     $actorName = $_SESSION['username'] ?? 'Alguém';
-                    sendPushNotification($pdo, (int)$parent_comment_owner_id, 'Nova resposta 💬', "$actorName respondeu ao teu comentário", "/my/index.php?v=$video_id");
+                    sendPushNotification($pdo, (int)$parent_comment_owner_id, 'Nova resposta 💬', "$actorName respondeu ao teu comentário", "/index.php?v=$video_id");
                 }
             } catch (Exception $e) {
                 error_log("add_comment.php: Erro ao criar notificação de resposta - " . $e->getMessage());
@@ -219,7 +219,7 @@ try {
                             
                             // Push notification de menção
                             $actorName = $_SESSION['username'] ?? 'Alguém';
-                            sendPushNotification($pdo, $mentionedId, 'Mencionado 📢', "$actorName mencionou-te num comentário", "/my/index.php?v=$video_id");
+                            sendPushNotification($pdo, $mentionedId, 'Mencionado 📢', "$actorName mencionou-te num comentário", "/index.php?v=$video_id");
                         } catch (Exception $e) {
                             error_log("add_comment.php: Erro ao criar notificação de menção para user {$mentionedId} - " . $e->getMessage());
                         }

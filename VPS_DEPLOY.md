@@ -248,6 +248,79 @@ chown -R www-data:www-data assets/images/avatars/
 
 ---
 
+## 📋 DEPLOY: Proteção Path Traversal (19/04/2026)
+
+### O que mudou:
+- ✅ Proteção contra path traversal em streaming de vídeo
+- ✅ Arquivo modificado: `api/stream_video.php`
+- ✅ Validação com realpath() + verificação de diretório
+- ✅ Bloqueio de MIME types que não sejam vídeo
+
+### Passo 1: Conectar na VPS
+```bash
+ssh skeny@mytube.social
+cd /var/www/mytube.social
+```
+
+### Passo 2: Backup
+```bash
+# Backup do arquivo antes de atualizar
+sudo cp api/stream_video.php api/stream_video.php.backup-$(date +%Y%m%d)
+```
+
+### Passo 3: Puxar as alterações
+```bash
+git pull origin main
+```
+
+### Passo 4: Verificar sintaxe
+```bash
+php -l api/stream_video.php
+```
+
+### Passo 5: Reiniciar PHP-FPM (se necessário)
+```bash
+sudo systemctl restart php8.3-fpm
+sudo systemctl status php8.3-fpm
+```
+
+### Passo 6: Testar streaming de vídeo
+Acesse o site e teste:
+
+1. **Reproduzir vídeo normal:**
+   - Ir para https://mytube.social
+   - Clicar em qualquer vídeo
+   - ✅ Deve reproduzir normalmente
+
+2. **Verificar logs (não deve haver erros):**
+```bash
+sudo tail -f /var/log/nginx/error.log | grep stream_video
+```
+
+3. **Testar proteção (opcional - NÃO RECOMENDADO EM PRODUÇÃO):**
+   - Modificar manualmente um video_path no banco para `../../etc/passwd`
+   - Tentar reproduzir o vídeo
+   - ❌ Deve retornar 403 Forbidden
+   - Logs devem mostrar: "TENTATIVA DE PATH TRAVERSAL BLOQUEADA"
+
+### ⚠️ Problemas comuns:
+
+**Vídeos não reproduzem:**
+- Verificar se caminho está correto no banco: `SELECT video_path FROM videos LIMIT 5;`
+- Verificar se arquivos existem: `ls -lh uploads/videos/`
+- Verificar permissões: `chmod 644 uploads/videos/*.mp4`
+
+**Erro: "realpath(): open_basedir restriction"**
+- Causa: PHP open_basedir configurado muito restritivo
+- Solução: Verificar php.ini: `open_basedir` deve incluir `/var/www/mytube.social/uploads`
+
+**Erro 403 em vídeos legítimos:**
+- Verificar se uploads_dir está correto
+- Debug: adicionar `error_log($file_path)` antes da validação
+- Verificar logs: `sudo tail -f /var/log/php8.3-fpm/error.log`
+
+---
+
 ## 📋 DEPLOY: Proteção SSRF (19/04/2026)
 
 ### O que mudou:

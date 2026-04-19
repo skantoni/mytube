@@ -74,27 +74,51 @@ try {
     // ============================================
     // VÍDEO LOCAL — streaming tradicional
     // ============================================
-    // Caminho do arquivo
-    $file_path = __DIR__ . '/../uploads/videos/' . $video['video_path'];
     
-    if (!file_exists($file_path)) {
+    // ⚠️ PROTEÇÃO CONTRA PATH TRAVERSAL
+    // Validar que o caminho está dentro de uploads/videos/
+    $uploads_dir = realpath(__DIR__ . '/../uploads/videos');
+    
+    if ($uploads_dir === false) {
+        http_response_code(500);
+        error_log("stream_video.php: Diretório uploads/videos não existe");
+        die('Erro interno do servidor');
+    }
+    
+    // Construir caminho completo e resolver (remove ../, symlinks, etc)
+    $requested_path = $uploads_dir . DIRECTORY_SEPARATOR . $video['video_path'];
+    $file_path = realpath($requested_path);
+    
+    // Verificar se arquivo existe
+    if ($file_path === false || !file_exists($file_path)) {
         http_response_code(404);
+        error_log("stream_video.php: Arquivo não encontrado - video_id: $video_id, path: {$video['video_path']}");
         die('Arquivo de vídeo não encontrado');
+    }
+    
+    // ✅ VALIDAÇÃO CRÍTICA: Garantir que o arquivo está dentro de uploads/videos/
+    // Previne path traversal como: ../../../etc/passwd
+    if (strpos($file_path, $uploads_dir) !== 0) {
+        http_response_code(403);
+        error_log("stream_video.php: TENTATIVA DE PATH TRAVERSAL BLOQUEADA - video_id: $video_id, path: {$video['video_path']}, resolved: $file_path");
+        die('Acesso negado');
+    }
+    
+    // Validar MIME type (apenas vídeos)
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime_type = finfo_file($finfo, $file_path);
+    finfo_close($finfo);
+    
+    // Bloquear arquivos que não são vídeos
+    if (!$mime_type || strpos($mime_type, 'video') === false) {
+        http_response_code(403);
+        error_log("stream_video.php: MIME type inválido bloqueado - video_id: $video_id, mime: $mime_type");
+        die('Tipo de arquivo não permitido');
     }
     
     // Informações do arquivo
     $file_size = filesize($file_path);
     $file_name = basename($file_path);
-    
-    // Detectar MIME type
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mime_type = finfo_file($finfo, $file_path);
-    finfo_close($finfo);
-    
-    // Fallback para video/mp4 se não detectar
-    if (!$mime_type || strpos($mime_type, 'video') === false) {
-        $mime_type = 'video/mp4';
-    }
     
     // ============================================
     // SUPORTE A RANGE REQUESTS (Progressive Download)

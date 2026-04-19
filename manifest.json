@@ -1,7 +1,7 @@
 {
     "name": "MyTube",
     "short_name": "MyTube",
-  "description": "Aqui os criadores competem! Rede social angolana de vídeos com competições escolares.",
+    "description": "Aqui os criadores competem! Rede social angolana de vídeos com competições escolares.",
     "start_url": "/index.php?pwa=1",
     "scope": "/",
     "display": "standalone",

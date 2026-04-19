@@ -1705,8 +1705,9 @@ app.post('/api/send-push', async (req, res) => {
         const payload = JSON.stringify({
             title: notification.title || 'MyTube',
             body: notification.body || '',
-            url: notification.url || '/my/index.php',
-            icon: notification.icon || '/my/assets/images/logo_icon.png',
+            url: notification.url || '/index.php',
+            icon: notification.icon || '/assets/images/logo_icon.png',
+            tag: notification.tag || ('notif_' + Date.now()),
         });
 
         const expired = [];

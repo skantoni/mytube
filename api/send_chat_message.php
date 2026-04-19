@@ -120,7 +120,7 @@ try {
     // Push notification para o destinatário
     $senderName = $sender['username'] ?? 'Alguém';
     $msgPreview = mb_substr($message, 0, 80);
-    sendPushNotification($pdo, $receiver_id, "💬 $senderName", $msgPreview, "/my/chat.php?user=$receiver_id");
+    sendPushNotification($pdo, $receiver_id, "💬 $senderName", $msgPreview, "/chat.php");
 
     echo json_encode([
         'success' => true,

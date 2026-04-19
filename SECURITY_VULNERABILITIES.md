@@ -9,11 +9,11 @@
 
 | Severidade | Total | Resolvidas | Pendentes |
 |------------|-------|------------|-----------|
-| CRÍTICO    | 14    | 11         | 3         |
+| CRÍTICO    | 14    | 12         | 2         |
 | ALTO       | 13    | 0          | 13        |
 | MÉDIO      | 8     | 1          | 7         |
 | BAIXO      | 7     | 0          | 7         |
-| **TOTAL**  | **42**| **12**     | **30**    |
+| **TOTAL**  | **42**| **13**     | **29**    |
 
 ---
 
@@ -111,11 +111,24 @@
 - Whitelist: apenas dzcdn.net e deezer.com
 **Data:** 19/04/2026
 
-### ❌ 9. Path Traversal no streaming de vídeo
-**Status:** ❌ **PENDENTE**  
-**Arquivo:** `api/stream_video.php` linha 75-77  
-**Problema:** `video_path` do banco usado sem sanitização  
-**Solução:** Usar `realpath()` e verificar se está dentro de uploads/
+### ✅ 9. Path Traversal no streaming de vídeo
+**Status:** ✅ **RESOLVIDO**  
+**Arquivo:** `api/stream_video.php`  
+**Problema:** Atacante poderia acessar arquivos arbitrários do sistema:
+- video_path no banco: `../../../etc/passwd`
+- Servidor leria: `/var/www/mytube.social/etc/passwd`
+- Exposição de: senhas, configurações, código-fonte, chaves privadas
+**Solução Implementada:**
+- Usado `realpath()` para resolver caminho absoluto (remove ../, symlinks)
+- Validação: `strpos($file_path, $uploads_dir) === 0` (caminho DEVE começar com uploads/videos/)
+- Bloqueia qualquer arquivo fora do diretório permitido
+- Validação MIME type adicional (apenas video/*)
+- Logs de tentativas de path traversal
+**Testes:**
+- ✅ Vídeo normal: funciona
+- ✅ Path traversal `../../etc/passwd`: bloqueado (403)
+- ✅ Symlink fora de uploads/: bloqueado
+**Data:** 19/04/2026
 
 ### ✅ 10. Exposed AWS/Cloudflare R2 Credentials (antigas)
 **Status:** ✅ **RESOLVIDO**  

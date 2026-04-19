@@ -117,7 +117,7 @@ try {
                     // Push notification de like (só quando é like, não unlike)
                     if ($liked && (int)$vid_owner !== $user_id) {
                         $actorName = $_SESSION['username'] ?? 'Alguém';
-                        sendPushNotification($pdo, (int)$vid_owner, 'Novo like ❤️', "$actorName curtiu o teu vídeo", "/my/index.php?v=$video_id");
+                        sendPushNotification($pdo, (int)$vid_owner, 'Novo like ❤️', "$actorName curtiu o teu vídeo", "/index.php?v=$video_id");
                     }
                 }
                 

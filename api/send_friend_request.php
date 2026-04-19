@@ -61,7 +61,7 @@ try {
                 $notifStmt->execute([$receiver_id, $current_user_id, $current_user_id]);
                 
                 $actorName = $_SESSION['username'] ?? 'Alguém';
-                sendPushNotification($pdo, (int)$receiver_id, 'Pedido de amizade 🤝', "$actorName enviou-te um pedido de amizade", '/my/chat.php');
+                sendPushNotification($pdo, (int)$receiver_id, 'Pedido de amizade 🤝', "$actorName enviou-te um pedido de amizade", '/chat.php');
             } catch (Exception $e) {
                 error_log('⚠️ Erro notificação friend_request: ' . $e->getMessage());
             }
@@ -81,7 +81,7 @@ try {
         $notifStmt->execute([$receiver_id, $current_user_id, $current_user_id]);
         
         $actorName = $_SESSION['username'] ?? 'Alguém';
-        sendPushNotification($pdo, (int)$receiver_id, 'Pedido de amizade 🤝', "$actorName enviou-te um pedido de amizade", '/my/chat.php');
+        sendPushNotification($pdo, (int)$receiver_id, 'Pedido de amizade 🤝', "$actorName enviou-te um pedido de amizade", '/chat.php');
     } catch (Exception $e) {
         error_log('⚠️ Erro notificação friend_request: ' . $e->getMessage());
     }

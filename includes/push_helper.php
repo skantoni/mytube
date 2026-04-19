@@ -54,14 +54,24 @@ function sendPushNotification($pdo, int $userId, string $title, string $body, st
             return false;
         }
         
+        // Gerar tag única para evitar sobreposição de notificações
+        $tag = 'notif_' . $userId . '_' . time() . '_' . mt_rand(1000, 9999);
+        
+        // Garantir URL absoluto para funcionar em produção
+        if ($url && strpos($url, 'http') !== 0) {
+            // Se URL relativo, manter como está (service worker resolve)
+            $url = $url;
+        }
+        
         // Enviar via chat-server Node.js
         $payload = json_encode([
             'subscriptions' => $subscriptions,
             'notification' => [
                 'title' => mb_substr($title, 0, 100),
                 'body' => mb_substr($body, 0, 200),
-                'url' => $url ?: '/my/index.php',
-                'icon' => $icon ?: '/my/assets/images/logo_icon.png',
+                'url' => $url ?: '/index.php',
+                'icon' => $icon ?: '/assets/images/logo_icon.png',
+                'tag' => $tag,
             ]
         ]);
         
@@ -126,13 +136,17 @@ function sendPushToMultiple($pdo, array $userIds, string $title, string $body, s
             return false;
         }
         
+        // Gerar tag única para cada grupo de notificações
+        $tag = 'notif_batch_' . time() . '_' . mt_rand(1000, 9999);
+        
         $payload = json_encode([
             'subscriptions' => $subscriptions,
             'notification' => [
                 'title' => mb_substr($title, 0, 100),
                 'body' => mb_substr($body, 0, 200),
-                'url' => $url ?: '/my/index.php',
-                'icon' => '/my/assets/images/logo_icon.png',
+                'url' => $url ?: '/index.php',
+                'icon' => '/assets/images/logo_icon.png',
+                'tag' => $tag,
             ]
         ]);
         
