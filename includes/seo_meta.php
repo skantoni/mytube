@@ -10,13 +10,13 @@
 $seo_config = [
     'site_name' => 'MyTube',
     'site_url' => 'https://www.mytube.social',
-    'title' => 'MyTube - Nova Rede Social de Vídeos | Crie seu perfil e compartilhe!',
-    'description' => 'Participe da MyTube, a nova rede social brasileira para compartilhar vídeos e interagir! Crie seu perfil agora e conecte-se com pessoas, compartilhe vídeos e descubra conteúdos!',
+    'title' => 'MyTube - Compartilhe vídeos e conecte-se com outros criadores e Aqui os criadores competem!',
+    'description' => 'MyTube é a rede social angolana onde criadores competem e talentos são descobertos! Participe de competições escolares, compartilhe vídeos e conecte-se com outros criadores. Mostre seu talento!',
     'image' => 'https://www.mytube.social/assets/images/og-image.jpg',
     'image_width' => 1200,
     'image_height' => 630,
     'type' => 'website',
-    'locale' => 'pt_BR',
+    'locale' => 'pt_AO',
     'twitter_card' => 'summary_large_image',
     'twitter_site' => '@mytube.app', // Alterar se tiver Twitter
 ];
@@ -30,7 +30,7 @@ if (isset($page_seo)) {
 <!-- Primary Meta Tags -->
 <meta name="title" content="<?php echo htmlspecialchars($seo_config['title']); ?>">
 <meta name="description" content="<?php echo htmlspecialchars($seo_config['description']); ?>">
-<meta name="keywords" content="rede social, vídeos, brasil, compartilhar vídeos, social media, mytube, videos curtos, tiktok brasil, instagram reels">
+<meta name="keywords" content="rede social angola, vídeos angola, criadores angolanos, competições escolares, talentos angola, social media angola, mytube, videos curtos, compartilhar vídeos, escolas angola">
 
 <!-- Open Graph / Facebook -->
 <meta property="og:type" content="<?php echo htmlspecialchars($seo_config['type']); ?>">

@@ -78,7 +78,7 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
                         Bem-vindo ao <span  class="gradient-text">MyTube</span>
                     </h1>
                     <p class="hero-subtitle">
-                        Descubra vídeos incríveis, conecte-se com criadores e Aquí os criadores competem!
+                        Aqui os criadores competem! Descubra talentos, participe de competições escolares e conecte-se com criadores de Angola.
                     </p>
                     <div class="hero-actions">
                         <a href="login.php?register=1" class="btn btn-primary btn-lg">

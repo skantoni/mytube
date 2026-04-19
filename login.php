@@ -183,27 +183,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MyTube - Sua rede social de vídeos</title>
     <script src="<?php echo asset('assets/js/csrf.js'); ?>"></script>
-    <meta name="description" content="MyTube é a rede social de vídeos onde criadores competem e se destacam. Partilhe os seus vídeos, ganhe seguidores e descubra talentos incríveis!">
-    <meta name="keywords" content="mytube, rede social vídeos, partilhar vídeos, criadores de conteúdo, social media">
+    <meta name="description" content="MyTube - Aqui os criadores competem! Rede social angolana de vídeos com competições escolares. Partilhe vídeos, descubra talentos e conecte-se com criadores de Angola!">
+    <meta name="keywords" content="mytube, rede social angola, vídeos angola, criadores angolanos, competições escolares, talentos, social media angola">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://www.mytube.social/login.php">
 
     <!-- Open Graph (Facebook, WhatsApp, etc.) -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://www.mytube.social/login.php">
-    <meta property="og:title" content="MyTube - Aqui os criadores competem">
-    <meta property="og:description" content="MyTube é a rede social de vídeos onde criadores competem e se destacam. Partilhe os seus vídeos, ganhe seguidores e descubra talentos incríveis!">
-    <meta property="og:image" content="https://www.mytube.social/assets/images/pwa-icon-512.png">
-    <meta property="og:image:width" content="512">
-    <meta property="og:image:height" content="512">
-    <meta property="og:locale" content="pt_BR">
+    <meta property="og:title" content="MyTube - Aqui os criadores competem | Angola">
+    <meta property="og:description" content="Rede social angolana onde criadores competem! Participe de competições escolares, partilhe vídeos e descubra talentos incríveis de Angola!">
+    <meta property="og:image" content="https://www.mytube.social/assets/images/og-image.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="pt_AO">
     <meta property="og:site_name" content="MyTube">
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="MyTube - Aqui os criadores competem">
-    <meta name="twitter:description" content="Partilhe os seus vídeos, ganhe seguidores e descubra talentos incríveis na MyTube!">
-    <meta name="twitter:image" content="https://www.mytube.social/assets/images/pwa-icon-512.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="MyTube - Aqui os criadores competem | Angola">
+    <meta name="twitter:description" content="Rede social angolana com competições escolares. Partilhe vídeos e descubra talentos de Angola!">
+    <meta name="twitter:image" content="https://www.mytube.social/assets/images/og-image.jpg">
 
     <!-- Schema.org structured data -->
     <script type="application/ld+json">
@@ -212,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       "@type": "WebSite",
       "name": "MyTube",
       "url": "https://www.mytube.social",
-      "description": "Rede social de vídeos onde criadores competem e se destacam",
+      "description": "Rede social angolana de vídeos onde criadores competem e talentos são descobertos",
       "potentialAction": {
         "@type": "SearchAction",
         "target": "https://www.mytube.social/index.php?search={search_term_string}",
