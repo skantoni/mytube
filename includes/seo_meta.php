@@ -18,7 +18,7 @@ $seo_config = [
     'type' => 'website',
     'locale' => 'pt_AO',
     'twitter_card' => 'summary_large_image',
-    'twitter_site' => '@mytube.app', // Alterar se tiver Twitter
+    'twitter_site' => 'NULL', // Alterar se tiver Twitter
 ];
 
 // Permitir override de configurações

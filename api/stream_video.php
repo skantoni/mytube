@@ -85,22 +85,66 @@ try {
         die('Erro interno do servidor');
     }
     
-    // Construir caminho completo e resolver (remove ../, symlinks, etc)
-    $requested_path = $uploads_dir . DIRECTORY_SEPARATOR . $video['video_path'];
+    // ✅ PRIMEIRA VALIDAÇÃO: Detectar padrões de path traversal no video_path
+    // Bloqueia ../, ..\, etc ANTES de tentar resolver o caminho
+    $suspicious_patterns = ['../', '..\\', '../', '..\\'];
+    foreach ($suspicious_patterns as $pattern) {
+        if (strpos($video['video_path'], $pattern) !== false) {
+            http_response_code(403);
+            error_log("stream_video.php: TENTATIVA DE PATH TRAVERSAL BLOQUEADA (padrão suspeito) - video_id: $video_id, path: {$video['video_path']}");
+            die('Acesso negado');
+        }
+    }
+    
+    // Normalizar path (remover barras duplas, etc)
+    $normalized_path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $video['video_path']);
+    $normalized_path = preg_replace('#' . DIRECTORY_SEPARATOR . '+#', DIRECTORY_SEPARATOR, $normalized_path);
+    
+    // Construir caminho completo
+    $requested_path = $uploads_dir . DIRECTORY_SEPARATOR . $normalized_path;
+    
+    // Tentar resolver caminho real (se arquivo existir)
     $file_path = realpath($requested_path);
     
-    // Verificar se arquivo existe
-    if ($file_path === false || !file_exists($file_path)) {
+    // Se realpath falhou (arquivo não existe ou é path inválido)
+    if ($file_path === false) {
+        // Verificar se é tentativa de path traversal mesmo sem existir
+        // (previne enumeração de arquivos do sistema)
+        $canonical_path = $uploads_dir . DIRECTORY_SEPARATOR . $normalized_path;
+        
+        // Normalizar para comparação (resolver ..)
+        $parts = explode(DIRECTORY_SEPARATOR, $canonical_path);
+        $resolved_parts = [];
+        foreach ($parts as $part) {
+            if ($part === '' || $part === '.') {
+                continue;
+            }
+            if ($part === '..') {
+                array_pop($resolved_parts); // Subir um nível
+            } else {
+                $resolved_parts[] = $part;
+            }
+        }
+        $canonical_path = implode(DIRECTORY_SEPARATOR, $resolved_parts);
+        
+        // Se o caminho resolvido não está dentro de uploads/videos, é path traversal
+        if (strpos($canonical_path, $uploads_dir) !== 0) {
+            http_response_code(403);
+            error_log("stream_video.php: TENTATIVA DE PATH TRAVERSAL BLOQUEADA - video_id: $video_id, path: {$video['video_path']}, canonical: $canonical_path");
+            die('Acesso negado');
+        }
+        
+        // Caminho está OK, mas arquivo não existe
         http_response_code(404);
         error_log("stream_video.php: Arquivo não encontrado - video_id: $video_id, path: {$video['video_path']}");
         die('Arquivo de vídeo não encontrado');
     }
     
-    // ✅ VALIDAÇÃO CRÍTICA: Garantir que o arquivo está dentro de uploads/videos/
-    // Previne path traversal como: ../../../etc/passwd
+    // ✅ SEGUNDA VALIDAÇÃO: Garantir que o caminho RESOLVIDO está dentro de uploads/videos/
+    // (proteção contra symlinks e outros truques)
     if (strpos($file_path, $uploads_dir) !== 0) {
         http_response_code(403);
-        error_log("stream_video.php: TENTATIVA DE PATH TRAVERSAL BLOQUEADA - video_id: $video_id, path: {$video['video_path']}, resolved: $file_path");
+        error_log("stream_video.php: TENTATIVA DE PATH TRAVERSAL BLOQUEADA (fora do diretório) - video_id: $video_id, path: {$video['video_path']}, resolved: $file_path");
         die('Acesso negado');
     }
     

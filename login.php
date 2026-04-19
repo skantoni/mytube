@@ -351,7 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="hidden" name="email_code" id="emailCodeHidden">
                 -->
                 <div class="input-group">
-                    <input type="text" name="reg_email" placeholder="E-mail (opcional)" value="<?php echo htmlspecialchars($reg_email); ?>" autocomplete="email">
+                    <input type="text" name="reg_email" placeholder="E-mail (Recomenda-se um email valido)" value="<?php echo htmlspecialchars($reg_email); ?>" autocomplete="email">
                 </div>
                 <div class="input-group">
                     <input type="text" name="reg_full_name" placeholder="Nome completo" value="<?php echo htmlspecialchars($reg_full_name); ?>" required>
