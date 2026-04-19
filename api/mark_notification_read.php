@@ -15,6 +15,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Validar CSRF token
+if (!csrf_verify()) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Token de segurança inválido']);
+    exit;
+}
+
 $input = json_decode(file_get_contents('php://input'), true);
 $notification_id = isset($input['notification_id']) ? (int)$input['notification_id'] : 0;
 $notif_scope = isset($input['notif_scope']) ? $input['notif_scope'] : 'personal';

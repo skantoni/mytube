@@ -28,6 +28,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Validar CSRF token
+if (!csrf_verify()) {
+    error_log("add_comment.php: CSRF token inválido");
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Token de segurança inválido']);
+    exit;
+}
+
 $input = json_decode(file_get_contents('php://input'), true);
 error_log("add_comment.php: Input recebido - " . json_encode($input));
 

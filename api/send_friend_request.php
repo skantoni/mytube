@@ -9,6 +9,13 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// Validar CSRF token
+if (!csrf_verify()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Token de segurança inválido']);
+    exit;
+}
+
 $current_user_id = $_SESSION['user_id'];
 $receiver_id = isset($_POST['receiver_id']) ? intval($_POST['receiver_id']) : 0;
 

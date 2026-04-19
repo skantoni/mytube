@@ -9,11 +9,11 @@
 
 | Severidade | Total | Resolvidas | Pendentes |
 |------------|-------|------------|-----------|
-| CRÍTICO    | 14    | 2          | 12        |
+| CRÍTICO    | 14    | 6          | 8         |
 | ALTO       | 13    | 0          | 13        |
-| MÉDIO      | 8     | 0          | 8         |
+| MÉDIO      | 8     | 1          | 7         |
 | BAIXO      | 7     | 0          | 7         |
-| **TOTAL**  | **42**| **2**      | **40**    |
+| **TOTAL**  | **42**| **7**      | **35**    |
 
 ---
 
@@ -27,26 +27,28 @@
 **Data:** 18/04/2026
 
 ### ✅ 2. Endpoints de debug públicos  
-**Status:** ✅ **RESOLVIDO** (verificado em `.gitignore`)  
-**Arquivos:** `check_session_browser.php`, `check_users.php`  
+**Status:** ✅ **RESOLVIDO**  
+**Arquivos:** `check_session_browser.php`, `check_users.php`, `test_*.php`  
 **Problema:** Expõem session_id, user_id e listam todos usuários sem autenticação  
-**Solução:** Arquivos já estão em `.gitignore` e devem ser deletados em produção  
-**Ação Pendente:** Deletar manualmente na VPS
+**Solução:** Arquivos deletados + proteção no Nginx contra padrões `check_*` e `test_*`  
+**Data:** 18/04/2026
 
-### ❌ 3. Ausência TOTAL de proteção CSRF
-**Status:** ❌ **PENDENTE**  
+### ✅ 3. Ausência TOTAL de proteção CSRF
+**Status:** ✅ **RESOLVIDO**  
 **Arquivos:** Todos 47+ endpoints POST  
-**Problema:** Nenhum endpoint valida token CSRF  
-**Solução Proposta:**
-```php
-// Gerar token
-$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
-// Validar em POST
-if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
-    die('CSRF token mismatch');
-}
-```
+**Problema:** Nenhum endpoint validava token CSRF  
+**Solução Implementada:**
+- Sistema completo em `includes/csrf_helpers.php`:
+  - `csrf_token()` - gera/retorna token de 64 caracteres
+  - `csrf_field()` - campo hidden HTML
+  - `csrf_verify()` - valida de POST/headers com hash_equals()
+  - `csrf_verify_or_die()` - valida ou retorna 403
+- Proteção adicionada em:
+  - Formulários HTML: login.php, profile.php, upload.php, settings.php
+  - 26 endpoints API validando CSRF
+  - JavaScript global (csrf.js) intercepta fetch() e XMLHttpRequest
+  - Meta tag `<meta name="csrf-token">` em todas páginas
+**Data:** 18/04/2026
 
 ### ❌ 4. Upload de arquivos sem validação de conteúdo
 **Status:** ❌ **PENDENTE**  
@@ -90,10 +92,11 @@ if (!in_array($mime, $allowed_mimes)) die('Invalid file type');
 **Problema:** `video_path` do banco usado sem sanitização  
 **Solução:** Usar `realpath()` e verificar se está dentro de uploads/
 
-### ❌ 10. Exposed AWS/Cloudflare R2 Credentials (antigas)
-**Status:** ⚠️ **PARCIALMENTE RESOLVIDO**  
+### ✅ 10. Exposed AWS/Cloudflare R2 Credentials (antigas)
+**Status:** ✅ **RESOLVIDO**  
 **Problema:** Credenciais antigas expostas no histórico Git  
-**Ação Necessária:** Revogar credenciais antigas (já geradas novas)
+**Solução:** Credenciais antigas revogadas, novas geradas e funcionando  
+**Data:** 18/04/2026
 
 ### ❌ 11. Avatar Upload - Missing MIME Type Validation
 **Status:** ❌ **PENDENTE**  
@@ -104,13 +107,15 @@ if (!in_array($mime, $allowed_mimes)) die('Invalid file type');
 **Status:** ❌ **PENDENTE**  
 **Arquivo:** `upload.php` linha 94-100  
 **Problema:** Só valida extensão, permite executáveis renomeados
+✅ 13. Database Credentials in Plaintext
+**Status:** ✅ **RESOLVIDO**  
+**Solução:** Migrado para variáveis de ambiente (.env) em produção  
+**Data:** 18/04/2026
 
-### ❌ 13. Database Credentials in Plaintext (resolvido localmente)
-**Status:** ⚠️ **RESOLVIDO LOCALMENTE**  
-**Ação Pendente:** Confirmar em produção
-
-### ❌ 14. CRON Secret Hardcoded (resolvido)
-**Status:** ⚠️ **RESOLVIDO LOCALMENTE**  
+### ✅ 14. CRON Secret Hardcoded
+**Status:** ✅ **RESOLVIDO**  
+**Solução:** Migrado para variáveis de ambiente (.env) em produção  
+**Data:** 18/04/2026 
 **Ação Pendente:** Confirmar em produção
 
 ---
@@ -184,10 +189,11 @@ if (!in_array($mime, $allowed_mimes)) die('Invalid file type');
 
 ---
 
-## 🟡 VULNERABILIDADES MÉDIAS (8)
-
-### ❌ 1. Sessão válida por 30 dias
-**Status:** ⚠️ **MELHORADO** (reduzido para 2 horas via .env)  
+## ✅ 1. Sessão válida por 30 dias
+**Status:** ✅ **RESOLVIDO**  
+**Arquivo:** `includes/config.php`  
+**Solução:** Reduzido para 2 horas via SESSION_LIFETIME no .env  
+**Data:** 18/04/2026eduzido para 2 horas via .env)  
 **Arquivo:** `includes/config.php`  
 **Ação:** Confirmar em produção
 
@@ -271,10 +277,21 @@ if (!in_array($mime, $allowed_mimes)) die('Invalid file type');
 - ✅ Credenciais antigas revogadas
 - ✅ Novas credenciais geradas e configuradas
 
-### Email SMTP ⚠️
-- ⚠️ Nova senha de app gerada
-- ⚠️ Senha sem espaços configurada no .env
-- ⏳ Aguardando teste
+### Email SMTP ✅
+- ✅ Nova senha de app gerada
+- ✅ Senha sem espaços configurada no .env
+- ✅ Testado e funcionando em produção
+
+### R2 Storage ✅
+- ✅ Correção de `use_path_style_endpoint` para R2
+- ✅ Credenciais antigas revogadas
+- ✅ Novas credenciais geradas e configuradas
+- ✅ Upload de vídeos funcionando em produção
+
+### Permissões .env ✅
+- ✅ Permissões corretas: 640 (skeny:www-data)
+- ✅ PHP-FPM consegue ler o arquivo
+- ✅ Site funcionando em produção
 
 ---
 

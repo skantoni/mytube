@@ -18,6 +18,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Validar CSRF token
+if (!csrf_verify()) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Token de segurança inválido']);
+    exit;
+}
+
 $input = json_decode(file_get_contents('php://input'), true);
 
 if (!isset($input['video_ids']) || !is_array($input['video_ids'])) {

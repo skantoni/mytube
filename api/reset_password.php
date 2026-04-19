@@ -8,6 +8,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Validar CSRF token
+if (!csrf_verify()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Token de segurança inválido.']);
+    exit;
+}
+
 $resetToken = trim($_POST['reset_token'] ?? '');
 $newPassword = $_POST['new_password'] ?? '';
 $confirmPassword = $_POST['confirm_password'] ?? '';

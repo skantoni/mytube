@@ -19,6 +19,9 @@ if (isset($_SESSION['profile_success'])) {
 
 // Processar ações do formulário
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Validar CSRF token
+    csrf_verify_or_die('Token de segurança inválido. Recarregue a página e tente novamente.');
+    
     if (isset($_POST['logout'])) {
         // Logout
         session_destroy();
@@ -235,8 +238,10 @@ $has_more_videos = $total_user_videos > count($user_videos);
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?php echo csrf_token(); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($user['full_name']); ?> - MyTube</title>
+    <script src="<?php echo asset('assets/js/csrf.js'); ?>"></script>
     <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
     <script src="<?php echo asset('assets/js/avatar-fallback.js'); ?>"></script>
     <link rel="stylesheet" href="<?php echo asset('assets/css/profile.css'); ?>">
@@ -531,6 +536,7 @@ $has_more_videos = $total_user_videos > count($user_videos);
                     <button type="button" class="btn btn-secondary" onclick="toggleEditModal()">
                         Cancelar
                     </button>
+                    <?php echo csrf_field(); ?>
                     <button type="submit" name="update_profile" class="btn btn-primary">
                         <i class="fas fa-save"></i>
                         Salvar Alterações
@@ -553,6 +559,7 @@ $has_more_videos = $total_user_videos > count($user_videos);
                         Cancelar
                     </button>
                     <form method="POST" style="display: inline;">
+                        <?php echo csrf_field(); ?>
                         <button type="submit" name="logout" class="btn btn-danger">
                             <i class="fas fa-sign-out-alt"></i>
                             Sair

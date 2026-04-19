@@ -15,6 +15,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Validar CSRF token
+if (!csrf_verify()) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Token de segurança inválido']);
+    exit;
+}
+
 try {
     // Marcar todas as notificações do usuário como lidas
     $stmt = $pdo->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0");

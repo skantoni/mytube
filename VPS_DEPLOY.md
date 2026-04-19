@@ -143,6 +143,101 @@ tail -f logs/*.log
 
 ---
 
+## 📋 DEPLOY: Proteção CSRF (18/04/2026)
+
+### O que mudou:
+- ✅ Criado sistema completo de proteção CSRF
+- ✅ Arquivos criados: `includes/csrf_helpers.php`, `assets/js/csrf.js`
+- ✅ Modificados: 4 páginas principais + 26 endpoints API
+- ✅ Adicionada validação em todos formulários e requests AJAX
+
+### Passo 1: Conectar na VPS
+```bash
+ssh skeny@seu-servidor
+cd /var/www/mytube.social
+```
+
+### Passo 2: Puxar as alterações
+```bash
+git pull origin main
+```
+
+### Passo 3: Verificar arquivos novos
+```bash
+# Verificar se os arquivos foram criados
+ls -la includes/csrf_helpers.php
+ls -la assets/js/csrf.js
+
+# Verificar sintaxe PHP
+php -l includes/csrf_helpers.php
+```
+
+### Passo 4: Limpar cache (se houver cache de assets)
+```bash
+# Se tiver cache de CSS/JS
+rm -rf cache/assets/*
+
+# Se usar CDN/Cloudflare, purge do cache
+```
+
+### Passo 5: Reiniciar PHP-FPM
+```bash
+sudo systemctl restart php8.3-fpm
+sudo systemctl status php8.3-fpm
+```
+
+### Passo 6: Testar CSRF Protection
+Acesse o site e teste:
+
+1. **Login/Cadastro:**
+   - Ir para https://mytube.social/login.php
+   - Tentar fazer login
+   - Tentar criar conta
+   - ✅ Deve funcionar normalmente
+
+2. **Upload:**
+   - Fazer upload de um vídeo
+   - ✅ Deve funcionar normalmente
+
+3. **Profile:**
+   - Editar perfil
+   - Trocar foto
+   - ✅ Deve funcionar normalmente
+
+4. **Interações (AJAX):**
+   - Dar like em vídeo
+   - Comentar
+   - Seguir usuário
+   - ✅ Tudo deve funcionar normalmente
+
+5. **Testar proteção:**
+   - Abrir DevTools (F12)
+   - Console deve mostrar: "CSRF protection loaded"
+   - Não deve haver erros de "Token de segurança inválido"
+
+### Passo 7: Verificar logs
+```bash
+# Verificar se não há erros
+tail -f /var/log/php8.3-fpm/error.log
+tail -f /var/log/nginx/error.log
+```
+
+### ⚠️ Problemas comuns:
+
+**Erro: "CSRF token inválido"**
+- Causa: Sessão não iniciada antes de carregar csrf_helpers.php
+- Solução: Verificar se `session_start()` vem antes de `require_once 'csrf_helpers.php'`
+
+**Erro: "getCsrfToken is not defined"**
+- Causa: csrf.js não carregou
+- Solução: Verificar se `<script src="assets/js/csrf.js">` está no `<head>` das páginas
+
+**AJAX requests falhando:**
+- Verificar no DevTools → Network se o token está sendo enviado
+- Headers devem conter `X-CSRF-Token` ou FormData deve ter `csrf_token`
+
+---
+
 ## 📋 PROCESSO PADRÃO PARA QUALQUER DEPLOY FUTURO
 
 ### 1. Antes de fazer git pull:

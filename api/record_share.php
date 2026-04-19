@@ -14,6 +14,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Validar CSRF token (permite requests sem autenticação)
+if (!csrf_verify()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Token de segurança inválido']);
+    exit;
+}
+
 $video_id = isset($_POST['video_id']) ? (int) $_POST['video_id'] : 0;
 $platform = isset($_POST['platform']) ? trim($_POST['platform']) : 'unknown';
 

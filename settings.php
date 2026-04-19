@@ -9,6 +9,9 @@ $user_id = $_SESSION['user_id'];
 
 // Processar logout
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
+    // Validar CSRF token
+    csrf_verify_or_die('Token de segurança inválido. Recarregue a página e tente novamente.');
+    
     session_destroy();
     redirect('login.php');
 }
@@ -25,8 +28,10 @@ if (!$user) {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?php echo csrf_token(); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Definições - MyTube</title>
+    <script src="<?php echo asset('assets/js/csrf.js'); ?>"></script>
     <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
     <script src="<?php echo asset('assets/js/avatar-fallback.js'); ?>"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -923,6 +928,7 @@ if (!$user) {
             <div class="logout-actions">
                 <button class="btn-cancel-logout" onclick="hideLogoutConfirm()">Cancelar</button>
                 <form method="POST" style="flex:1;display:flex">
+                    <?php echo csrf_field(); ?>
                     <button type="submit" name="logout" class="btn-confirm-logout" style="flex:1">Sair</button>
                 </form>
             </div>

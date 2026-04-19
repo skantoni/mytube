@@ -8,6 +8,13 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// Validar CSRF token
+if (!csrf_verify()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Token de segurança inválido']);
+    exit;
+}
+
 $current_user_id = $_SESSION['user_id'];
 $request_id = isset($_POST['request_id']) ? intval($_POST['request_id']) : 0;
 $action = isset($_POST['action']) ? $_POST['action'] : '';

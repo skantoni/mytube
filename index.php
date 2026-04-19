@@ -41,8 +41,10 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?php echo csrf_token(); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>MyTube - Sua rede social de vídeos</title>
+    <script src="<?php echo asset('assets/js/csrf.js'); ?>"></script>
     <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
     <script src="<?php echo asset('assets/js/avatar-fallback.js'); ?>"></script>
     <link rel="stylesheet" href="<?php echo asset('assets/css/tiktok.css'); ?>">

@@ -8,6 +8,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Validar CSRF token
+if (!csrf_verify()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Token de segurança inválido.']);
+    exit;
+}
+
 if (!isLoggedIn()) {
     echo json_encode(['success' => false, 'message' => 'Não autenticado.']);
     exit;

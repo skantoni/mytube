@@ -22,6 +22,9 @@ $reg_full_name = '';
 $reg_instituicao = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Validar CSRF token
+    csrf_verify_or_die('Token de segurança inválido. Recarregue a página e tente novamente.');
+    
     if (isset($_POST['login'])) {
         // LOGIN
         $username = trim($_POST['username']);
@@ -176,8 +179,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?php echo csrf_token(); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MyTube - Sua rede social de vídeos</title>
+    <script src="<?php echo asset('assets/js/csrf.js'); ?>"></script>
     <meta name="description" content="MyTube é a rede social de vídeos onde criadores competem e se destacam. Partilhe os seus vídeos, ganhe seguidores e descubra talentos incríveis!">
     <meta name="keywords" content="mytube, rede social vídeos, partilhar vídeos, criadores de conteúdo, social media">
     <meta name="robots" content="index, follow">
@@ -253,6 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <svg class="eye-off-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
                     </button>
                 </div>
+                <?php echo csrf_field(); ?>
                 <button type="submit" name="login" class="btn btn-primary">Entrar</button>
                 <p class="forgot-password">
                     <a href="#" onclick="showForgotPassword(); return false;">Esqueceu a senha?</a>
@@ -368,6 +374,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </button>
                 </div>
                 <div id="passwordMatchError" class="inline-error" style="display:none;">Senhas não conferem.</div>
+                <?php echo csrf_field(); ?>
                 <button type="submit" name="register" class="btn btn-primary">Criar Conta</button>
                 <p class="terms">
                     Ao cadastrar-se, você concorda com nossos 

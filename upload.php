@@ -21,6 +21,17 @@ $success = '';
 $isAjax = isset($_POST['ajax_upload']);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Validar CSRF token
+    if (!csrf_verify()) {
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Token de segurança inválido']);
+            exit;
+        }
+        csrf_verify_or_die();
+    }
+    
     // Buffer de saída para evitar que warnings corrompam a resposta JSON
     if ($isAjax) {
         ob_start();
@@ -306,8 +317,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?php echo csrf_token(); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload de Vídeo - MyTube</title>
+    <script src="<?php echo asset('assets/js/csrf.js'); ?>"></script>
     <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
     <script src="<?php echo asset('assets/js/avatar-fallback.js'); ?>"></script>
     <link rel="stylesheet" href="<?php echo asset('assets/css/upload.css'); ?>">
@@ -573,6 +586,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     
                     <!-- Botões -->
                     <div class="form-actions">
+                        <?php echo csrf_field(); ?>
                         <button type="button" class="btn btn-secondary" onclick="window.location.href='index.php'">
                             <i class="fas fa-arrow-left"></i>
                             Cancelar

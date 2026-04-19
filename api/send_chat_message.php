@@ -15,6 +15,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Validar CSRF token
+if (!csrf_verify()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Token de segurança inválido']);
+    exit;
+}
+
 $sender_id = (int) $_SESSION['user_id'];
 $receiver_id = isset($_POST['receiver_id']) ? (int) $_POST['receiver_id'] : 0;
 $message = isset($_POST['message']) ? trim($_POST['message']) : '';

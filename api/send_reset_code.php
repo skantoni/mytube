@@ -29,6 +29,13 @@ try {
         exit;
     }
 
+    // Validar CSRF token
+    if (!csrf_verify()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Token de segurança inválido.']);
+        exit;
+    }
+
     $email = trim($_POST['email'] ?? '');
 
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
