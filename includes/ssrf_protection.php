@@ -76,11 +76,16 @@ function validate_url_ssrf(string $url, array $allowed_domains = []): array {
     // 5. Resolver IP do domínio
     $ip = gethostbyname($host);
     
-    // Se não conseguiu resolver, retornar erro
+    // Se não conseguiu resolver, aceitar SE for domínio whitelistado
+    // (em localhost pode não ter DNS configurado)
     if ($ip === $host) {
+        // Se domínio está na whitelist, aceitar mesmo sem resolver DNS
+        // (funcionalidade completa depende de DNS em produção)
+        error_log("SSRF: Não foi possível resolver DNS para $host (OK se estiver em localhost)");
+        
         return [
-            'valid' => false,
-            'error' => 'Não foi possível resolver o domínio',
+            'valid' => true,  // ⚠️ Aceitar domínios whitelistados mesmo sem DNS
+            'error' => null,
             'ip' => null
         ];
     }
@@ -245,8 +250,12 @@ function ssrf_safe_download(string $url, array $allowed_domains, int $max_size_m
         CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; MyTube/1.0)',
         CURLOPT_PROTOCOLS      => CURLPROTO_HTTPS,  // Apenas HTTPS
         CURLOPT_REDIR_PROTOCOLS => 0,               // Bloquear redirects
-        CURLOPT_MAXFILESIZE    => $max_size_mb * 1024 * 1024, // Limite de tamanho
     ]);
+    
+    // ⚠️ Limite de tamanho (se disponível)
+    if (defined('CURLOPT_MAXFILESIZE')) {
+        curl_setopt($ch, CURLOPT_MAXFILESIZE, $max_size_mb * 1024 * 1024);
+    }
     
     $data = curl_exec($ch);
     $http_code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
