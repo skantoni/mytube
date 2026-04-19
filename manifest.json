@@ -1,54 +1,101 @@
 {
-  "name": "MyTube",
-  "short_name": "MyTube",
-  "description": "Sua rede social de vídeos — descubra, compartilhe e conecte-se!",
-  "start_url": "/index.php?pwa=1",
-  "scope": "/",
-  "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#111111",
-  "theme_color": "#111111",
-  "lang": "pt-BR",
-  "categories": ["social", "entertainment"],
-  "icons": [
-    {
-      "src": "/assets/images/pwa-icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/assets/images/pwa-icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/assets/images/pwa-icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ],
-  "screenshots": [],
-  "shortcuts": [
-    {
-      "name": "Feed",
-      "short_name": "Feed",
-      "url": "/index.php",
-      "icons": [{ "src": "/assets/images/logo_icon.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "Chat",
-      "short_name": "Chat",
-      "url": "/chat.php",
-      "icons": [{ "src": "/assets/images/logo_icon.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "Upload",
-      "short_name": "Upload",
-      "url": "/upload.php",
-      "icons": [{ "src": "/assets/images/logo_icon.png", "sizes": "96x96" }]
-    }
-  ]
+    "name": "MyTube",
+    "short_name": "MyTube",
+    "description": "Sua rede social de vídeos — descubra, compartilhe e conecte-se!",
+    "start_url": "/index.php?pwa=1",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#111111",
+    "theme_color": "#111111",
+    "lang": "pt-BR",
+    "categories": [
+        "social",
+        "entertainment"
+    ],
+    "icons": [
+        {
+            "src": "/assets/images/pwa-icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/assets/images/pwa-icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/assets/images/pwa-icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/assets/images/screenshots/Screenshot 2026-04-19 132709.png",
+            "sizes": "1360x636",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Screenshot 2026 04 19 132709 "
+        },
+        {
+            "src": "/assets/images/screenshots/Screenshot 2026-04-19 132821.png",
+            "sizes": "193x420",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Screenshot 2026 04 19 132821 "
+        },
+        {
+            "src": "/assets/images/screenshots/Screenshot 2026-04-19 132923.png",
+            "sizes": "192x419",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Screenshot 2026 04 19 132923 "
+        },
+        {
+            "src": "/assets/images/screenshots/Screenshot 2026-04-19 134100.png",
+            "sizes": "191x420",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Screenshot 2026 04 19 134100 "
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Feed",
+            "short_name": "Feed",
+            "url": "/index.php",
+            "icons": [
+                {
+                    "src": "/assets/images/logo_icon.png",
+                    "sizes": "96x96"
+                }
+            ]
+        },
+        {
+            "name": "Chat",
+            "short_name": "Chat",
+            "url": "/chat.php",
+            "icons": [
+                {
+                    "src": "/assets/images/logo_icon.png",
+                    "sizes": "96x96"
+                }
+            ]
+        },
+        {
+            "name": "Upload",
+            "short_name": "Upload",
+            "url": "/upload.php",
+            "icons": [
+                {
+                    "src": "/assets/images/logo_icon.png",
+                    "sizes": "96x96"
+                }
+            ]
+        }
+    ]
 }

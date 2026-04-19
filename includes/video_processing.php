@@ -256,79 +256,27 @@ function video_prepare_for_storage(string $input_path, string $original_extensio
  * Retorna o caminho do ficheiro temporario ou null em caso de erro.
  */
 function video_download_music(string $url): ?string {
-    // Validar que a URL pertence ao Deezer CDN
-    $parsed = parse_url($url);
-    if (!$parsed || empty($parsed['host'])) {
-        error_log('video_download_music: URL inválida');
+    require_once __DIR__ . '/ssrf_protection.php';
+    
+    // Download seguro com proteção SSRF
+    $result = ssrf_safe_download(
+        $url,
+        ['dzcdn.net', 'deezer.com'],  // Apenas domínios Deezer permitidos
+        10,  // 10MB máximo
+        30   // 30 segundos timeout
+    );
+    
+    if (!$result['success']) {
+        error_log('video_download_music: ' . $result['error'] . ' — URL: ' . $url);
         return null;
     }
-    $host = strtolower($parsed['host']);
-    $is_allowed = str_ends_with($host, '.dzcdn.net')
-               || str_ends_with($host, '.deezer.com');
-    if (!$is_allowed) {
-        error_log('video_download_music: host não permitido: ' . $host);
-        return null;
-    }
-
-    $tmp_path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid('mytube_music_', true) . '.mp3';
-
-    // Método 1: cURL (preferível — funciona em quase todos os servidores)
-    if (function_exists('curl_init')) {
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL            => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS      => 5,
-            CURLOPT_TIMEOUT        => 30,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; MyTube/1.0)',
-        ]);
-        $data = curl_exec($ch);
-        $http_code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curl_error = curl_error($ch);
-        curl_close($ch);
-
-        if ($data === false || $http_code !== 200 || strlen($data) < 1024) {
-            error_log('video_download_music: cURL falhou — HTTP ' . $http_code . ' — ' . $curl_error . ' — URL: ' . $url);
-            return null;
-        }
-
-        if (file_put_contents($tmp_path, $data) === false) {
-            error_log('video_download_music: falha ao escrever ficheiro temporário');
-            return null;
-        }
-
-        error_log('video_download_music: OK via cURL — ' . strlen($data) . ' bytes — ' . $tmp_path);
-        return $tmp_path;
-    }
-
-    // Método 2: file_get_contents (fallback)
-    $context = stream_context_create([
-        'http' => [
-            'timeout' => 30,
-            'follow_location' => true,
-            'max_redirects' => 5,
-            'header' => "User-Agent: Mozilla/5.0 (compatible; MyTube/1.0)\r\n",
-        ],
-        'ssl'  => ['verify_peer' => true, 'verify_peer_name' => true],
-    ]);
-
-    $data = @file_get_contents($url, false, $context);
-    if ($data === false || strlen($data) < 1024) {
-        error_log('video_download_music: file_get_contents falhou — URL: ' . $url);
-        return null;
-    }
-
-    if (file_put_contents($tmp_path, $data) === false) {
-        error_log('video_download_music: falha ao escrever ficheiro temporário');
-        return null;
-    }
-
-    error_log('video_download_music: OK via file_get_contents — ' . strlen($data) . ' bytes');
-    return $tmp_path;
+    
+    // Renomear arquivo para .mp3
+    $mp3_path = str_replace('.tmp', '.mp3', $result['path']);
+    rename($result['path'], $mp3_path);
+    
+    error_log('video_download_music: OK — ' . $result['size'] . ' bytes — ' . $mp3_path);
+    return $mp3_path;
 }
 
 /**

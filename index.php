@@ -52,9 +52,11 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
     <link rel="stylesheet" href="<?php echo asset('assets/css/feed.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset('assets/css/splash.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <meta name="description" content="MyTube - Compartilhe seus vídeos e descubra conteúdos incríveis!">
-    <meta name="robots" content="noindex, nofollow">
-    <link rel="canonical" href="https://www.mytube.social/login.php">
+    
+    <!-- SEO & Social Media Meta Tags -->
+    <?php include __DIR__ . '/includes/seo_meta.php'; ?>
+    
+    <link rel="canonical" href="https://www.mytube.social/">
     <?php echo r2_js_config(); ?>
     <?php include __DIR__ . '/includes/favicon.php'; ?>
 </head>

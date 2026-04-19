@@ -248,6 +248,103 @@ chown -R www-data:www-data assets/images/avatars/
 
 ---
 
+## 📋 DEPLOY: Proteção SSRF (19/04/2026)
+
+### O que mudou:
+- ✅ Criado sistema de proteção contra SSRF (Server-Side Request Forgery)
+- ✅ Arquivo criado: `includes/ssrf_protection.php`
+- ✅ Modificado: `includes/video_processing.php` (função video_download_music)
+- ✅ Agora bloqueia: localhost, IPs privados, redirects maliciosos, portas arbitrárias
+
+### Passo 1: Conectar na VPS
+```bash
+ssh skeny@mytube.social
+cd /var/www/mytube.social
+```
+
+### Passo 2: Backup
+```bash
+# Backup antes de atualizar
+sudo cp includes/video_processing.php includes/video_processing.php.backup-$(date +%Y%m%d)
+```
+
+### Passo 3: Puxar as alterações
+```bash
+git pull origin main
+```
+
+### Passo 4: Verificar arquivo novo
+```bash
+# Verificar se o arquivo foi criado
+ls -lh includes/ssrf_protection.php
+
+# Verificar sintaxe PHP
+php -l includes/ssrf_protection.php
+php -l includes/video_processing.php
+```
+
+### Passo 5: Ajustar permissões
+```bash
+sudo chown skeny:www-data includes/ssrf_protection.php
+sudo chmod 640 includes/ssrf_protection.php
+```
+
+### Passo 6: Reiniciar PHP-FPM
+```bash
+sudo systemctl restart php8.3-fpm
+sudo systemctl status php8.3-fpm
+```
+
+### Passo 7: Testar proteção SSRF
+Acesse o site e teste:
+
+1. **Upload de vídeo com música (normal):**
+   - Ir para https://mytube.social/upload.php
+   - Adicionar música do Deezer (URL legítima)
+   - Fazer upload
+   - ✅ Deve funcionar normalmente
+
+2. **Verificar logs:**
+```bash
+# Logs devem mostrar "video_download_music: OK"
+sudo tail -f /var/log/nginx/error.log | grep video_download_music
+```
+
+3. **Testar bloqueio (opcional - apenas em ambiente de teste):**
+   - URLs maliciosas devem ser bloqueadas:
+     - `http://127.0.0.1` → ❌ Bloqueado (localhost)
+     - `http://192.168.1.1` → ❌ Bloqueado (IP privado)
+     - `http://evil.dzcdn.net.attacker.com` → ❌ Bloqueado (domínio inválido)
+
+### ⚠️ Problemas comuns:
+
+**Erro: "Cannot modify header information - headers already sent"**
+- Causa: Espaços em branco antes de `<?php` em ssrf_protection.php
+- Solução: Verificar se não há BOM ou espaços no início do arquivo
+
+**Música não faz download:**
+- Verificar logs: `sudo tail -f /var/log/php8.3-fpm/error.log`
+- Logs devem mostrar erro específico (domínio não permitido, IP privado, etc)
+- Se URL for legítima do Deezer (dzcdn.net), verificar se DNS resolve corretamente
+
+**Erro: "Call to undefined function gethostbyname()"**
+- Raro, mas verificar se extensão sockets está instalada:
+```bash
+php -m | grep sockets
+# Se não estiver:
+sudo apt install php8.3-sockets
+sudo systemctl restart php8.3-fpm
+```
+
+### Passo 8: Verificar segurança
+```bash
+# Testar se bloqueia localhost (deve falhar)
+# curl -X POST https://mytube.social/api/test_music_download.php -d "url=http://127.0.0.1"
+# Resposta deve ser: "Domínio não está na lista de permitidos"
+```
+
+---
+
 ## 📋 DEPLOY: Proteção CSRF (18/04/2026)
 
 ### O que mudou:

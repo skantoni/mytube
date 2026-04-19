@@ -9,11 +9,11 @@
 
 | Severidade | Total | Resolvidas | Pendentes |
 |------------|-------|------------|-----------|
-| CRÍTICO    | 14    | 9          | 5         |
+| CRÍTICO    | 14    | 11         | 3         |
 | ALTO       | 13    | 0          | 13        |
 | MÉDIO      | 8     | 1          | 7         |
 | BAIXO      | 7     | 0          | 7         |
-| **TOTAL**  | **42**| **10**     | **32**    |
+| **TOTAL**  | **42**| **12**     | **30**    |
 
 ---
 
@@ -76,11 +76,15 @@
 - Adicionada validação MIME type para imagens e vídeos
 **Data:** 19/04/2026
 
-### ❌ 6. Reset de senha atualiza TODAS contas com mesmo email
-**Status:** ❌ **PENDENTE**  
-**Arquivo:** `api/reset_password.php` linha 23  
-**Problema:** `UPDATE users SET password = ? WHERE email = ?`  
-**Solução:** Adicionar UNIQUE constraint + resetar por user_id
+### ✅ 6. Reset de senha atualiza TODAS contas com mesmo email
+**Status:** ✅ **RESOLVIDO**  
+**Arquivo:** `api/reset_password.php`, `database/mytube_structure_only.sql`  
+**Problema:** Se múltiplas contas tivessem mesmo email, UPDATE afetaria todas  
+**Solução:** Já implementado:
+- Tabela `users` tem `UNIQUE KEY email` - previne duplicatas
+- reset_password.php usa `WHERE id = ?` (não WHERE email = ?)
+- Reset vinculado a user_id específico via sessão
+**Verificado:** 19/04/2026
 
 ### ❌ 7. Token de reset exposto na resposta da API
 **Status:** ❌ **PENDENTE**  
@@ -88,11 +92,24 @@
 **Problema:** Reset token retornado no JSON  
 **Solução:** Armazenar apenas em `$_SESSION`, nunca retornar ao cliente
 
-### ❌ 8. SSRF no download de música
-**Status:** ❌ **PENDENTE**  
-**Arquivo:** `includes/video_processing.php` linha 258-270  
-**Problema:** `str_ends_with()` contornável, cURL segue redirects  
-**Solução:** Validação estrita de domínio + bloquear IPs privados + desabilitar redirects
+### ✅ 8. SSRF no download de música
+**Status:** ✅ **RESOLVIDO**  
+**Arquivo:** `includes/video_processing.php`, `includes/ssrf_protection.php`  
+**Problema:** Atacante poderia forçar servidor a acessar:
+- Localhost (127.0.0.1, ::1)
+- Rede interna (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+- Portas arbitrárias (22-SSH, 3306-MySQL, etc)
+- Redirects maliciosos via `CURLOPT_FOLLOWLOCATION => true`
+- Subdomínios fake como `evil.dzcdn.net.attacker.com`
+**Solução Implementada:**
+- Criado `includes/ssrf_protection.php` com:
+  - `validate_url_ssrf()` - Valida domínio exato (não suffix), HTTPS only, porta 443
+  - `is_private_ip()` - Bloqueia todos IPs privados/reservados (IPv4 e IPv6)
+  - `ssrf_safe_download()` - Download com `CURLOPT_FOLLOWLOCATION => false`
+- video_download_music() reescrito para usar proteção SSRF
+- Testa IP antes de conectar (previne DNS rebinding)
+- Whitelist: apenas dzcdn.net e deezer.com
+**Data:** 19/04/2026
 
 ### ❌ 9. Path Traversal no streaming de vídeo
 **Status:** ❌ **PENDENTE**  
