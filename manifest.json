@@ -35,32 +35,39 @@
     ],
     "screenshots": [
         {
-            "src": "/assets/images/screenshots/Screenshot 2026-04-19 132709.png",
+            "src": "/assets/images/screenshots/desktop-feed.png",
             "sizes": "1360x636",
             "type": "image/png",
             "form_factor": "wide",
-            "label": "Screenshot 2026 04 19 132709 "
+            "label": "Desktop feed "
         },
         {
-            "src": "/assets/images/screenshots/Screenshot 2026-04-19 132821.png",
-            "sizes": "193x420",
+            "src": "/assets/images/screenshots/mobile-chat.png",
+            "sizes": "302x543",
             "type": "image/png",
             "form_factor": "narrow",
-            "label": "Screenshot 2026 04 19 132821 "
+            "label": "Mobile chat "
         },
         {
-            "src": "/assets/images/screenshots/Screenshot 2026-04-19 132923.png",
-            "sizes": "192x419",
+            "src": "/assets/images/screenshots/mobile-feed.png",
+            "sizes": "311x543",
             "type": "image/png",
             "form_factor": "narrow",
-            "label": "Screenshot 2026 04 19 132923 "
+            "label": "Mobile feed "
         },
         {
-            "src": "/assets/images/screenshots/Screenshot 2026-04-19 134100.png",
-            "sizes": "191x420",
+            "src": "/assets/images/screenshots/mobile-feed1.png",
+            "sizes": "305x545",
             "type": "image/png",
             "form_factor": "narrow",
-            "label": "Screenshot 2026 04 19 134100 "
+            "label": "Mobile feed1 "
+        },
+        {
+            "src": "/assets/images/screenshots/mobile-ranking.png",
+            "sizes": "306x546",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Mobile ranking "
         }
     ],
     "shortcuts": [

@@ -36,7 +36,6 @@ try {
         SELECT id, username, updated_at
         FROM users
         WHERE (is_verified = 1 OR videos_count > 5)
-        AND is_private = 0
         ORDER BY videos_count DESC
         LIMIT 100
     ");
@@ -78,22 +77,25 @@ try {
 
 // 4. Hashtags Populares
 try {
-    $stmt = $pdo->query("
-        SELECT DISTINCT tag
-        FROM video_hashtags
-        GROUP BY tag
-        HAVING COUNT(*) > 5
-        ORDER BY COUNT(*) DESC
-        LIMIT 50
-    ");
-    
-    while ($row = $stmt->fetch()) {
-        $urls[] = [
-            'loc' => $base_url . '/explore.php?tag=' . urlencode($row['tag']),
-            'lastmod' => $today,
-            'changefreq' => 'daily',
-            'priority' => '0.5'
-        ];
+    // Verificar se tabela hashtags existe
+    $check = $pdo->query("SHOW TABLES LIKE 'hashtags'")->fetch();
+    if ($check) {
+        $stmt = $pdo->query("
+            SELECT name, slug
+            FROM hashtags
+            WHERE posts_count > 5
+            ORDER BY posts_count DESC
+            LIMIT 50
+        ");
+        
+        while ($row = $stmt->fetch()) {
+            $urls[] = [
+                'loc' => $base_url . '/hashtags.php?tag=' . urlencode($row['name']),
+                'lastmod' => $today,
+                'changefreq' => 'daily',
+                'priority' => '0.5'
+            ];
+        }
     }
 } catch (Exception $e) {
     error_log("Sitemap: erro ao buscar hashtags - " . $e->getMessage());
