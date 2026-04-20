@@ -37,18 +37,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             require_once 'includes/rate_limit.php';
             $client_ip = rate_limit_get_client_ip();
             
-            // Verificar rate limit por IP (5 tentativas em 15 minutos)
-            $rate_limit_ip = rate_limit_check($pdo, 'login', $client_ip, 5, 15);
+            // Verificar rate limit por usuário PRIMEIRO (5 tentativas em 15 minutos)
+            // Este é o bloqueio principal - previne ataque direcionado a uma conta
+            $rate_limit_user = rate_limit_check($pdo, 'login_user', strtolower($username), 5, 15);
             
-            // Verificar rate limit por usuário (3 tentativas em 15 minutos)
-            $rate_limit_user = rate_limit_check($pdo, 'login_user', strtolower($username), 3, 15);
+            // Verificar rate limit por IP SECUNDÁRIO (15 tentativas em 15 minutos)
+            // Apenas para prevenir ataques massivos de força bruta
+            $rate_limit_ip = rate_limit_check($pdo, 'login_ip', $client_ip, 15, 15);
             
-            if ($rate_limit_ip['blocked']) {
-                $time_remaining = rate_limit_format_time_remaining($rate_limit_ip['reset_at']);
-                $error = "Muitas tentativas de login. Tente novamente em $time_remaining.";
-            } elseif ($rate_limit_user['blocked']) {
+            if ($rate_limit_user['blocked']) {
                 $time_remaining = rate_limit_format_time_remaining($rate_limit_user['reset_at']);
                 $error = "Muitas tentativas para este usuário. Tente novamente em $time_remaining.";
+            } elseif ($rate_limit_ip['blocked']) {
+                $time_remaining = rate_limit_format_time_remaining($rate_limit_ip['reset_at']);
+                $error = "Muitas tentativas deste IP. Tente novamente em $time_remaining.";
             } else {
                 // Processar login normalmente
                 $stmt = $pdo->prepare("SELECT * FROM users WHERE BINARY username = ? OR email = ?");
@@ -65,8 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 if ($user) {
                     // ✅ LOGIN BEM-SUCEDIDO - Limpar rate limit
-                    rate_limit_record($pdo, 'login', $client_ip, true);
                     rate_limit_record($pdo, 'login_user', strtolower($username), true);
+                    rate_limit_record($pdo, 'login_ip', $client_ip, true);
                     
                     // Resetar status online stale no banco (pode estar preso de crash anterior)
                     try {
@@ -94,14 +96,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     exit();
                 } else {
                     // ❌ LOGIN FALHADO - Registrar tentativa
-                    rate_limit_record($pdo, 'login', $client_ip, false);
                     rate_limit_record($pdo, 'login_user', strtolower($username), false);
+                    rate_limit_record($pdo, 'login_ip', $client_ip, false);
                     
                     // Verificar rate limit atualizado APÓS registrar tentativa
-                    $rate_limit_ip_updated = rate_limit_check($pdo, 'login', $client_ip, 5, 15);
-                    $rate_limit_user_updated = rate_limit_check($pdo, 'login_user', strtolower($username), 3, 15);
+                    $rate_limit_user_updated = rate_limit_check($pdo, 'login_user', strtolower($username), 5, 15);
+                    $rate_limit_ip_updated = rate_limit_check($pdo, 'login_ip', $client_ip, 15, 15);
                     
-                    $remaining = min($rate_limit_ip_updated['remaining'], $rate_limit_user_updated['remaining']);
+                    $remaining = $rate_limit_user_updated['remaining'];
                     
                     if ($remaining > 0) {
                         $error = "Usuário ou senha incorretos. ($remaining tentativas restantes)";

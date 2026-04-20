@@ -180,10 +180,11 @@
   - `rate_limit_format_time_remaining()` - Formata tempo restante
 - Tabela `rate_limits` criada automaticamente
 - Limites implementados em login.php:
-  - 5 tentativas por IP em 15 minutos
-  - 3 tentativas por usuário em 15 minutos
+  - **5 tentativas por usuário** em 15 minutos (bloqueio principal)
+  - **15 tentativas por IP** em 15 minutos (backup contra ataques massivos)
   - Mensagens mostram tentativas restantes
   - Bloqueio temporário com contagem regressiva
+- Estratégia em camadas: usuário bloqueado não impede login de outros usuários no mesmo IP
 - Previne: Brute force, credential stuffing, password spraying
 **Data:** 20/04/2026
 

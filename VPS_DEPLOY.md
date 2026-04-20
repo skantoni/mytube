@@ -465,11 +465,14 @@ sudo systemctl status php8.3-fpm
 
 **Teste 1 - Login:**
 1. Ir para https://mytube.social/login.php
-2. Tentar fazer login 6 vezes com senha ERRADA
+2. Tentar fazer login 6 vezes com senha ERRADA **na mesma conta**
 3. Após 5 tentativas, deve mostrar:
    - "Usuário ou senha incorretos. (1 tentativas restantes)"
-   - "Muitas tentativas de login. Tente novamente em 15 minutos."
-4. ✅ Login deve estar bloqueado
+   - "Muitas tentativas para este usuário. Tente novamente em 15 minutos."
+4. ✅ Login dessa conta deve estar bloqueado
+5. **IMPORTANTE:** Tentar login com OUTRA conta deve funcionar normalmente
+   - Bloqueio é por usuário, não por IP
+   - Permite múltiplos usuários no mesmo IP (família, escritório, escola)
 
 **Teste 2 - Reset de senha:**
 1. "Esqueci minha senha" → inserir email
