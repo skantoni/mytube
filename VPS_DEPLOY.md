@@ -365,15 +365,12 @@ Usar ferramentas externas:
 
 ### ⚠️ Problemas comuns:
 
-**Erro: "Too many redirects" (loop infinito)**
-- Causa: Cloudflare/proxy não passa HTTPS corretamente
-- Verificar: `$_SERVER['HTTP_X_FORWARDED_PROTO']`
-- Solução: Adicionar no config.php ANTES do redirect:
-```php
-if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
-    $_SERVER['HTTPS'] = 'on';
-}
-```
+**✅ Erro: "Too many redirects" (loop infinito) - RESOLVIDO AUTOMATICAMENTE**
+- Causa: Cloudflare/proxy faz terminação SSL, servidor vê HTTP
+- Solução: Código detecta automaticamente headers de proxy:
+  - `HTTP_X_FORWARDED_PROTO=https` (Nginx, Load Balancers)
+  - `HTTP_CF_CONNECTING_IP` (Cloudflare presente)
+- Não precisa configurar nada manualmente ✅
 
 **Erro: "NET::ERR_CERT_AUTHORITY_INVALID"**
 - Causa: Certificado SSL não configurado ou inválido
