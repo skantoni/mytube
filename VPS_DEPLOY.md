@@ -248,6 +248,150 @@ chown -R www-data:www-data assets/images/avatars/
 
 ---
 
+## 📋 DEPLOY: HTTPS Forçado + Headers Segurança (20/04/2026)
+
+### O que mudou:
+- ✅ HTTPS forçado em produção (redirect 301 HTTP → HTTPS)
+- ✅ Cookie Secure flag ativado em produção
+- ✅ Headers de segurança HTTP (HSTS, CSP, X-Frame-Options, etc)
+- ✅ Arquivo modificado: `includes/config.php`
+- ✅ Variável de ambiente: `APP_ENV` no .env
+
+### Passo 1: Conectar na VPS
+```bash
+ssh skeny@mytube.social
+cd /var/www/mytube.social
+```
+
+### Passo 2: Backup
+```bash
+sudo cp includes/config.php includes/config.php.backup-$(date +%Y%m%d)
+sudo cp .env .env.backup-$(date +%Y%m%d)
+```
+
+### Passo 3: Puxar as alterações
+```bash
+git pull origin main
+```
+
+### Passo 4: Atualizar .env (IMPORTANTE!)
+```bash
+sudo nano .env
+```
+
+Adicionar/atualizar esta linha:
+```bash
+APP_ENV=production
+```
+
+**⚠️ IMPORTANTE:** 
+- Desenvolvimento: `APP_ENV=development` (permite HTTP)
+- Produção: `APP_ENV=production` (força HTTPS)
+
+Salvar: `Ctrl+O` → `Enter` → `Ctrl+X`
+
+### Passo 5: Verificar sintaxe
+```bash
+php -l includes/config.php
+```
+
+### Passo 6: Verificar certificado SSL/HTTPS
+```bash
+# Verificar se HTTPS está funcionando
+curl -I https://mytube.social
+
+# Deve retornar: HTTP/2 200 (ou HTTP/1.1 200)
+# Se retornar erro SSL, configurar certificado antes
+```
+
+**Se HTTPS não estiver configurado:**
+```bash
+# Instalar Certbot (Let's Encrypt)
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d mytube.social -d www.mytube.social
+
+# Renovação automática (crontab)
+sudo certbot renew --dry-run
+```
+
+### Passo 7: Reiniciar PHP-FPM
+```bash
+sudo systemctl restart php8.3-fpm
+sudo systemctl status php8.3-fpm
+```
+
+### Passo 8: Testar HTTP → HTTPS redirect
+
+**Teste 1 - Redirect automático:**
+```bash
+# Deve redirecionar para HTTPS
+curl -I http://mytube.social
+
+# Saída esperada:
+# HTTP/1.1 301 Moved Permanently
+# Location: https://mytube.social/
+```
+
+**Teste 2 - Headers de segurança:**
+```bash
+curl -I https://mytube.social
+```
+
+Verificar presença de:
+```
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+Referrer-Policy: strict-origin-when-cross-origin
+Content-Security-Policy: default-src 'self'; ...
+```
+
+**Teste 3 - Cookie Secure:**
+1. Abrir https://mytube.social/login.php
+2. Fazer login
+3. Abrir DevTools (F12) → Application → Cookies
+4. Cookie `PHPSESSID` deve ter flags:
+   - ✅ **Secure** (só envia via HTTPS)
+   - ✅ **HttpOnly** (não acessível via JS)
+   - ✅ **SameSite: Strict** (previne CSRF)
+
+### Passo 9: Testar headers online
+Usar ferramentas externas:
+- https://securityheaders.com/?q=https://mytube.social
+- https://observatory.mozilla.org/analyze/mytube.social
+
+**Meta:** Score A+ no securityheaders.com
+
+### ⚠️ Problemas comuns:
+
+**Erro: "Too many redirects" (loop infinito)**
+- Causa: Cloudflare/proxy não passa HTTPS corretamente
+- Verificar: `$_SERVER['HTTP_X_FORWARDED_PROTO']`
+- Solução: Adicionar no config.php ANTES do redirect:
+```php
+if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+    $_SERVER['HTTPS'] = 'on';
+}
+```
+
+**Erro: "NET::ERR_CERT_AUTHORITY_INVALID"**
+- Causa: Certificado SSL não configurado ou inválido
+- Solução: Instalar Let's Encrypt via Certbot (ver Passo 6)
+
+**Site não carrega após ativar CSP**
+- Causa: Content-Security-Policy bloqueando recursos
+- Verificar: Console DevTools (F12) → Erros CSP
+- Solução: Ajustar CSP no config.php conforme necessário
+- Temporário: Comentar header CSP para debug
+
+**Cookie não fica Secure**
+- Verificar: `APP_ENV=production` no .env
+- Verificar: HTTPS realmente funcionando
+- Testar: `echo env('APP_ENV');` em página de teste
+
+---
+
 ## 📋 DEPLOY: Proteção Rate Limiting (20/04/2026)
 
 ### O que mudou:

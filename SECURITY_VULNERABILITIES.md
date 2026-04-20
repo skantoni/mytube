@@ -10,10 +10,10 @@
 | Severidade | Total | Resolvidas | Pendentes |
 |------------|-------|------------|-----------|
 | CRÍTICO    | 14    | 14         | 0         |
-| ALTO       | 13    | 2          | 11        |
+| ALTO       | 13    | 5          | 8         |
 | MÉDIO      | 8     | 1          | 7         |
 | BAIXO      | 7     | 0          | 7         |
-| **TOTAL**  | **42**| **17**     | **25**    |
+| **TOTAL**  | **42**| **20**     | **22**    |
 
 ---
 
@@ -200,15 +200,30 @@
 - Atacante precisaria de ~200.000 IPs diferentes
 **Data:** 20/04/2026
 
-### ❌ 3. Cookie de sessão sem flag `Secure`
-**Status:** ❌ **PENDENTE**  
-**Arquivo:** `includes/config.php` linha 29-31  
+### ✅ 3. Cookie de sessão sem flag `Secure`
+**Status:** ✅ **RESOLVIDO**  
+**Arquivo:** `includes/config.php`  
 **Problema:** Falta `ini_set('session.cookie_secure', 1);`
+**Solução Implementada:**
+- Adicionado `ini_set('session.cookie_secure', 1)` em produção
+- Controlado por variável `APP_ENV` no .env
+- Em desenvolvimento: cookie_secure = 0 (funciona HTTP)
+- Em produção: cookie_secure = 1 (só HTTPS)
+- Previne: Session hijacking via man-in-the-middle
+**Data:** 20/04/2026
 
-### ❌ 4. Sem HTTPS forçado
-**Status:** ❌ **PENDENTE**  
-**Arquivo:** `includes/config.php` linha 17  
+### ✅ 4. Sem HTTPS forçado
+**Status:** ✅ **RESOLVIDO**  
+**Arquivo:** `includes/config.php`  
 **Problema:** Credenciais trafegam em texto plano
+**Solução Implementada:**
+- Redirect 301 HTTP → HTTPS em produção
+- Verifica `$_SERVER['HTTPS']` antes de processar request
+- Controlado por `APP_ENV=production` no .env
+- Em desenvolvimento: permite HTTP (localhost)
+- Em produção: força HTTPS automático
+- Previne: Man-in-the-middle, credential theft
+**Data:** 20/04/2026
 
 ### ❌ 5. Política de senha fraca (6 caracteres)
 **Status:** ❌ **PENDENTE**  
@@ -220,7 +235,22 @@
 **Arquivo:** `api/boost_metrics.php`, `api/calculate_best_mytuber.php`  
 **Problema:** Deve usar role-based access control
 
-### ❌ 7. Nomes de arquivo previsíveis
+### ✅ 7. Sem headers de segurança HTTP
+**Status:** ✅ **RESOLVIDO**  
+**Arquivo:** `includes/config.php`  
+**Problema:** Faltam X-Frame-Options, CSP, HSTS
+**Solução Implementada:**
+- **HSTS** (Strict-Transport-Security): max-age=1ano, includeSubDomains, preload (produção)
+- **X-Frame-Options**: SAMEORIGIN (previne clickjacking)
+- **X-Content-Type-Options**: nosniff (previne MIME sniffing)
+- **X-XSS-Protection**: 1; mode=block (legacy browsers)
+- **Referrer-Policy**: strict-origin-when-cross-origin
+- **Permissions-Policy**: desabilita geolocation, microphone, camera
+- **Content-Security-Policy**: Configuração restritiva em produção, permissiva em dev
+- Todos headers aplicados globalmente via includes/config.php
+**Data:** 20/04/2026
+
+### ❌ 8. Nomes de arquivo previsíveis
 **Status:** ❌ **PENDENTE**  
 **Arquivo:** `profile.php` linha 66  
 **Problema:** `user_{id}_{timestamp}.jpg` previsível
