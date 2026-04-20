@@ -14,14 +14,14 @@
 /**
  * Verificar se IP/usuário está bloqueado por rate limit
  * 
- * @param PDO $pdo Conexão com banco
+ * @param LazyPDO|PDO $pdo Conexão com banco (aceita LazyPDO wrapper)
  * @param string $action Tipo de ação ('login', 'reset_code', 'api')
  * @param string $identifier IP ou email do usuário
  * @param int $max_attempts Máximo de tentativas permitidas
  * @param int $window_minutes Janela de tempo em minutos
  * @return array ['blocked' => bool, 'attempts' => int, 'remaining' => int, 'reset_at' => int|null]
  */
-function rate_limit_check(PDO $pdo, string $action, string $identifier, int $max_attempts = 5, int $window_minutes = 15): array {
+function rate_limit_check($pdo, string $action, string $identifier, int $max_attempts = 5, int $window_minutes = 15): array {
     // Criar tabela se não existir
     rate_limit_ensure_table($pdo);
     
@@ -62,13 +62,13 @@ function rate_limit_check(PDO $pdo, string $action, string $identifier, int $max
 /**
  * Registrar tentativa de ação (login, reset, etc)
  * 
- * @param PDO $pdo Conexão com banco
+ * @param LazyPDO|PDO $pdo Conexão com banco (aceita LazyPDO wrapper)
  * @param string $action Tipo de ação
  * @param string $identifier IP ou email
  * @param bool $success Se a tentativa foi bem-sucedida
  * @return void
  */
-function rate_limit_record(PDO $pdo, string $action, string $identifier, bool $success = false): void {
+function rate_limit_record($pdo, string $action, string $identifier, bool $success = false): void {
     rate_limit_ensure_table($pdo);
     
     // Se foi sucesso, limpar tentativas anteriores
@@ -117,10 +117,10 @@ function rate_limit_get_client_ip(): string {
 /**
  * Criar tabela rate_limits se não existir
  * 
- * @param PDO $pdo Conexão com banco
+ * @param LazyPDO|PDO $pdo Conexão com banco (aceita LazyPDO wrapper)
  * @return void
  */
-function rate_limit_ensure_table(PDO $pdo): void {
+function rate_limit_ensure_table($pdo): void {
     static $table_checked = false;
     
     if ($table_checked) {
@@ -186,11 +186,11 @@ function rate_limit_format_time_remaining(int $reset_timestamp): string {
 /**
  * Limpar tentativas antigas (cron job - rodar 1x por dia)
  * 
- * @param PDO $pdo Conexão com banco
+ * @param LazyPDO|PDO $pdo Conexão com banco (aceita LazyPDO wrapper)
  * @param int $days_to_keep Quantos dias manter histórico
  * @return int Número de registros deletados
  */
-function rate_limit_cleanup(PDO $pdo, int $days_to_keep = 7): int {
+function rate_limit_cleanup($pdo, int $days_to_keep = 7): int {
     rate_limit_ensure_table($pdo);
     
     $cutoff_date = date('Y-m-d H:i:s', strtotime("-$days_to_keep days"));
