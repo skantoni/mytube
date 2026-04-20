@@ -248,6 +248,42 @@ chown -R www-data:www-data assets/images/avatars/
 
 ---
 
+## 📋 DEPLOY: Fix Redirect Loop HTTPS (20/04/2026)
+
+### O que mudou:
+- ✅ Corrigido redirect loop com Cloudflare/proxy
+- ✅ Detecção automática de proxy SSL
+- ✅ Arquivo modificado: `includes/config.php`
+
+### Passo 1: Conectar na VPS
+```bash
+ssh skeny@mytube.social
+cd /var/www/mytube.social
+```
+
+### Passo 2: Puxar as alterações
+```bash
+git pull origin main
+```
+
+### Passo 3: Reiniciar PHP-FPM
+```bash
+sudo systemctl restart php8.3-fpm
+```
+
+### Passo 4: Testar
+1. Abrir https://mytube.social/login.php
+2. ✅ Deve carregar SEM redirect loop
+3. ✅ Não deve mostrar "ERR_TOO_MANY_REDIRECTS"
+
+**O que foi corrigido:**
+- Detecta `HTTP_X_FORWARDED_PROTO=https` (Nginx/proxy)
+- Detecta `HTTP_CF_CONNECTING_IP` (Cloudflare)
+- Evita redirect quando proxy já fez terminação SSL
+- Loop infinito resolvido ✅
+
+---
+
 ## 📋 DEPLOY: HTTPS Forçado + Headers Segurança (20/04/2026)
 
 ### O que mudou:
