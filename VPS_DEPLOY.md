@@ -248,6 +248,150 @@ chown -R www-data:www-data assets/images/avatars/
 
 ---
 
+## 📋 DEPLOY: Proteção Rate Limiting (20/04/2026)
+
+### O que mudou:
+- ✅ Proteção contra brute force em login e reset de senha
+- ✅ Arquivo criado: `includes/rate_limit.php`
+- ✅ Arquivos modificados: `login.php`, `api/verify_reset_code.php`
+- ✅ Migração: `database/migration_rate_limits.sql` (tabela rate_limits)
+
+### Passo 1: Conectar na VPS
+```bash
+ssh skeny@mytube.social
+cd /var/www/mytube.social
+```
+
+### Passo 2: Backup
+```bash
+# Backup dos arquivos antes de atualizar
+sudo cp login.php login.php.backup-$(date +%Y%m%d)
+sudo cp api/verify_reset_code.php api/verify_reset_code.php.backup-$(date +%Y%m%d)
+```
+
+### Passo 3: Puxar as alterações
+```bash
+git pull origin main
+```
+
+### Passo 4: Criar tabela rate_limits
+```bash
+# Executar migração do banco
+mysql -u seu_usuario -p mytube_db < database/migration_rate_limits.sql
+
+# OU manualmente via MySQL
+mysql -u seu_usuario -p
+```
+
+```sql
+USE mytube_db;
+
+CREATE TABLE IF NOT EXISTS `rate_limits` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `action` VARCHAR(50) NOT NULL COMMENT 'Tipo: login, login_user, reset_code, reset_code_email',
+    `identifier` VARCHAR(255) NOT NULL COMMENT 'IP ou email',
+    `attempted_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `ip_address` VARCHAR(45) DEFAULT NULL,
+    `user_agent` VARCHAR(255) DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_action_identifier` (`action`, `identifier`),
+    KEY `idx_attempted_at` (`attempted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Verificar se foi criada
+SHOW TABLES LIKE 'rate_limits';
+DESCRIBE rate_limits;
+exit
+```
+
+### Passo 5: Verificar sintaxe
+```bash
+php -l includes/rate_limit.php
+php -l login.php
+php -l api/verify_reset_code.php
+```
+
+### Passo 6: Reiniciar PHP-FPM
+```bash
+sudo systemctl restart php8.3-fpm
+sudo systemctl status php8.3-fpm
+```
+
+### Passo 7: Testar rate limiting
+
+**Teste 1 - Login:**
+1. Ir para https://mytube.social/login.php
+2. Tentar fazer login 6 vezes com senha ERRADA
+3. Após 5 tentativas, deve mostrar:
+   - "Usuário ou senha incorretos. (1 tentativas restantes)"
+   - "Muitas tentativas de login. Tente novamente em 15 minutos."
+4. ✅ Login deve estar bloqueado
+
+**Teste 2 - Reset de senha:**
+1. "Esqueci minha senha" → inserir email
+2. Tentar 6 códigos ERRADOS
+3. Após 5 tentativas, deve mostrar:
+   - "Muitas tentativas. Tente novamente em 15 minutos."
+4. ✅ Verificação de código deve estar bloqueada
+
+**Teste 3 - Desbloqueio:**
+1. Aguardar 15 minutos (ou limpar banco)
+2. Tentar login com credenciais CORRETAS
+3. ✅ Login deve funcionar normalmente
+
+### Passo 8: Limpar rate limits manualmente (se necessário)
+```bash
+# Para desbloquear durante testes
+mysql -u seu_usuario -p mytube_db -e "DELETE FROM rate_limits WHERE identifier = 'SEU_IP';"
+
+# Ver bloqueios ativos
+mysql -u seu_usuario -p mytube_db -e "SELECT * FROM rate_limits ORDER BY attempted_at DESC LIMIT 10;"
+```
+
+### Passo 9: Configurar limpeza automática (cron)
+```bash
+# Adicionar ao crontab para limpar registros antigos (1x por dia)
+crontab -e
+
+# Adicionar linha:
+0 3 * * * php /var/www/mytube.social/cleanup_rate_limits.php >> /var/log/mytube_cleanup.log 2>&1
+```
+
+Criar `cleanup_rate_limits.php`:
+```php
+<?php
+require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/includes/rate_limit.php';
+
+$deleted = rate_limit_cleanup($pdo, 7); // Manter 7 dias
+echo "Deleted $deleted old rate limit records\n";
+```
+
+### ⚠️ Problemas comuns:
+
+**Erro: "Table 'rate_limits' doesn't exist"**
+- Causa: Migração não foi executada
+- Solução: Executar migration_rate_limits.sql manualmente
+
+**Sempre bloqueado mesmo após 15 minutos:**
+- Verificar fuso horário do servidor: `date`
+- Verificar registros no banco:
+```sql
+SELECT * FROM rate_limits WHERE identifier = 'SEU_IP' ORDER BY attempted_at DESC;
+```
+- Se necessário, deletar manualmente
+
+**Rate limiting não funciona (sem bloqueio):**
+- Verificar se tabela existe: `SHOW TABLES LIKE 'rate_limits';`
+- Verificar logs PHP: `sudo tail -f /var/log/php8.3-fpm/error.log`
+- Verificar se includes/rate_limit.php foi carregado
+
+**IP sempre diferente (Cloudflare/proxy):**
+- Verificar se `HTTP_CF_CONNECTING_IP` está sendo capturado
+- Testar: `php -r "echo rate_limit_get_client_ip();"`
+
+---
+
 ## 📋 DEPLOY: Correção Token Reset Exposto (20/04/2026)
 
 ### O que mudou:

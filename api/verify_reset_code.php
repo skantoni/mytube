@@ -28,6 +28,34 @@ if (!preg_match('/^\d{6}$/', $code)) {
     exit;
 }
 
+// ✅ PROTEÇÃO RATE LIMITING (previne brute force no código de 6 dígitos)
+require_once '../includes/rate_limit.php';
+$client_ip = rate_limit_get_client_ip();
+
+// Verificar rate limit por IP (10 tentativas em 15 minutos)
+$rate_limit_ip = rate_limit_check($pdo, 'reset_code', $client_ip, 10, 15);
+
+// Verificar rate limit por email (5 tentativas em 15 minutos)
+$rate_limit_email = rate_limit_check($pdo, 'reset_code_email', strtolower($email), 5, 15);
+
+if ($rate_limit_ip['blocked']) {
+    $time_remaining = rate_limit_format_time_remaining($rate_limit_ip['reset_at']);
+    echo json_encode([
+        'success' => false,
+        'message' => "Muitas tentativas. Tente novamente em $time_remaining."
+    ]);
+    exit;
+}
+
+if ($rate_limit_email['blocked']) {
+    $time_remaining = rate_limit_format_time_remaining($rate_limit_email['reset_at']);
+    echo json_encode([
+        'success' => false,
+        'message' => "Muitas tentativas para este email. Tente novamente em $time_remaining."
+    ]);
+    exit;
+}
+
 // Buscar código válido
 $stmt = $pdo->prepare("
     SELECT pr.*, u.username 
@@ -44,6 +72,10 @@ $stmt->execute([$email, $code]);
 $reset = $stmt->fetch();
 
 if (!$reset) {
+    // ❌ Código inválido ou expirado - Registrar tentativa
+    rate_limit_record($pdo, 'reset_code', $client_ip, false);
+    rate_limit_record($pdo, 'reset_code_email', strtolower($email), false);
+    
     // Verificar se o código expirou
     $stmt2 = $pdo->prepare("SELECT id FROM password_resets WHERE email = ? AND reset_code = ? AND used = 0 AND expires_at <= NOW()");
     $stmt2->execute([$email, $code]);
@@ -55,6 +87,10 @@ if (!$reset) {
     }
     exit;
 }
+
+// ✅ Código válido - Limpar rate limit
+rate_limit_record($pdo, 'reset_code', $client_ip, true);
+rate_limit_record($pdo, 'reset_code_email', strtolower($email), true);
 
 // Gerar token temporário para a próxima etapa (redefinir senha)
 $resetToken = bin2hex(random_bytes(32));

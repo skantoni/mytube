@@ -33,45 +33,80 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (empty($username) || empty($password)) {
             $error = 'Por favor, preencha todos os campos.';
         } else {
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE BINARY username = ? OR email = ?");
-            $stmt->execute([$username, $username]);
-            $users = $stmt->fetchAll();
+            // ✅ PROTEÇÃO RATE LIMITING (previne brute force)
+            require_once 'includes/rate_limit.php';
+            $client_ip = rate_limit_get_client_ip();
             
-            $user = null;
-            foreach ($users as $u) {
-                if (password_verify($password, $u['password'])) {
-                    $user = $u;
-                    break;
-                }
-            }
+            // Verificar rate limit por IP (5 tentativas em 15 minutos)
+            $rate_limit_ip = rate_limit_check($pdo, 'login', $client_ip, 5, 15);
             
-            if ($user) {
-                // Resetar status online stale no banco (pode estar preso de crash anterior)
-                try {
-                    $stmt2 = $pdo->prepare("
-                        UPDATE user_online_status 
-                        SET is_online = 0, last_seen = NOW() 
-                        WHERE user_id = ?
-                    ");
-                    $stmt2->execute([$user['id']]);
-                } catch (Exception $e) {
-                    // Silenciar — login deve sempre funcionar
-                }
-                
-                // Limpar sessão antiga e recarregar dados atualizados
-                session_regenerate_id(true);
-                $_SESSION = [];
-                
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-                $_SESSION['full_name'] = $user['full_name'];
-                $_SESSION['profile_picture'] = $user['profile_picture'];
-                
-                // Usar JavaScript para redirecionamento mais confiável
-                echo "<script>window.location.href = 'index.php?splash=1';</script>";
-                exit();
+            // Verificar rate limit por usuário (3 tentativas em 15 minutos)
+            $rate_limit_user = rate_limit_check($pdo, 'login_user', strtolower($username), 3, 15);
+            
+            if ($rate_limit_ip['blocked']) {
+                $time_remaining = rate_limit_format_time_remaining($rate_limit_ip['reset_at']);
+                $error = "Muitas tentativas de login. Tente novamente em $time_remaining.";
+            } elseif ($rate_limit_user['blocked']) {
+                $time_remaining = rate_limit_format_time_remaining($rate_limit_user['reset_at']);
+                $error = "Muitas tentativas para este usuário. Tente novamente em $time_remaining.";
             } else {
-                $error = 'Usuário ou senha incorretos.';
+                // Processar login normalmente
+                $stmt = $pdo->prepare("SELECT * FROM users WHERE BINARY username = ? OR email = ?");
+                $stmt->execute([$username, $username]);
+                $users = $stmt->fetchAll();
+                
+                $user = null;
+                foreach ($users as $u) {
+                    if (password_verify($password, $u['password'])) {
+                        $user = $u;
+                        break;
+                    }
+                }
+                
+                if ($user) {
+                    // ✅ LOGIN BEM-SUCEDIDO - Limpar rate limit
+                    rate_limit_record($pdo, 'login', $client_ip, true);
+                    rate_limit_record($pdo, 'login_user', strtolower($username), true);
+                    
+                    // Resetar status online stale no banco (pode estar preso de crash anterior)
+                    try {
+                        $stmt2 = $pdo->prepare("
+                            UPDATE user_online_status 
+                            SET is_online = 0, last_seen = NOW() 
+                            WHERE user_id = ?
+                        ");
+                        $stmt2->execute([$user['id']]);
+                    } catch (Exception $e) {
+                        // Silenciar — login deve sempre funcionar
+                    }
+                    
+                    // Limpar sessão antiga e recarregar dados atualizados
+                    session_regenerate_id(true);
+                    $_SESSION = [];
+                    
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['username'] = $user['username'];
+                    $_SESSION['full_name'] = $user['full_name'];
+                    $_SESSION['profile_picture'] = $user['profile_picture'];
+                    
+                    // Usar JavaScript para redirecionamento mais confiável
+                    echo "<script>window.location.href = 'index.php?splash=1';</script>";
+                    exit();
+                } else {
+                    // ❌ LOGIN FALHADO - Registrar tentativa
+                    rate_limit_record($pdo, 'login', $client_ip, false);
+                    rate_limit_record($pdo, 'login_user', strtolower($username), false);
+                    
+                    $remaining_ip = $rate_limit_ip['remaining'] - 1;
+                    $remaining_user = $rate_limit_user['remaining'] - 1;
+                    $remaining = min($remaining_ip, $remaining_user);
+                    
+                    if ($remaining > 0) {
+                        $error = "Usuário ou senha incorretos. ($remaining tentativas restantes)";
+                    } else {
+                        $error = 'Usuário ou senha incorretos. Você será bloqueado na próxima tentativa.';
+                    }
+                }
             }
         }
     } 

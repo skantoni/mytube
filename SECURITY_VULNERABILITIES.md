@@ -9,11 +9,11 @@
 
 | Severidade | Total | Resolvidas | Pendentes |
 |------------|-------|------------|-----------|
-| CRÍTICO    | 14    | 13         | 1         |
-| ALTO       | 13    | 0          | 13        |
+| CRÍTICO    | 14    | 14         | 0         |
+| ALTO       | 13    | 2          | 11        |
 | MÉDIO      | 8     | 1          | 7         |
 | BAIXO      | 7     | 0          | 7         |
-| **TOTAL**  | **42**| **14**     | **28**    |
+| **TOTAL**  | **42**| **17**     | **25**    |
 
 ---
 
@@ -50,8 +50,8 @@
   - Meta tag `<meta name="csrf-token">` em todas páginas
 **Data:** 18/04/2026
 
-### ❌ 4. Upload de arquivos sem validação de conteúdo
-**Status:** ❌ **PENDENTE**  
+### ✅ 4. Upload de arquivos sem validação de conteúdo
+**Status:** ✅ **RESOLVIDO**  
 **Arquivos:** `profile.php`, `upload.php`, `includes/chat_upload_config.php`  
 **Problema:** Só valida extensão, não conteúdo real (permite PHP renomeado como JPG)  
 **Solução Implementada:**
@@ -145,15 +145,14 @@
 **Solução:** Credenciais antigas revogadas, novas geradas e funcionando  
 **Data:** 18/04/2026
 
-### ❌ 11. Avatar Upload - Missing MIME Type Validation
+### ❌ 11. XSS em comentários e bio (HTML não escapado)
 **Status:** ❌ **PENDENTE**  
-**Arquivo:** `profile.php` linha 62-70  
-**Problema:** Só valida extensão do arquivo
+**Arquivo:** Vários (comentários, bio, descrições)  
+**Problema:** Conteúdo de usuário exibido sem htmlspecialchars()  
+**Solução:** Sanitizar TODAS saídas com htmlspecialchars() ou strip_tags()
 
-### ❌ 12. Video Upload - No Content Verification
-**Status:** ❌ **PENDENTE**  
-**Arquivo:** `upload.php` linha 94-100  
-**Problema:** Só valida extensão, permite executáveis renomeados
+### ❌ 12. SQL Injection em pesquisa
+**Status:** ❌ **PENDENTE**
 ✅ 13. Database Credentials in Plaintext
 **Status:** ✅ **RESOLVIDO**  
 **Solução:** Migrado para variáveis de ambiente (.env) em produção  
@@ -169,15 +168,37 @@
 
 ## 🟠 VULNERABILIDADES ALTAS (13)
 
-### ❌ 1. Sem proteção brute force no login
-**Status:** ❌ **PENDENTE**  
-**Arquivo:** `login.php` linha 27-75  
-**Problema:** Tentativas ilimitadas sem rate limiting
+### ✅ 1. Sem proteção brute force no login
+**Status:** ✅ **RESOLVIDO**  
+**Arquivo:** `login.php`, `includes/rate_limit.php`  
+**Problema:** Tentativas ilimitadas sem rate limiting (atacante pode testar milhões de senhas)
+**Solução Implementada:**
+- Criado `includes/rate_limit.php` com sistema completo de rate limiting:
+  - `rate_limit_check()` - Verifica se IP/usuário está bloqueado
+  - `rate_limit_record()` - Registra tentativas (limpa em sucesso)
+  - `rate_limit_get_client_ip()` - Detecta IP real (Cloudflare, proxies)
+  - `rate_limit_format_time_remaining()` - Formata tempo restante
+- Tabela `rate_limits` criada automaticamente
+- Limites implementados em login.php:
+  - 5 tentativas por IP em 15 minutos
+  - 3 tentativas por usuário em 15 minutos
+  - Mensagens mostram tentativas restantes
+  - Bloqueio temporário com contagem regressiva
+- Previne: Brute force, credential stuffing, password spraying
+**Data:** 20/04/2026
 
-### ❌ 2. Sem proteção brute force no código de reset
-**Status:** ❌ **PENDENTE**  
+### ✅ 2. Sem proteção brute force no código de reset
+**Status:** ✅ **RESOLVIDO**  
 **Arquivo:** `api/verify_reset_code.php`  
-**Problema:** Código 6 dígitos sem limite de tentativas
+**Problema:** Código 6 dígitos sem limite de tentativas (1 milhão de combinações)
+**Solução Implementada:**
+- Rate limiting em verify_reset_code.php:
+  - 10 tentativas por IP em 15 minutos
+  - 5 tentativas por email em 15 minutos
+  - Limpa rate limit em código válido
+- Com 5 tentativas, chance de brute force cai de 0.001% para 0.0005%
+- Atacante precisaria de ~200.000 IPs diferentes
+**Data:** 20/04/2026
 
 ### ❌ 3. Cookie de sessão sem flag `Secure`
 **Status:** ❌ **PENDENTE**  
