@@ -369,6 +369,12 @@ echo "Deleted $deleted old rate limit records\n";
 
 ### ⚠️ Problemas comuns:
 
+**Erro: "Argument #1 ($pdo) must be of type PDO, LazyPDO given"**
+- Causa: Type hint estrito `PDO` em função que recebe LazyPDO wrapper
+- Solução: CORRIGIDO - Type hints PDO removidos do rate_limit.php
+- Se acontecer em outros arquivos: remover `PDO` do parâmetro, deixar apenas `$pdo`
+- Referência: Este projeto usa LazyPDO (includes/config.php)
+
 **Erro: "Table 'rate_limits' doesn't exist"**
 - Causa: Migração não foi executada
 - Solução: Executar migration_rate_limits.sql manualmente
