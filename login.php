@@ -97,9 +97,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     rate_limit_record($pdo, 'login', $client_ip, false);
                     rate_limit_record($pdo, 'login_user', strtolower($username), false);
                     
-                    $remaining_ip = $rate_limit_ip['remaining'] - 1;
-                    $remaining_user = $rate_limit_user['remaining'] - 1;
-                    $remaining = min($remaining_ip, $remaining_user);
+                    // Verificar rate limit atualizado APÓS registrar tentativa
+                    $rate_limit_ip_updated = rate_limit_check($pdo, 'login', $client_ip, 5, 15);
+                    $rate_limit_user_updated = rate_limit_check($pdo, 'login_user', strtolower($username), 3, 15);
+                    
+                    $remaining = min($rate_limit_ip_updated['remaining'], $rate_limit_user_updated['remaining']);
                     
                     if ($remaining > 0) {
                         $error = "Usuário ou senha incorretos. ($remaining tentativas restantes)";
