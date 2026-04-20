@@ -67,8 +67,10 @@ $_SESSION['reset_token'] = $resetToken;
 $_SESSION['reset_user_id'] = $reset['user_id'];
 $_SESSION['reset_code_id'] = $reset['id'];
 
+// ✅ SEGURANÇA: Token NÃO é retornado ao cliente (apenas em sessão)
+// Previne: interceptação, XSS, logs, histórico do navegador
 echo json_encode([
     'success' => true,
-    'message' => 'Código verificado com sucesso!',
-    'reset_token' => $resetToken
+    'message' => 'Código verificado com sucesso!'
+    // reset_token REMOVIDO - apenas em $_SESSION
 ]);

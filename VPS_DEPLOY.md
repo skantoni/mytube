@@ -248,6 +248,93 @@ chown -R www-data:www-data assets/images/avatars/
 
 ---
 
+## 📋 DEPLOY: Correção Token Reset Exposto (20/04/2026)
+
+### O que mudou:
+- ✅ Token de reset NÃO é mais exposto ao cliente
+- ✅ Arquivos modificados: `api/verify_reset_code.php`, `api/reset_password.php`, `assets/js/auth.js`
+- ✅ Validação 100% baseada em sessão (servidor-side)
+- ✅ Previne interceptação, XSS, logs
+
+### Passo 1: Conectar na VPS
+```bash
+ssh skeny@mytube.social
+cd /var/www/mytube.social
+```
+
+### Passo 2: Backup
+```bash
+# Backup dos arquivos antes de atualizar
+sudo cp api/verify_reset_code.php api/verify_reset_code.php.backup-$(date +%Y%m%d)
+sudo cp api/reset_password.php api/reset_password.php.backup-$(date +%Y%m%d)
+```
+
+### Passo 3: Puxar as alterações
+```bash
+git pull origin main
+```
+
+### Passo 4: Verificar sintaxe
+```bash
+php -l api/verify_reset_code.php
+php -l api/reset_password.php
+```
+
+### Passo 5: Reiniciar PHP-FPM (se necessário)
+```bash
+sudo systemctl restart php8.3-fpm
+sudo systemctl status php8.3-fpm
+```
+
+### Passo 6: Testar reset de senha
+Acesse o site e teste o fluxo completo:
+
+1. **Solicitar reset:**
+   - Ir para https://mytube.social/login.php
+   - Clicar em "Esqueci minha senha"
+   - Inserir email
+   - ✅ Deve receber código por email
+
+2. **Verificar código:**
+   - Inserir código de 6 dígitos
+   - ✅ Deve aceitar e avançar para próxima etapa
+   - **Importante:** Abrir DevTools → Network → Verificar resposta JSON
+   - ❌ NÃO deve conter `reset_token` na resposta
+
+3. **Redefinir senha:**
+   - Inserir nova senha
+   - Confirmar senha
+   - ✅ Deve atualizar senha com sucesso
+   - ✅ Deve poder fazer login com nova senha
+
+### Passo 7: Verificar segurança
+```bash
+# Verificar se token não está sendo logado
+sudo tail -f /var/log/nginx/access.log | grep reset_token
+# Não deve mostrar nada (token não está mais no JSON)
+```
+
+### ⚠️ Problemas comuns:
+
+**Reset de senha não funciona:**
+- Verificar se sessão está iniciada: `session_start()` em reset_password.php
+- Verificar logs: `sudo tail -f /var/log/php8.3-fpm/error.log`
+- Sessão pode ter expirado (2 horas) - reiniciar processo
+
+**Erro: "Sessão de redefinição inválida"**
+- Causa: Sessão expirou ou foi limpa
+- Solução: Usuário precisa reiniciar o processo (solicitar novo código)
+
+**Frontend envia reset_token mesmo após atualização:**
+- Causa: Cache do navegador
+- Solução: Limpar cache (Ctrl+Shift+R) ou forçar reload do JS:
+```bash
+# Adicionar versão ao JS para invalidar cache
+# <script src="assets/js/auth.js?v=20240420"></script>
+```
+
+---
+
 ## 📋 DEPLOY: Proteção Path Traversal (19/04/2026)
 
 ### O que mudou:

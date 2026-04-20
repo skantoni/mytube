@@ -291,7 +291,7 @@ function isMobile() {
 // FORGOT PASSWORD FLOW
 // ============================
 let resetEmail = '';
-let resetToken = '';
+// resetToken removido - validação via sessão no servidor
 let countdownInterval = null;
 
 function showForgotPassword() {
@@ -683,7 +683,8 @@ async function verifyResetCode() {
         const data = await response.json();
         
         if (data.success) {
-            resetToken = data.reset_token;
+            // ✅ SEGURANÇA: Token NÃO é mais retornado pelo servidor
+            // Validação acontece via sessão (servidor-side)
             showForgotMessage(data.message, 'success');
             clearCountdown();
             
@@ -741,7 +742,8 @@ async function resetPassword() {
     
     try {
         const formData = new FormData();
-        formData.append('reset_token', resetToken);
+        // ✅ SEGURANÇA: reset_token NÃO é enviado pelo cliente
+        // Validação acontece via $_SESSION no servidor
         formData.append('new_password', newPwd);
         formData.append('confirm_password', confirmPwd);
         

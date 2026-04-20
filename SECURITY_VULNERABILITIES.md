@@ -9,11 +9,11 @@
 
 | Severidade | Total | Resolvidas | Pendentes |
 |------------|-------|------------|-----------|
-| CRÍTICO    | 14    | 12         | 2         |
+| CRÍTICO    | 14    | 13         | 1         |
 | ALTO       | 13    | 0          | 13        |
 | MÉDIO      | 8     | 1          | 7         |
 | BAIXO      | 7     | 0          | 7         |
-| **TOTAL**  | **42**| **13**     | **29**    |
+| **TOTAL**  | **42**| **14**     | **28**    |
 
 ---
 
@@ -86,11 +86,20 @@
 - Reset vinculado a user_id específico via sessão
 **Verificado:** 19/04/2026
 
-### ❌ 7. Token de reset exposto na resposta da API
-**Status:** ❌ **PENDENTE**  
-**Arquivo:** `api/verify_reset_code.php` linha 14  
-**Problema:** Reset token retornado no JSON  
-**Solução:** Armazenar apenas em `$_SESSION`, nunca retornar ao cliente
+### ✅ 7. Token de reset exposto na resposta da API
+**Status:** ✅ **RESOLVIDO**  
+**Arquivo:** `api/verify_reset_code.php`, `api/reset_password.php`, `assets/js/auth.js`  
+**Problema:** Reset token retornado no JSON para o cliente
+- Atacante poderia interceptar token (MITM, XSS, logs)
+- Token podia vazar em histórico do navegador
+- Validação redundante (POST + sessão)
+**Solução Implementada:**
+- Token NÃO é mais retornado no JSON (apenas em `$_SESSION`)
+- reset_password.php valida apenas `$_SESSION['reset_token']` (não aceita token via POST)
+- Frontend (auth.js) não envia nem armazena token
+- Fluxo 100% baseado em sessão servidor-side
+- Previne: interceptação, XSS, session hijacking, logs
+**Data:** 20/04/2026
 
 ### ✅ 8. SSRF no download de música
 **Status:** ✅ **RESOLVIDO**  

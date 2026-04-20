@@ -15,17 +15,18 @@ if (!csrf_verify()) {
     exit;
 }
 
-$resetToken = trim($_POST['reset_token'] ?? '');
 $newPassword = $_POST['new_password'] ?? '';
 $confirmPassword = $_POST['confirm_password'] ?? '';
 
-// Validar token da sessão
+// Validar token da sessão (NÃO aceita token via POST - mais seguro)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (empty($resetToken) || !isset($_SESSION['reset_token']) || $resetToken !== $_SESSION['reset_token']) {
-    echo json_encode(['success' => false, 'message' => 'Token de redefinição inválido. Reinicie o processo.']);
+// ✅ SEGURANÇA: Validar apenas token da sessão (servidor)
+// Token nunca é enviado pelo cliente (previne interceptação)
+if (!isset($_SESSION['reset_token']) || !isset($_SESSION['reset_user_id'])) {
+    echo json_encode(['success' => false, 'message' => 'Sessão de redefinição inválida. Reinicie o processo.']);
     exit;
 }
 
