@@ -21,6 +21,8 @@ register_shutdown_function(function() {
 ob_start();
 
 try {
+    $request_started_at = microtime(true);
+
     require_once '../includes/config.php';
     require_once '../includes/mail_helper.php';
 
@@ -133,6 +135,11 @@ try {
 
     // Enviar via PHPMailer SMTP
     $result = sendMail($email, $subject, $htmlMessage);
+    $elapsed_ms = (int) round((microtime(true) - $request_started_at) * 1000);
+
+    if ($elapsed_ms > 5000) {
+        error_log("Reset email envio lento ({$elapsed_ms}ms) para {$email}");
+    }
 
     if ($result['success']) {
         ob_end_clean();

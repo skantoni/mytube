@@ -293,6 +293,35 @@ function isMobile() {
 let resetEmail = '';
 // resetToken removido - validação via sessão no servidor
 let countdownInterval = null;
+const RESET_FETCH_TIMEOUT_MS = 20000;
+
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = RESET_FETCH_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const token = getCsrfToken();
+    const headers = {
+        ...(options.headers || {})
+    };
+
+    if (token && !headers['X-CSRF-Token']) {
+        headers['X-CSRF-Token'] = token;
+    }
+
+    try {
+        return await fetch(url, {
+            ...options,
+            headers,
+            signal: controller.signal
+        });
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
 
 function showForgotPassword() {
     const loginForm = document.getElementById('loginForm');
@@ -329,7 +358,6 @@ function backToLogin() {
     
     // Reset completo
     resetEmail = '';
-    resetToken = '';
     clearCountdown();
     clearForgotMessage();
     resetCodeInputs();
@@ -447,7 +475,7 @@ async function sendResetCode() {
         const formData = new FormData();
         formData.append('email', email);
         
-        const response = await fetch('api/send_reset_code.php', {
+        const response = await fetchWithTimeout('api/send_reset_code.php', {
             method: 'POST',
             body: formData
         });
@@ -494,7 +522,11 @@ async function sendResetCode() {
             showForgotMessage(data.message);
         }
     } catch (error) {
-        showForgotMessage('Erro de conexão. Tente novamente.');
+        if (error && error.name === 'AbortError') {
+            showForgotMessage('O servidor demorou para responder. Tente novamente em alguns segundos.');
+        } else {
+            showForgotMessage('Erro de conexão. Tente novamente.');
+        }
         console.error('Reset error:', error);
     } finally {
         // Only re-enable if not in cooldown (cooldown is started on success)
@@ -625,7 +657,7 @@ async function resendCode() {
     resendLink.style.pointerEvents = 'none';
     
     try {
-        const response = await fetch('api/send_reset_code.php', {
+        const response = await fetchWithTimeout('api/send_reset_code.php', {
             method: 'POST',
             body: formData
         });
@@ -644,7 +676,11 @@ async function resendCode() {
             showForgotMessage(data.message);
         }
     } catch (error) {
-        showForgotMessage('Erro de conexão. Tente novamente.');
+        if (error && error.name === 'AbortError') {
+            showForgotMessage('O servidor demorou para responder. Tente novamente em alguns segundos.');
+        } else {
+            showForgotMessage('Erro de conexão. Tente novamente.');
+        }
     } finally {
         resendLink.textContent = 'Reenviar código';
         resendLink.style.pointerEvents = 'auto';
@@ -675,7 +711,7 @@ async function verifyResetCode() {
         formData.append('email', resetEmail);
         formData.append('code', code);
         
-        const response = await fetch('api/verify_reset_code.php', {
+        const response = await fetchWithTimeout('api/verify_reset_code.php', {
             method: 'POST',
             body: formData
         });
@@ -747,7 +783,7 @@ async function resetPassword() {
         formData.append('new_password', newPwd);
         formData.append('confirm_password', confirmPwd);
         
-        const response = await fetch('api/reset_password.php', {
+        const response = await fetchWithTimeout('api/reset_password.php', {
             method: 'POST',
             body: formData
         });
@@ -856,7 +892,7 @@ async function sendRegEmailCode() {
     try {
         const fd = new FormData();
         fd.append('email', email);
-        const res = await fetch('api/send_email_verification.php', { method: 'POST', body: fd });
+        const res = await fetchWithTimeout('api/send_email_verification.php', { method: 'POST', body: fd });
         const text = await res.text();
         let data;
         try { data = JSON.parse(text); } catch(e) { data = { success: false, message: 'Erro no servidor.' }; }

@@ -39,20 +39,8 @@ function sendMail($to, $subject, $htmlBody, $altBody = '') {
         $mail->Port       = MAIL_PORT;
         $mail->CharSet    = 'UTF-8';
         $mail->Encoding   = 'base64';
-/*         
-        // Timeout mais generoso para hospedagem lenta
-        $mail->Timeout    = 30;
+        $mail->Timeout = defined('MAIL_TIMEOUT') ? MAIL_TIMEOUT : 12;
         $mail->SMTPKeepAlive = false;
-        
-        // Verificação SSL flexível para hosts com certificados problemáticos
-        $mail->SMTPOptions = [
-            'ssl' => [
-                'verify_peer'       => false,
-                'verify_peer_name'  => false,
-                'allow_self_signed' => true,
-            ]
-        ];
-         */
         // Debug
         $mail->SMTPDebug  = defined('MAIL_DEBUG') ? MAIL_DEBUG : 0;
         

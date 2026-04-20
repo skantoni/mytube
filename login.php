@@ -22,9 +22,6 @@ $reg_full_name = '';
 $reg_instituicao = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Validar CSRF token
-    csrf_verify_or_die('Token de segurança inválido. Recarregue a página e tente novamente.');
-    
     if (isset($_POST['login'])) {
         // LOGIN
         $username = trim($_POST['username']);
@@ -33,84 +30,45 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (empty($username) || empty($password)) {
             $error = 'Por favor, preencha todos os campos.';
         } else {
-            // ✅ PROTEÇÃO RATE LIMITING (previne brute force)
-            require_once 'includes/rate_limit.php';
-            $client_ip = rate_limit_get_client_ip();
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE BINARY username = ? OR email = ?");
+            $stmt->execute([$username, $username]);
+            $users = $stmt->fetchAll();
             
-            // Verificar rate limit por usuário PRIMEIRO (5 tentativas em 15 minutos)
-            // Este é o bloqueio principal - previne ataque direcionado a uma conta
-            $rate_limit_user = rate_limit_check($pdo, 'login_user', strtolower($username), 5, 15);
+            $user = null;
+            foreach ($users as $u) {
+                if (password_verify($password, $u['password'])) {
+                    $user = $u;
+                    break;
+                }
+            }
             
-            // Verificar rate limit por IP SECUNDÁRIO (15 tentativas em 15 minutos)
-            // Apenas para prevenir ataques massivos de força bruta
-            $rate_limit_ip = rate_limit_check($pdo, 'login_ip', $client_ip, 15, 15);
-            
-            if ($rate_limit_user['blocked']) {
-                $time_remaining = rate_limit_format_time_remaining($rate_limit_user['reset_at']);
-                $error = "Muitas tentativas para este usuário. Tente novamente em $time_remaining.";
-            } elseif ($rate_limit_ip['blocked']) {
-                $time_remaining = rate_limit_format_time_remaining($rate_limit_ip['reset_at']);
-                $error = "Muitas tentativas deste IP. Tente novamente em $time_remaining.";
+            if ($user) {
+                // Resetar status online stale no banco (pode estar preso de crash anterior)
+                try {
+                    $stmt2 = $pdo->prepare("
+                        UPDATE user_online_status 
+                        SET is_online = 0, last_seen = NOW() 
+                        WHERE user_id = ?
+                    ");
+                    $stmt2->execute([$user['id']]);
+                } catch (Exception $e) {
+                    // Silenciar — login deve sempre funcionar
+                }
+                
+                // Limpar sessão antiga e recarregar dados atualizados
+                session_regenerate_id(true);
+                $_SESSION = [];
+                
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['full_name'] = $user['full_name'];
+                $_SESSION['profile_picture'] = $user['profile_picture'];
+                
+                // Usar JavaScript para redirecionamento mais confiável
+                echo "<script>window.location.href = 'index.php?splash=1';</script>";
+                exit();
             } else {
-                // Processar login normalmente
-                $stmt = $pdo->prepare("SELECT * FROM users WHERE BINARY username = ? OR email = ?");
-                $stmt->execute([$username, $username]);
-                $users = $stmt->fetchAll();
-                
-                $user = null;
-                foreach ($users as $u) {
-                    if (password_verify($password, $u['password'])) {
-                        $user = $u;
-                        break;
-                    }
-                }
-                
-                if ($user) {
-                    // ✅ LOGIN BEM-SUCEDIDO - Limpar rate limit
-                    rate_limit_record($pdo, 'login_user', strtolower($username), true);
-                    rate_limit_record($pdo, 'login_ip', $client_ip, true);
-                    
-                    // Resetar status online stale no banco (pode estar preso de crash anterior)
-                    try {
-                        $stmt2 = $pdo->prepare("
-                            UPDATE user_online_status 
-                            SET is_online = 0, last_seen = NOW() 
-                            WHERE user_id = ?
-                        ");
-                        $stmt2->execute([$user['id']]);
-                    } catch (Exception $e) {
-                        // Silenciar — login deve sempre funcionar
-                    }
-                    
-                    // Limpar sessão antiga e recarregar dados atualizados
-                    session_regenerate_id(true);
-                    $_SESSION = [];
-                    
-                    $_SESSION['user_id'] = $user['id'];
-                    $_SESSION['username'] = $user['username'];
-                    $_SESSION['full_name'] = $user['full_name'];
-                    $_SESSION['profile_picture'] = $user['profile_picture'];
-                    
-                    // Usar JavaScript para redirecionamento mais confiável
-                    echo "<script>window.location.href = 'index.php?splash=1';</script>";
-                    exit();
-                } else {
-                    // ❌ LOGIN FALHADO - Registrar tentativa
-                    rate_limit_record($pdo, 'login_user', strtolower($username), false);
-                    rate_limit_record($pdo, 'login_ip', $client_ip, false);
-                    
-                    // Verificar rate limit atualizado APÓS registrar tentativa
-                    $rate_limit_user_updated = rate_limit_check($pdo, 'login_user', strtolower($username), 5, 15);
-                    $rate_limit_ip_updated = rate_limit_check($pdo, 'login_ip', $client_ip, 15, 15);
-                    
-                    $remaining = $rate_limit_user_updated['remaining'];
-                    
-                    if ($remaining > 0) {
-                        $error = "Usuário ou senha incorretos. ($remaining tentativas restantes)";
-                    } else {
-                        $error = 'Usuário ou senha incorretos. Você será bloqueado na próxima tentativa.';
-                    }
-                }
+                $error = 'Usuário ou senha incorretos.';
             }
         }
     } 
@@ -132,8 +90,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $reg_instituicao = $instituicao;
         $error_from = 'register';
         
-        $email_code = trim($_POST['email_code'] ?? '');
-
         // Validações
         if (empty($username) || empty($email) || empty($full_name) || empty($password)) {
             $error = 'Por favor, preencha todos os campos.';
@@ -141,74 +97,48 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $error = 'Nome de usuário deve ter entre 3 e 12 caracteres.';
         } elseif (!preg_match('/^[a-zA-Z0-9_\-]+$/', $username)) {
             $error = 'Nome de usuário pode conter apenas letras, números, - e _';
-        /* EMAIL_VALIDATION_DISABLED - reativar quando Angola tiver mais uso de email
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/@.+\..+/', $email)) {
             $error = 'E-mail inválido. Verifique se contém @ e um domínio válido.';
-        */
         } elseif (strlen($password) < 6) {
             $error = 'Senha deve ter pelo menos 6 caracteres.';
         } elseif ($password !== $confirm_password) {
             $error = 'Senhas não conferem.';
-        /* EMAIL_CODE_REQUIRED_DISABLED
-        } elseif (empty($email_code) || !preg_match('/^\d{6}$/', $email_code)) {
-            $error = 'Por favor, verifique o seu e-mail com o código de 6 dígitos enviado.';
-        */
         } else {
-            /* EMAIL_CODE_VERIFY_DISABLED
-            // Verificar código de e-mail
-            $stmt_code = null;
-            try {
-                $stmt_code = $pdo->prepare("SELECT id FROM email_verifications WHERE email = ? AND code = ? AND used = 0 AND expires_at > NOW() LIMIT 1");
-                $stmt_code->execute([$email, $email_code]);
-                $valid_code = $stmt_code->fetch();
-            } catch (Exception $tableErr) {
-                $valid_code = false;
-            }
-            if (!$valid_code) {
-                $error = 'Código de verificação inválido ou expirado. Solicite um novo código.';
+            // Verificar se usuário já existe
+            $stmt_user = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+            $stmt_user->execute([$username]);
+            
+            if ($stmt_user->fetch()) {
+                $error = 'Nome de usuário já existe.';
             } else {
-            */ {
-                // Verificar se usuário já existe
-                $stmt_user = $pdo->prepare("SELECT id FROM users WHERE username = ?");
-                $stmt_user->execute([$username]);
+                // Verificar limite de contas por email (máx 3)
+                $stmt_email = $pdo->prepare("SELECT COUNT(id) FROM users WHERE email = ?");
+                $stmt_email->execute([$email]);
+                $email_count = (int)$stmt_email->fetchColumn();
                 
-                if ($stmt_user->fetch()) {
-                    $error = 'Nome de usuário já existe.';
+                if ($email_count >= 3) {
+                    $error = 'Este e-mail já atingiu o limite de 3 contas.';
                 } else {
-                    // Verificar limite de contas por email (máx 3)
-                    $stmt_email = $pdo->prepare("SELECT COUNT(id) FROM users WHERE email = ?");
-                    $stmt_email->execute([$email]);
-                    $email_count = (int)$stmt_email->fetchColumn();
+                    // Criar usuário
+                    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                    $stmt = $pdo->prepare("INSERT INTO users (username, email, full_name, password, instituicao) VALUES (?, ?, ?, ?, ?)");
                     
-                    if ($email_count >= 3) {
-                        $error = 'Este e-mail já atingiu o limite de 3 contas.';
-                    } else {
-                        /* MARK_CODE_USED_DISABLED
-                        $stmt_use = $pdo->prepare("UPDATE email_verifications SET used = 1 WHERE id = ?");
-                        $stmt_use->execute([$valid_code['id']]);
-                        */
-
-                        // Criar usuário
-                        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                        $stmt = $pdo->prepare("INSERT INTO users (username, email, full_name, password, instituicao) VALUES (?, ?, ?, ?, ?)");
-                        
-                        try {
-                            if ($stmt->execute([$username, $email, $full_name, $hashed_password, $instituicao])) {
-                                header('Location: login.php?registered=1');
-                                exit;
-                            } else {
-                                $error = 'Erro ao criar conta. Tente novamente.';
-                            }
-                        } catch (PDOException $e) {
-                            if ($e->getCode() == 23000) {
-                                $error = 'Este e-mail já está registado.';
-                            } else {
-                                $error = 'Erro ao criar conta. Tente novamente.';
-                            }
+                    try {
+                        if ($stmt->execute([$username, $email, $full_name, $hashed_password, $instituicao])) {
+                            header('Location: login.php?registered=1');
+                            exit;
+                        } else {
+                            $error = 'Erro ao criar conta. Tente novamente.';
+                        }
+                    } catch (PDOException $e) {
+                        if ($e->getCode() == 23000) {
+                            $error = 'Este e-mail já está registado.';
+                        } else {
+                            $error = 'Erro ao criar conta. Tente novamente.';
                         }
                     }
                 }
-            /* } */ }
+            }
         }
     }
 }
@@ -218,31 +148,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="csrf-token" content="<?php echo csrf_token(); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MyTube - Sua rede social de vídeos</title>
-    <script src="<?php echo asset('assets/js/csrf.js'); ?>"></script>
-    <meta name="description" content="MyTube - Aqui os criadores competem! Rede social angolana de vídeos com competições escolares. Partilhe vídeos, descubra talentos e conecte-se com criadores de Angola!">
-    <meta name="keywords" content="mytube, rede social angola, vídeos angola, criadores angolanos, competições escolares, talentos, social media angola">
+    <meta name="description" content="MyTube é a rede social de vídeos onde criadores competem e se destacam. Partilhe os seus vídeos, ganhe seguidores e descubra talentos incríveis!">
+    <meta name="keywords" content="mytube, rede social vídeos, partilhar vídeos, criadores de conteúdo, social media">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://www.mytube.social/login.php">
 
     <!-- Open Graph (Facebook, WhatsApp, etc.) -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://www.mytube.social/login.php">
-    <meta property="og:title" content="MyTube - Aqui os criadores competem | Angola">
-    <meta property="og:description" content="Rede social angolana onde criadores competem! Participe de competições escolares, partilhe vídeos e descubra talentos incríveis de Angola!">
-    <meta property="og:image" content="https://www.mytube.social/assets/images/og-image.jpg">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:locale" content="pt_AO">
+    <meta property="og:title" content="MyTube - Aqui os criadores competem">
+    <meta property="og:description" content="MyTube é a rede social de vídeos onde criadores competem e se destacam. Partilhe os seus vídeos, ganhe seguidores e descubra talentos incríveis!">
+    <meta property="og:image" content="https://www.mytube.social/assets/images/pwa-icon-512.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta property="og:locale" content="pt_BR">
     <meta property="og:site_name" content="MyTube">
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="MyTube - Aqui os criadores competem | Angola">
-    <meta name="twitter:description" content="Rede social angolana com competições escolares. Partilhe vídeos e descubra talentos de Angola!">
-    <meta name="twitter:image" content="https://www.mytube.social/assets/images/og-image.jpg">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="MyTube - Aqui os criadores competem">
+    <meta name="twitter:description" content="Partilhe os seus vídeos, ganhe seguidores e descubra talentos incríveis na MyTube!">
+    <meta name="twitter:image" content="https://www.mytube.social/assets/images/pwa-icon-512.png">
 
     <!-- Schema.org structured data -->
     <script type="application/ld+json">
@@ -251,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       "@type": "WebSite",
       "name": "MyTube",
       "url": "https://www.mytube.social",
-      "description": "Rede social angolana de vídeos onde criadores competem e talentos são descobertos",
+      "description": "Rede social de vídeos onde criadores competem e se destacam",
       "potentialAction": {
         "@type": "SearchAction",
         "target": "https://www.mytube.social/index.php?search={search_term_string}",
@@ -259,6 +187,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       }
     }
     </script>
+
+    <?php echo csrf_meta(); ?>
 
     <link rel="stylesheet" href="<?php echo asset('assets/css/auth.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
@@ -297,7 +227,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <svg class="eye-off-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
                     </button>
                 </div>
-                <?php echo csrf_field(); ?>
                 <button type="submit" name="login" class="btn btn-primary">Entrar</button>
                 <p class="forgot-password">
                     <a href="#" onclick="showForgotPassword(); return false;">Esqueceu a senha?</a>
@@ -374,23 +303,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <input type="text" name="reg_username" placeholder="Nome de usuário" maxlength="12" pattern="[a-zA-Z0-9_\-]{3,12}" title="3 a 12 caracteres. Apenas letras, números, - e _" autocomplete="off" value="<?php echo htmlspecialchars($reg_username); ?>" required>
                     <small class="field-hint">3-12 caracteres (letras, números, - e _)</small>
                 </div>
-                <!-- EMAIL_VERIFY_WIDGET_DISABLED: reativar quando necessário
-                <div class="input-group" id="emailVerifyGroup">
-                    <div class="email-input-wrap">
-                        <input type="email" name="reg_email" id="regEmailInput" placeholder="E-mail" value="" required autocomplete="email">
-                        <button type="button" id="btnSendEmailCode" class="btn-send-code" onclick="sendRegEmailCode()">Enviar código</button>
-                    </div>
-                    <div id="emailCodeRow" class="email-code-row" style="display:none;">
-                        <input type="text" id="regEmailCodeInput" placeholder="Código de 6 dígitos" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-                        <button type="button" id="btnResendEmailCode" class="btn-resend-code" onclick="resendRegEmailCode()" style="display:none;">Reenviar</button>
-                    </div>
-                    <div id="emailVerifyMsg" class="email-verify-msg" style="display:none;"></div>
-                    <span id="emailVerifiedBadge" class="email-verified-badge" style="display:none;">&#10003; E-mail verificado</span>
-                </div>
-                <input type="hidden" name="email_code" id="emailCodeHidden">
-                -->
                 <div class="input-group">
-                    <input type="text" name="reg_email" placeholder="E-mail (Recomenda-se um email valido)" value="<?php echo htmlspecialchars($reg_email); ?>" autocomplete="email">
+                    <input type="email" name="reg_email" placeholder="E-mail" value="<?php echo htmlspecialchars($reg_email); ?>" required>
                 </div>
                 <div class="input-group">
                     <input type="text" name="reg_full_name" placeholder="Nome completo" value="<?php echo htmlspecialchars($reg_full_name); ?>" required>
@@ -413,7 +327,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </button>
                 </div>
                 <div id="passwordMatchError" class="inline-error" style="display:none;">Senhas não conferem.</div>
-                <?php echo csrf_field(); ?>
                 <button type="submit" name="register" class="btn btn-primary">Criar Conta</button>
                 <p class="terms">
                     Ao cadastrar-se, você concorda com nossos 
