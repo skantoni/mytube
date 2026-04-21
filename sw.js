@@ -1,6 +1,6 @@
 // MyTube Service Worker — PWA
 // Versionamento automático: usa ?v=... passado no registro do SW.
-// Última atualização: 2026-04-19 - Push notifications com tags únicas
+// Última atualização: 2026-04-21 - BASE_PATH fix para push notifications
 const SW_VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
 const CACHE_NAME = `mytube-${SW_VERSION}`;
 const STATIC_ASSETS = [

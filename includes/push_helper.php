@@ -57,11 +57,14 @@ function sendPushNotification($pdo, int $userId, string $title, string $body, st
         // Gerar tag única para evitar sobreposição de notificações
         $tag = 'notif_' . $userId . '_' . time() . '_' . mt_rand(1000, 9999);
         
-        // Garantir URL absoluto para funcionar em produção
+        // Adicionar BASE_PATH aos URLs relativos (suporta /my/, /mytube/ ou vazio)
+        $basePath = defined('BASE_PATH') ? BASE_PATH : '';
         if ($url && strpos($url, 'http') !== 0) {
-            // Se URL relativo, manter como está (service worker resolve)
-            $url = $url;
+            // URL relativo - adicionar base path
+            $url = $basePath . $url;
         }
+        $defaultUrl = $basePath . '/index.php';
+        $defaultIcon = $basePath . '/assets/images/logo_icon.png';
         
         // Enviar via chat-server Node.js
         $payload = json_encode([
@@ -69,13 +72,15 @@ function sendPushNotification($pdo, int $userId, string $title, string $body, st
             'notification' => [
                 'title' => mb_substr($title, 0, 100),
                 'body' => mb_substr($body, 0, 200),
-                'url' => $url ?: '/index.php',
-                'icon' => $icon ?: '/assets/images/logo_icon.png',
+                'url' => $url ?: $defaultUrl,
+                'icon' => $icon ?: $defaultIcon,
                 'tag' => $tag,
             ]
         ]);
         
-        $ch = curl_init('http://localhost:3001/api/send-push');
+        // Obter URL do chat-server (localhost em dev, IP/domínio em produção)
+        $chatServerUrl = env('CHAT_SERVER_URL', 'http://localhost:3001');
+        $ch = curl_init($chatServerUrl . '/api/send-push');
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $payload,
@@ -139,18 +144,28 @@ function sendPushToMultiple($pdo, array $userIds, string $title, string $body, s
         // Gerar tag única para cada grupo de notificações
         $tag = 'notif_batch_' . time() . '_' . mt_rand(1000, 9999);
         
+        // Adicionar BASE_PATH aos URLs relativos
+        $basePath = defined('BASE_PATH') ? BASE_PATH : '';
+        if ($url && strpos($url, 'http') !== 0) {
+            $url = $basePath . $url;
+        }
+        $defaultUrl = $basePath . '/index.php';
+        $defaultIcon = $basePath . '/assets/images/logo_icon.png';
+        
         $payload = json_encode([
             'subscriptions' => $subscriptions,
             'notification' => [
                 'title' => mb_substr($title, 0, 100),
                 'body' => mb_substr($body, 0, 200),
-                'url' => $url ?: '/index.php',
-                'icon' => '/assets/images/logo_icon.png',
+                'url' => $url ?: $defaultUrl,
+                'icon' => $defaultIcon,
                 'tag' => $tag,
             ]
         ]);
         
-        $ch = curl_init('http://localhost:3001/api/send-push');
+        // Obter URL do chat-server
+        $chatServerUrl = env('CHAT_SERVER_URL', 'http://localhost:3001');
+        $ch = curl_init($chatServerUrl . '/api/send-push');
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $payload,
