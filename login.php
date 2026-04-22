@@ -300,7 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <form id="registerForm" method="POST" class="auth-form <?php echo ($error_from === 'register') ? 'active' : ''; ?>">
                 <div class="input-group username-group">
                     <span class="username-prefix">@</span>
-                    <input type="text" name="reg_username" placeholder="Nome de usuário" maxlength="12" pattern="[a-zA-Z0-9_\-]{3,12}" title="3 a 12 caracteres. Apenas letras, números, - e _" autocomplete="off" value="<?php echo htmlspecialchars($reg_username); ?>" required>
+                    <input type="text" name="reg_username" placeholder="Nome de usuário (Definitivo)" maxlength="12" pattern="[a-zA-Z0-9_\-]{3,12}" title="3 a 12 caracteres. Apenas letras, números, - e _" autocomplete="off" value="<?php echo htmlspecialchars($reg_username); ?>" required>
                     <small class="field-hint">3-12 caracteres (letras, números, - e _)</small>
                 </div>
                 <div class="input-group">
