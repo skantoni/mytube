@@ -48,14 +48,9 @@ try {
         exit;
     }
 
-    // Buscar informações do usuário logado
-    $user_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
-    $user_stmt->execute([$_SESSION['user_id']]);
-    $current_user = $user_stmt->fetch();
-
-    // Verificar permissões: deve ser o dono do vídeo OU administrador
+    // Verificar permissões: deve ser o dono do vídeo OU administrador (via RBAC)
     $is_owner = ($video['user_id'] == $_SESSION['user_id']);
-    $is_admin = ($current_user['username'] === 'Admin');
+    $is_admin = isAdminUser();
 
     if (!$is_owner && !$is_admin) {
         http_response_code(403);

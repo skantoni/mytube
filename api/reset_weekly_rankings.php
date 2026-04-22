@@ -39,10 +39,7 @@ if (!$is_cron) {
         echo json_encode(['success' => false, 'error' => 'Não autenticado']);
         exit;
     }
-    $admin_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
-    $admin_stmt->execute([$_SESSION['user_id']]);
-    $admin_user = $admin_stmt->fetch();
-    if ($admin_user['username'] !== 'Admin') {
+    if (!isAdminUser()) {
         echo json_encode(['success' => false, 'error' => 'Apenas admin pode executar o reset']);
         exit;
     }
@@ -103,7 +100,7 @@ try {
             RANK() OVER (ORDER BY u.ranking_points DESC),
             ?
         FROM users u
-        WHERE u.username != 'Admin' AND u.ranking_points > 0
+        WHERE (u.role != 'admin' OR u.role IS NULL) AND u.ranking_points > 0
     ")->execute([$week_label, $snapshot_time]);
 
     $saved_count = $pdo->query("SELECT ROW_COUNT()")->fetchColumn();

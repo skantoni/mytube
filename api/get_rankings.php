@@ -230,7 +230,7 @@ function get_my_rank($pdo, int $userId): array {
     // Posição global — baseada em pontos dinâmicos dos últimos 3 meses
     $stmtRank = $pdo->prepare("
         SELECT COUNT(*) + 1 AS global_rank FROM users u2
-        WHERE u2.username != 'Admin' AND COALESCE((
+        WHERE (u2.role != 'admin' OR u2.role IS NULL) AND COALESCE((
             SELECT COUNT(*) * 10 + COALESCE(SUM(v.likes_count), 0) * 2 + COALESCE(SUM(v.comments_count), 0) * 3 + COALESCE(SUM(v.views_count), 0) * 1
             FROM videos v WHERE v.user_id = u2.id AND v.is_public = 1 AND v.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
         ), 0) > ?
@@ -243,7 +243,7 @@ function get_my_rank($pdo, int $userId): array {
     if ($myData['school_id']) {
         $stmtSR = $pdo->prepare("
             SELECT COUNT(*) + 1 AS school_rank FROM users u2
-            WHERE u2.school_id = ? AND u2.username != 'Admin' AND COALESCE((
+            WHERE u2.school_id = ? AND (u2.role != 'admin' OR u2.role IS NULL) AND COALESCE((
                 SELECT COUNT(*) * 10 + COALESCE(SUM(v.likes_count), 0) * 2 + COALESCE(SUM(v.comments_count), 0) * 3 + COALESCE(SUM(v.views_count), 0) * 1
                 FROM videos v WHERE v.user_id = u2.id AND v.is_public = 1 AND v.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
             ), 0) > ?
@@ -297,7 +297,7 @@ function get_top_creators($pdo, string $period, int $limit): array {
             FROM users u
             LEFT JOIN schools s ON u.school_id = s.id
             LEFT JOIN videos v ON v.user_id = u.id AND v.is_public = 1 $where_period
-            WHERE u.username != 'Admin'
+            WHERE (u.role != 'admin' OR u.role IS NULL)
             GROUP BY u.id
             HAVING total_videos > 0
             ORDER BY points DESC
@@ -340,7 +340,7 @@ function get_school_creators($pdo, int $school_id, int $limit): array {
             ) AS points
         FROM users u
         LEFT JOIN videos v ON v.user_id = u.id AND v.is_public = 1 AND v.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
-        WHERE u.school_id = ? AND u.username != 'Admin'
+        WHERE u.school_id = ? AND (u.role != 'admin' OR u.role IS NULL)
         GROUP BY u.id
         HAVING total_videos > 0
         ORDER BY points DESC
@@ -542,7 +542,7 @@ function get_trending_videos($pdo, int $limit): array {
             WHERE created_at >= NOW() - INTERVAL 48 HOUR
             GROUP BY video_id
         ) rc ON rc.video_id = v.id
-        WHERE v.is_public = 1 AND u.username != 'Admin'
+        WHERE v.is_public = 1 AND (u.role != 'admin' OR u.role IS NULL)
         ORDER BY score DESC, v.created_at DESC
         LIMIT ?
     ";

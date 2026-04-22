@@ -15,12 +15,8 @@ $userData = $stmt->fetch();
 $userSchoolId = $userData['school_id'] ?? null;
 $userSchoolName = $userData['school_name'] ?? null;
 
-// Verificar admin
-$is_admin = false;
-$admin_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
-$admin_stmt->execute([$_SESSION['user_id']]);
-$current_user = $admin_stmt->fetch();
-$is_admin = ($current_user['username'] === 'Admin');
+// Verificar admin via RBAC (função centralizada)
+$is_admin = isAdminUser();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">

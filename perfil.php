@@ -100,12 +100,8 @@ try {
         }
     }
 
-    // Verificar se o usuário logado é admin
-    $is_admin = false;
-    $admin_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
-    $admin_stmt->execute([$_SESSION['user_id']]);
-    $current_user = $admin_stmt->fetch();
-    $is_admin = ($current_user['username'] === 'Admin');
+    // Verificar se o usuário logado é admin via RBAC (função centralizada)
+    $is_admin = isAdminUser();
     $can_manage_profile_videos = ($is_own_profile || $is_admin);
 
 } catch (Exception $e) {

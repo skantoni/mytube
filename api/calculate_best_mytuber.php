@@ -43,10 +43,7 @@ if (!$is_cron) {
         echo json_encode(['success' => false, 'error' => 'Não autenticado']);
         exit;
     }
-    $admin_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
-    $admin_stmt->execute([$_SESSION['user_id']]);
-    $admin_user = $admin_stmt->fetch();
-    if ($admin_user['username'] !== 'Admin') {
+    if (!isAdminUser()) {
         echo json_encode(['success' => false, 'error' => 'Apenas admin pode executar o cálculo']);
         exit;
     }
@@ -166,7 +163,7 @@ try {
             AND v.is_public = 1 
             AND v.created_at >= ? 
             AND v.created_at <= ?
-        WHERE u.username != 'Admin'
+        WHERE (u.role != 'admin' OR u.role IS NULL)
         GROUP BY u.id
         HAVING videos_count > 0
         ORDER BY total_likes DESC

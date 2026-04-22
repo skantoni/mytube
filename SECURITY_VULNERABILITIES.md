@@ -11,9 +11,9 @@
 |------------|-------|------------|-----------|
 | CRÍTICO    | 14    | 14         | 0         |
 | ALTO       | 13    | 5          | 8         |
-| MÉDIO      | 8     | 2          | 6         |
+| MÉDIO      | 8     | 3          | 5         |
 | BAIXO      | 7     | 0          | 7         |
-| **TOTAL**  | **42**| **21**     | **21**    |
+| **TOTAL**  | **42**| **22**     | **20**    |
 
 ---
 
@@ -242,10 +242,17 @@
 **Arquivo:** `login.php` linha 97  
 **Problema:** Mínimo 6 chars é muito fraco
 
-### ❌ 6. Admin verificado por username (=== 'Admin')
-**Status:** ❌ **PENDENTE**  
-**Arquivo:** `api/boost_metrics.php`, `api/calculate_best_mytuber.php`  
-**Problema:** Deve usar role-based access control
+### ✅ 6. Admin verificado por username (=== 'Admin')
+**Status:** ✅ **RESOLVIDO**  
+**Arquivo:** `api/boost_metrics.php`, `api/calculate_best_mytuber.php`, `ranking.php`, `perfil.php`, `api/delete_video.php`, `api/get_rankings.php`, `api/reset_weekly_rankings.php`
+**Problema:** Verificação de privilégios baseada em string estática de username
+**Solução Implementada:**
+- Adicionada coluna `role` (ENUM: 'user', 'admin', 'moderator') na tabela `users` via migration.
+- Função `isAdminUser()` em `includes/config.php` centralizada para verificar `role === 'admin'`.
+- Removidos todos os checks inline `=== 'Admin'` em PHP e SQL.
+- Queries de ranking agora excluem admins via `role != 'admin'` em vez de username.
+- Fallback seguro em `isAdminUser()` garante funcionamento durante a transição da base de dados.
+**Data:** 22/04/2026
 
 ### ✅ 7. Sem headers de segurança HTTP
 **Status:** ✅ **RESOLVIDO**  
