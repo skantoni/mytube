@@ -19,6 +19,20 @@ if (!defined('VIDEO_TRANSCODE_CRF')) {
     define('VIDEO_TRANSCODE_CRF', 23);
 }
 
+// Quando true, se o FFmpeg não for encontrado o vídeo é enviado sem transcodificação
+// (em vez de retornar erro). Útil para desenvolvimento local sem FFmpeg instalado.
+// Controlado pelo APP_ENV no .env:
+//   APP_ENV=development  → skip FFmpeg (sem erro)
+//   APP_ENV=production   → exige FFmpeg (comportamento normal em produção)
+if (!defined('VIDEO_TRANSCODE_SKIP_IF_NO_FFMPEG')) {
+    // Usa a função env() do config.php se disponível, caso contrário lê direto do getenv()
+    $__app_env = function_exists('env')
+        ? env('APP_ENV', 'development')
+        : (getenv('APP_ENV') ?: 'development');
+    define('VIDEO_TRANSCODE_SKIP_IF_NO_FFMPEG', $__app_env !== 'production');
+    unset($__app_env);
+}
+
 /**
  * Verifica se o exec esta disponivel no PHP.
  */
@@ -202,6 +216,13 @@ function video_prepare_for_storage(string $input_path, string $original_extensio
 
     $ffmpeg = video_get_ffmpeg_binary();
     if (!$ffmpeg) {
+        if (VIDEO_TRANSCODE_SKIP_IF_NO_FFMPEG) {
+            // Ambiente local sem FFmpeg: passar o vídeo sem transcodificação
+            error_log('video_processing: FFmpeg não encontrado — a enviar vídeo original sem transcodificação (modo desenvolvimento).');
+            $result['success'] = true;
+            $result['output_path'] = $input_path;
+            return $result;
+        }
         $result['error'] = 'FFmpeg nao encontrado no servidor.';
         return $result;
     }
@@ -299,6 +320,13 @@ function video_merge_music(string $video_path, string $music_path, string $mode 
 
     $ffmpeg = video_get_ffmpeg_binary();
     if (!$ffmpeg) {
+        if (VIDEO_TRANSCODE_SKIP_IF_NO_FFMPEG) {
+            // Ambiente local sem FFmpeg: ignorar música de fundo silenciosamente
+            error_log('video_processing: FFmpeg não encontrado — música de fundo ignorada (modo desenvolvimento).');
+            $result['success'] = true;
+            $result['output_path'] = $video_path;
+            return $result;
+        }
         $result['error'] = 'FFmpeg não encontrado para merge de áudio.';
         return $result;
     }
