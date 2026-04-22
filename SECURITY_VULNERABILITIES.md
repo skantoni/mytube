@@ -11,9 +11,9 @@
 |------------|-------|------------|-----------|
 | CRÍTICO    | 14    | 14         | 0         |
 | ALTO       | 13    | 5          | 8         |
-| MÉDIO      | 8     | 1          | 7         |
+| MÉDIO      | 8     | 2          | 6         |
 | BAIXO      | 7     | 0          | 7         |
-| **TOTAL**  | **42**| **20**     | **22**    |
+| **TOTAL**  | **42**| **21**     | **21**    |
 
 ---
 
@@ -145,11 +145,22 @@
 **Solução:** Credenciais antigas revogadas, novas geradas e funcionando  
 **Data:** 18/04/2026
 
-### ❌ 11. XSS em comentários e bio (HTML não escapado)
-**Status:** ❌ **PENDENTE**  
-**Arquivo:** Vários (comentários, bio, descrições)  
+### ✅ 11. XSS em comentários e bio (HTML não escapado)
+**Status:** ✅ **RESOLVIDO**  
+**Arquivo:** Vários (comentários, bio, descrições, notificações, pesquisa, header)  
 **Problema:** Conteúdo de usuário exibido sem htmlspecialchars()  
-**Solução:** Sanitizar TODAS saídas com htmlspecialchars() ou strip_tags()
+**Solução Implementada:**
+- `login.php`: `$error` e `$success` agora escapados com `htmlspecialchars(ENT_QUOTES, 'UTF-8')`
+- `profile.php`: `$error`, `$success` e `$avatarPath` nos dois `<img>` corrigidos
+- `upload.php`: `$error` e `$success` na área de alertas corrigidos
+- `includes/header.php`: username em URLs e avatar path sem escape corrigidos
+- `api/get_comments.php`: `comment_text`, `username`, `full_name` sanitizados antes do JSON
+- `api/get_replies.php`: `comment_text`, `username`, `full_name` sanitizados antes do JSON
+- `api/get_notifications.php`: `actor_username`, `actor_avatar`, `message`, `time_ago` sanitizados
+- `api/search.php`: `username`, `full_name`, `title`, `description`, `hashtag.name`, `hashtag.slug` sanitizados
+- `includes/config.php` `renderBioWithMentions()`: já estava correto (aplica `htmlspecialchars` antes do regex)
+- `api/get_feed.php`: já estava correto (`htmlspecialchars` em `title`, `description`, `username`, `full_name`)
+**Data:** 22/04/2026
 
 ### ❌ 12. SQL Injection em pesquisa
 **Status:** ❌ **PENDENTE**
@@ -394,4 +405,4 @@
 
 ---
 
-**Última atualização:** 18/04/2026 19:00
+**Última atualização:** 22/04/2026 11:15

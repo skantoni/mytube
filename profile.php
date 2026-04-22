@@ -296,11 +296,11 @@ $has_more_videos = $total_user_videos > count($user_videos);
 
     <main class="profile-main">
         <?php if ($error): ?>
-            <div class="alert alert-error"><?php echo $error; ?></div>
+            <div class="alert alert-error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
         <?php endif; ?>
         
         <?php if ($success): ?>
-            <div class="alert alert-success"><?php echo $success; ?></div>
+            <div class="alert alert-success"><?php echo htmlspecialchars($success, ENT_QUOTES, 'UTF-8'); ?></div>
         <?php endif; ?>
 
         <!-- Informações do perfil -->
@@ -313,7 +313,7 @@ $has_more_videos = $total_user_videos > count($user_videos);
                         $avatarPath = 'assets/images/avatars/default.jpg';
                     }
                 ?>
-                <img src="<?php echo $avatarPath; ?>" 
+                <img src="<?php echo htmlspecialchars($avatarPath, ENT_QUOTES, 'UTF-8'); ?>" 
                      alt="<?php echo htmlspecialchars($user['full_name']); ?>" 
                      class="avatar-image"
                      onerror="this.onerror=null;this.src='assets/images/avatars/default.jpg';"
@@ -488,7 +488,7 @@ $has_more_videos = $total_user_videos > count($user_videos);
                 <div class="form-group">
                     <label>Foto de Perfil</label>
                     <div class="avatar-upload">
-                        <img src="<?php echo $avatarPath; ?>" 
+                        <img src="<?php echo htmlspecialchars($avatarPath, ENT_QUOTES, 'UTF-8'); ?>" 
                              alt="Avatar" class="current-avatar" id="avatarPreview"
                              onerror="this.onerror=null;this.src='assets/images/avatars/default.jpg';">
                         <input type="file" name="profile_picture" id="profilePicture" accept="image/*" onchange="previewAvatar(this)">

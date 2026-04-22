@@ -67,7 +67,7 @@ echo r2_js_config();
                     </button>
 
                     <div class="user-dropdown" id="userDropdown">
-                        <a href="profile.php?user=<?php echo $user_data['username']; ?>" class="dropdown-item">
+                        <a href="profile.php?user=<?php echo htmlspecialchars($user_data['username'], ENT_QUOTES, 'UTF-8'); ?>" class="dropdown-item">
                             <i class="fas fa-user"></i>
                             Meu Perfil
                         </a>
@@ -128,7 +128,7 @@ echo r2_js_config();
 <?php if (isLoggedIn()): ?>
     <div class="mobile-sidebar" id="mobileSidebar">
         <div class="sidebar-header">
-            <img src="assets/images/avatars/<?php echo $user_data['profile_picture'] ?? 'default.webp'; ?>"
+            <img src="<?php echo htmlspecialchars(avatar_url($user_data['profile_picture'] ?? null), ENT_QUOTES, 'UTF-8'); ?>"
                 alt="Avatar" class="sidebar-avatar">
             <div class="sidebar-user-info">
                 <h4><?php echo htmlspecialchars($user_data['full_name']); ?></h4>
@@ -145,7 +145,7 @@ echo r2_js_config();
                 <span>Home</span>
             </a>
 
-            <a href="profile.php?user=<?php echo $user_data['username']; ?>" class="sidebar-item">
+            <a href="profile.php?user=<?php echo htmlspecialchars($user_data['username'], ENT_QUOTES, 'UTF-8'); ?>" class="sidebar-item">
                 <i class="fas fa-user"></i>
                 <span>Meu Perfil</span>
             </a>

@@ -429,14 +429,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <?php if ($error): ?>
                     <div class="alert alert-error">
                         <i class="fas fa-exclamation-circle"></i>
-                        <?php echo $error; ?>
+                        <?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?>
                     </div>
                 <?php endif; ?>
                 
                 <?php if ($success): ?>
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle"></i>
-                        <?php echo $success; ?>
+                        <?php echo htmlspecialchars($success, ENT_QUOTES, 'UTF-8'); ?>
                     </div>
                 <?php endif; ?>
                 

@@ -140,6 +140,11 @@ try {
         $comment['time_ago'] = timeAgo($comment['created_at']);
         $comment['replies_count'] = (int)$comment['replies_count'];
         
+        // Sanitizar campos de texto do utilizador para prevenir XSS
+        $comment['comment_text'] = htmlspecialchars($comment['comment_text'] ?? '', ENT_QUOTES, 'UTF-8');
+        $comment['username'] = htmlspecialchars($comment['username'] ?? '', ENT_QUOTES, 'UTF-8');
+        $comment['full_name'] = htmlspecialchars($comment['full_name'] ?? '', ENT_QUOTES, 'UTF-8');
+        
         $is_author = (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $comment['user_id']);
         $time_since_created = time() - strtotime($comment['created_at']);
         $within_edit_window = $time_since_created <= 120;

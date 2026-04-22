@@ -121,15 +121,15 @@ try {
         
         return [
             'id' => $notif['id'],
-            'type' => $notif['type'],
-            'actor_username' => $notif['actor_username'],
-            'actor_avatar' => $notif['actor_avatar'] ?? 'default.webp',
-            'message' => $message,
+            'type' => htmlspecialchars($notif['type'] ?? '', ENT_QUOTES, 'UTF-8'),
+            'actor_username' => htmlspecialchars($notif['actor_username'] ?? '', ENT_QUOTES, 'UTF-8'),
+            'actor_avatar' => htmlspecialchars($notif['actor_avatar'] ?? 'default.webp', ENT_QUOTES, 'UTF-8'),
+            'message' => htmlspecialchars($message, ENT_QUOTES, 'UTF-8'),
             'reference_id' => $notif['reference_id'],
             'comment_id' => $notif['comment_id'] ?? null,
             'is_read' => (bool)$notif['is_read'],
-            'time_ago' => $notif['time_ago'],
-            'notif_scope' => $notif['notif_scope'] ?? 'personal'
+            'time_ago' => htmlspecialchars($notif['time_ago'] ?? '', ENT_QUOTES, 'UTF-8'),
+            'notif_scope' => htmlspecialchars($notif['notif_scope'] ?? 'personal', ENT_QUOTES, 'UTF-8')
         ];
     }, $notifications);
     
