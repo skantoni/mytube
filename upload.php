@@ -281,7 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($isAjax) {
                         if (ob_get_level()) ob_end_clean();
                         header('Content-Type: application/json');
-                        echo json_encode(['success' => true, 'message' => $success]);
+                        echo json_encode(['success' => true, 'message' => $success, 'video_id' => $video_id]);
                         exit;
                     }
 

@@ -115,6 +115,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // Variáveis globais para controle do upload
 let uploadXHR = null;
 let uploadStartTime = 0;
+let uploadedVideoId = null;     // ID do vídeo já inserido no servidor (para cancelamento tardio)
+let uploadPercent = 0;          // Progresso actual da transferência (0-100)
+let cancelRequested = false;    // Flag: utilizador pediu cancelamento durante fase de processamento
 
 // Função para processar arquivo selecionado
 function processFile(file) {
@@ -269,6 +272,9 @@ function startAjaxUpload() {
     // Criar XMLHttpRequest para ter progresso
     uploadXHR = new XMLHttpRequest();
     uploadStartTime = Date.now();
+    uploadPercent = 0;
+    cancelRequested = false;
+    uploadedVideoId = null;
     let lastLoaded = 0;
     let lastTime = uploadStartTime;
     
@@ -306,35 +312,19 @@ function startAjaxUpload() {
         if (uploadXHR.status === 200) {
             try {
                 const response = JSON.parse(uploadXHR.responseText);
-                if (response.success) {
-                    showUploadComplete(true, response.message || 'Vídeo enviado com sucesso!');
-                    setTimeout(() => {
-                        window.location.href = 'index.php';
-                    }, 2000);
-                } else {
-                    showUploadComplete(false, response.error || 'Erro ao enviar vídeo.');
-                    resetUploadUI();
-                }
+                handleServerResponse(response);
             } catch(e) {
                 // Resposta não é JSON válido — tentar extrair JSON de resposta com warnings
                 const text = uploadXHR.responseText || '';
                 const jsonMatch = text.match(/\{[\s\S]*\}$/);
                 if (jsonMatch) {
                     try {
-                        const fallback = JSON.parse(jsonMatch[0]);
-                        if (fallback.success) {
-                            showUploadComplete(true, fallback.message || 'Vídeo enviado com sucesso!');
-                            setTimeout(() => { window.location.href = 'index.php'; }, 2000);
-                        } else {
-                            showUploadComplete(false, fallback.error || 'Erro ao enviar vídeo.');
-                            resetUploadUI();
-                        }
+                        handleServerResponse(JSON.parse(jsonMatch[0]));
                         return;
                     } catch(e2) {}
                 }
-                // Não conseguiu extrair JSON — mostrar erro
                 console.error('Upload response parse error:', text.substring(0, 500));
-                showUploadComplete(false, 'Erro no servidor. Resposta inesperada. Verifique se o vídeo foi publicado.');
+                showUploadComplete(false, 'Erro no servidor. Resposta inesperada.');
                 resetUploadUI();
             }
         } else {
@@ -342,17 +332,19 @@ function startAjaxUpload() {
             resetUploadUI();
         }
     });
-    
+
     // Erro de rede
     uploadXHR.addEventListener('error', function() {
         showUploadComplete(false, 'Erro de conexão. Verifique sua internet e tente novamente.');
         resetUploadUI();
     });
-    
-    // Upload abortado
+
+    // Upload abortado (só acontece se cancelado ANTES de atingir 100%)
     uploadXHR.addEventListener('abort', function() {
         showUploadComplete(false, 'Upload cancelado.');
         resetUploadUI();
+        // Caso raro: servidor pode ter inserido antes do abort — tentar limpar
+        deleteOrphanedUpload();
     });
     
     // Timeout
@@ -378,6 +370,9 @@ function updateProgress(percent, loaded, total, speed, eta) {
     const speedText = document.getElementById('progressSpeed');
     const etaText = document.getElementById('progressETA');
     
+    // Guardar percentagem actual (usada pelo cancelUpload)
+    uploadPercent = percent;
+
     if (fill) {
         fill.style.width = percent + '%';
     }
@@ -434,12 +429,110 @@ function showUploadComplete(success, message) {
     }
 }
 
+// Tratar resposta do servidor (sucesso ou erro) — separado para reutilização
+function handleServerResponse(response) {
+    if (response.success) {
+        const videoId = response.video_id || null;
+
+        if (cancelRequested) {
+            // ─── Utilizador cancelou durante o processamento ───
+            // O servidor já inseriu o vídeo — apagar imediatamente
+            uploadedVideoId = videoId;
+            deleteOrphanedUpload();
+            showUploadComplete(false, 'Upload cancelado. Vídeo removido do servidor.');
+            resetUploadUI();
+        } else {
+            // ─── Sucesso normal — redirecionar ───
+            showUploadComplete(true, response.message || 'Vídeo enviado com sucesso!');
+            setTimeout(() => {
+                window.location.href = 'index.php';
+            }, 2000);
+        }
+    } else {
+        showUploadComplete(false, response.error || 'Erro ao enviar vídeo.');
+        resetUploadUI();
+    }
+}
+
 // Cancelar upload
+// ─ Se transferência < 100%: abortar XHR (PHP nunca recebeu tudo → sem registo)
+// ─ Se transferência = 100% (a processar): NÃO abortar — marcar flag e aguardar
+//   resposta do servidor para obter o video_id e apagá-lo correctamente
 function cancelUpload() {
-    if (uploadXHR) {
+    if (uploadXHR && uploadPercent < 100) {
+        // Fase de transferência: abortar é seguro, PHP não terminou de receber
         uploadXHR.abort();
         uploadXHR = null;
+
+    } else if (uploadXHR && uploadPercent >= 100) {
+        // Fase de processamento no servidor: NÃO abortar!
+        // O PHP já recebeu tudo e está a trabalhar — se abortarmos o XHR
+        // perdemos a resposta (e o video_id) e o vídeo fica órfão.
+        cancelRequested = true;
+        showCancellingUI();
+
+    } else if (uploadedVideoId) {
+        // Servidor já respondeu e temos o video_id — apagar directamente
+        deleteOrphanedUpload();
+        showUploadComplete(false, 'Upload cancelado. Vídeo removido do servidor.');
+        resetUploadUI();
     }
+}
+
+// UI de "a cancelar" — feedback imediato enquanto aguarda resposta do servidor
+function showCancellingUI() {
+    const statusText = document.getElementById('progressStatusText');
+    const cancelBtn = document.getElementById('cancelUploadBtn');
+    const icon = document.querySelector('.progress-icon');
+
+    if (statusText) statusText.textContent = 'Cancelando... aguardando servidor.';
+    if (cancelBtn) {
+        cancelBtn.disabled = true;
+        cancelBtn.style.opacity = '0.5';
+        cancelBtn.title = 'A cancelar...';
+    }
+    if (icon) {
+        icon.className = 'fas fa-spinner fa-spin progress-icon';
+    }
+}
+
+// Apagar vídeo que ficou órfão no servidor após cancelamento
+function deleteOrphanedUpload() {
+    if (!uploadedVideoId) return;
+
+    const videoIdToDelete = uploadedVideoId;
+    uploadedVideoId = null; // Prevenir chamadas duplas
+
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfValue = csrfMeta ? csrfMeta.getAttribute('content') : '';
+    const payload = JSON.stringify({ video_id: videoIdToDelete });
+
+    // fetch com keepalive: funciona mesmo se a página estiver a ser fechada
+    fetch('api/cancel_upload.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfValue
+        },
+        body: payload,
+        keepalive: true
+    }).then(function(res) {
+        return res.json();
+    }).then(function(data) {
+        console.log('cancel_upload:', data.message || data);
+    }).catch(function(err) {
+        // Fallback síncrono se fetch falhar
+        console.warn('fetch falhou, a tentar XHR síncrono:', err);
+        try {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'api/cancel_upload.php', false);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('X-CSRF-Token', csrfValue);
+            xhr.send(payload);
+        } catch(e2) { /* nada a fazer */ }
+    });
+
+    console.log('Cancelamento solicitado para vídeo #' + videoIdToDelete);
 }
 
 // Resetar UI após erro
