@@ -1,4 +1,4 @@
-﻿/* VariÃ¡veis CSS para o tema azul */
+/* VariÃ¡veis CSS para o tema azul */
 :root {
     --primary-blue: #1e40af;
     --secondary-blue: #3b82f6;
@@ -897,4 +897,74 @@
     font-size: 0.82rem;
     font-weight: 600;
     animation: fadeIn 0.3s ease-out;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #f1f5f9;
+    font-size: 0.85rem;
+    color: var(--gray);
+}
+
+.auth-footer a {
+    color: var(--gray);
+    text-decoration: none;
+    transition: var(--transition);
+    padding: 0 5px;
+}
+
+.auth-footer a:hover {
+    color: var(--primary-blue);
+    text-decoration: underline;
+}
+
+/* ============================
+   Google Sign-In
+   ============================ */
+
+/* Divisor "ou" */
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0 16px;
+    color: var(--gray);
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e2e8f0;
+}
+
+/* Botão Google */
+.google-signin-btn {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+    margin-top: 5px;
+    transition: var(--transition);
+}
+
+.google-signin-btn:hover {
+    transform: translateY(-1px);
+}
+
+.google-signin-btn:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .google-signin-btn:hover {
+        transform: none;
+        box-shadow: none;
+    }
 }

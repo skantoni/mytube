@@ -189,10 +189,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </script>
 
     <?php echo csrf_meta(); ?>
+    <meta name="google-client-id" content="<?php echo htmlspecialchars(env('GOOGLE_CLIENT_ID', ''), ENT_QUOTES, 'UTF-8'); ?>">
 
     <link rel="stylesheet" href="<?php echo asset('assets/css/auth.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
     <?php include __DIR__ . '/includes/favicon.php'; ?>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="auth-body">
     <div class="auth-container">
@@ -231,6 +233,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <p class="forgot-password">
                     <a href="#" onclick="showForgotPassword(); return false;">Esqueceu a senha?</a>
                 </p>
+
+                <div class="auth-divider"><span>ou</span></div>
+
+                <div id="googleBtnLogin" class="google-signin-btn"></div>
             </form>
 
             <!-- Fluxo de Esqueceu a Senha -->
@@ -330,12 +336,80 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <button type="submit" name="register" class="btn btn-primary">Criar Conta</button>
                 <p class="terms">
                     Ao cadastrar-se, você concorda com nossos 
-                    <a href="termos.php" target="_blank">Termos de Uso</a>
+                    <a href="termos.php" target="_blank">Termos de Uso</a> e 
+                    <a href="privacidade.php" target="_blank">Política de Privacidade</a>
                 </p>
+
+                <div class="auth-divider"><span>ou</span></div>
+
+                <div id="googleBtnRegister" class="google-signin-btn"></div>
             </form>
+            
+            <div class="auth-footer">
+                <a href="termos.php" target="_blank">Termos</a> &bull; 
+                <a href="privacidade.php" target="_blank">Privacidade</a>
+            </div>
         </div>
     </div>
     
     <script src="<?php echo asset('assets/js/auth.js'); ?>"></script>
+    <script>
+    // ── Google Identity Services ────────────────────────────────────────────
+    const GOOGLE_CLIENT_ID = document.querySelector('meta[name="google-client-id"]')?.content || '';
+
+    window.onload = function() {
+        if (typeof google === 'undefined' || !GOOGLE_CLIENT_ID) return;
+        
+        google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleGoogleCredential,
+            auto_select: false
+        });
+
+        // Renderizar o botão oficial do Google dentro das nossas divs
+        const renderOptions = {
+            theme: "outline",
+            size: "large",
+            width: document.querySelector('.google-signin-btn').offsetWidth,
+            text: "continue_with",
+            shape: "rectangular",
+            logo_alignment: "left"
+        };
+
+        google.accounts.id.renderButton(document.getElementById("googleBtnLogin"), renderOptions);
+        google.accounts.id.renderButton(document.getElementById("googleBtnRegister"), renderOptions);
+    };
+
+    async function handleGoogleCredential(response) {
+        const credential = response.credential;
+        if (!credential) return;
+
+        try {
+            const formData = new FormData();
+            formData.append('credential', credential);
+
+            const res = await fetch('api/google_auth.php', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRF-Token': getCsrfToken() }
+            });
+
+            const data = await res.json();
+
+            if (data.success && data.redirect) {
+                window.location.href = data.redirect;
+            } else {
+                alert(data.message || 'Erro ao entrar com Google.');
+            }
+        } catch (err) {
+            console.error('[Google Auth]', err);
+            alert('Erro de ligação. Tente novamente.');
+        }
+    }
+
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
+    </script>
 </body>
 </html>
