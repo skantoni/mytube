@@ -71,6 +71,8 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
     <?php if (!isLoggedIn() && !$guest_explore): ?>
         <!-- Se não estiver logado, mostrar página de boas-vindas -->
         <?php include 'includes/header.php'; ?>
+        <!-- Link para o robô do Google encontrar facilmente -->
+        <a href="<?php echo SITE_URL; ?>/privacidade.php" style="display:none;">Política de Privacidade</a>
         <main class="main-content">
             <section class="hero-section">
                 <div class="hero-content">
@@ -95,9 +97,9 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
             
             <footer class="landing-footer">
                 <div class="footer-links">
-                    <a href="termos.php">Termos de Uso</a>
+                    <a href="<?php echo SITE_URL; ?>/termos.php">Termos de Uso</a>
                     <span class="footer-divider">&bull;</span>
-                    <a href="privacidade.php">Política de Privacidade</a>
+                    <a href="<?php echo SITE_URL; ?>/privacidade.php">Política de Privacidade</a>
                 </div>
                 <p class="footer-copy">&copy; <?php echo date('Y'); ?> MyTube. Todos os direitos reservados.</p>
             </footer>

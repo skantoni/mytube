@@ -336,8 +336,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <button type="submit" name="register" class="btn btn-primary">Criar Conta</button>
                 <p class="terms">
                     Ao cadastrar-se, você concorda com nossos 
-                    <a href="termos.php" target="_blank">Termos de Uso</a> e 
-                    <a href="privacidade.php" target="_blank">Política de Privacidade</a>
+                    <a href="<?php echo SITE_URL; ?>/termos.php" target="_blank">Termos de Uso</a> e 
+                    <a href="<?php echo SITE_URL; ?>/privacidade.php" target="_blank">Política de Privacidade</a>
                 </p>
 
                 <div class="auth-divider"><span>ou</span></div>
@@ -346,8 +346,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </form>
             
             <div class="auth-footer">
-                <a href="termos.php" target="_blank">Termos</a> &bull; 
-                <a href="privacidade.php" target="_blank">Privacidade</a>
+                <a href="<?php echo SITE_URL; ?>/termos.php" target="_blank">Termos</a> &bull; 
+                <a href="<?php echo SITE_URL; ?>/privacidade.php" target="_blank">Privacidade</a>
             </div>
         </div>
     </div>
