@@ -92,6 +92,15 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
                     </div>
                 </div>
             </section>
+            
+            <footer class="landing-footer">
+                <div class="footer-links">
+                    <a href="termos.php">Termos de Uso</a>
+                    <span class="footer-divider">&bull;</span>
+                    <a href="privacidade.php">Política de Privacidade</a>
+                </div>
+                <p class="footer-copy">&copy; <?php echo date('Y'); ?> MyTube. Todos os direitos reservados.</p>
+            </footer>
         </main>
     <?php elseif ($guest_explore): ?>
         <!-- Feed para visitantes (modo explorar) -->
