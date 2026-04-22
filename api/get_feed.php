@@ -660,8 +660,10 @@ if ($guest_mode) {
 
             $processed_videos[] = [
                 'id' => (int)$video['id'],
-                'title' => htmlspecialchars($video['title']),
-                'description' => htmlspecialchars($video['description'] ?? ''),
+                // Texto bruto no JSON: o JS (escapeHtml) sanitiza antes de inserir no DOM.
+                // htmlspecialchars() em JSON causa duplo-encode quando o JS re-escapa para innerHTML.
+                'title' => $video['title'] ?? '',
+                'description' => $video['description'] ?? '',
                 'video_path' => $video['video_path'],
                 'video_url' => resolve_video_url($video['video_path']),
                 'thumbnail_path' => $video['thumbnail_path'],
@@ -678,8 +680,8 @@ if ($guest_mode) {
                 'author_follows_you' => false,
                 'user' => [
                     'id' => (int)$video['video_user_id'],
-                    'username' => htmlspecialchars($video['username']),
-                    'full_name' => htmlspecialchars($video['full_name'] ?? $video['username']),
+                    'username' => $video['username'] ?? '',
+                    'full_name' => $video['full_name'] ?? $video['username'] ?? '',
                     'profile_picture' => $video['profile_picture'] ?? 'default.webp',
                     'profile_picture_url' => avatar_url($video['profile_picture'] ?? null),
                     'is_verified' => (bool)$video['is_verified'],
@@ -908,8 +910,10 @@ try {
 
         $processed_videos[] = [
             'id' => (int)$video['id'],
-            'title' => htmlspecialchars($video['title']),
-            'description' => htmlspecialchars($video['description'] ?? ''),
+            // Texto bruto no JSON: o JS (escapeHtml) sanitiza antes de inserir no DOM.
+            // htmlspecialchars() em JSON causa duplo-encode quando o JS re-escapa para innerHTML.
+            'title' => $video['title'] ?? '',
+            'description' => $video['description'] ?? '',
             'video_path' => $video['video_path'],
             'video_url' => resolve_video_url($video['video_path']),
             'thumbnail_path' => $video['thumbnail_path'],
@@ -926,8 +930,8 @@ try {
             'author_follows_you' => in_array($video['video_user_id'], $author_follows_user),
             'user' => [
                 'id' => (int)$video['video_user_id'],
-                'username' => htmlspecialchars($video['username']),
-                'full_name' => htmlspecialchars($video['full_name'] ?? $video['username']),
+                'username' => $video['username'] ?? '',
+                'full_name' => $video['full_name'] ?? $video['username'] ?? '',
                 'profile_picture' => $video['profile_picture'] ?? 'default.webp',
                 'profile_picture_url' => avatar_url($video['profile_picture'] ?? null),
                 'is_verified' => (bool)$video['is_verified'],

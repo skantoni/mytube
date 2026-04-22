@@ -1683,19 +1683,27 @@ function loadChatShareConversations(search) {
                     return;
                 }
                 list.innerHTML = data.users.map(u => {
-                    const pic = u.profile_picture || 'assets/images/avatars/default.webp';
-                    const name = u.full_name || u.username;
+                    const pic = escapeHtml(u.profile_picture || 'assets/images/avatars/default.webp');
+                    const name = escapeHtml(u.full_name || u.username);
+                    const uname = escapeHtml(u.username);
+                    // data-user-id evita JS injection via onclick inline
                     return `
-                        <div class="chat-share-item" onclick="sendVideoToChat(${u.id}, '${u.username.replace(/'/g, "\\'")}')">
+                        <div class="chat-share-item" data-user-id="${u.id}" data-username="${uname}">
                             <img src="${pic}" alt="" class="chat-share-avatar">
                             <div class="chat-share-info">
                                 <div class="chat-share-name">${name}</div>
-                                <div class="chat-share-username">@${u.username}</div>
+                                <div class="chat-share-username">@${uname}</div>
                             </div>
                             <i class="fas fa-paper-plane chat-share-send-icon"></i>
                         </div>
                     `;
                 }).join('');
+                // event delegation — lê user-id/username via data-attributes
+                list.querySelectorAll('.chat-share-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        sendVideoToChat(parseInt(item.dataset.userId, 10), item.dataset.username);
+                    });
+                });
             })
             .catch(() => {
                 list.innerHTML = '<div class="chat-share-empty"><p>Erro ao carregar</p></div>';
@@ -1911,6 +1919,14 @@ window.addEventListener('videosLoaded', (event) => {
 // ========== SISTEMA DE PESQUISA ==========
 let searchTimeout = null;
 
+// Utility: escapar HTML para prevenir XSS via innerHTML
+const escapeHtml = (value) => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 function openSearchModal() {
     const modal = document.getElementById('searchModal');
     if (modal) {
@@ -2002,12 +2018,6 @@ function performSearch(query) {
 
 function renderSearchResults(users, videos, hashtags = []) {
     const results = document.getElementById('searchResults');
-    const escapeHtml = (value) => String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
     
     if (users.length === 0 && videos.length === 0 && hashtags.length === 0) {
         results.innerHTML = `
@@ -2042,18 +2052,18 @@ function renderSearchResults(users, videos, hashtags = []) {
             <div class="search-section">
                 <div class="search-section-title">Usuários</div>
                 ${users.map(user => `
-                    <div class="search-result-item" onclick="window.location.href='perfil.php?id=${user.id}'">
-                        <img src="${user.profile_picture_url || 'assets/images/avatars/' + user.profile_picture}" 
-                             alt="${user.username}" 
+                    <div class="search-result-item" onclick="window.location.href='perfil.php?id=${encodeURIComponent(user.id)}'">
+                        <img src="${escapeHtml(user.profile_picture_url || 'assets/images/avatars/' + user.profile_picture)}" 
+                             alt="" 
                              class="search-result-avatar"
                              loading="lazy">
                         <div class="search-result-info">
                             <div class="search-result-name">
-                                @${user.username}
+                                @${escapeHtml(user.username)}
                                 ${user.is_verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}
                             </div>
                             <div class="search-result-meta">
-                                ${user.full_name ? user.full_name + ' · ' : ''}${formatCount(user.followers_count)} seguidores · ${user.videos_count} vídeos
+                                ${user.full_name ? escapeHtml(user.full_name) + ' · ' : ''}${formatCount(user.followers_count)} seguidores · ${user.videos_count} vídeos
                             </div>
                         </div>
                     </div>
@@ -2068,14 +2078,14 @@ function renderSearchResults(users, videos, hashtags = []) {
             <div class="search-section">
                 <div class="search-section-title">Vídeos</div>
                 ${videos.map(video => `
-                    <div class="search-result-video" onclick="window.location.href='index.php?video_id=${video.id}&user_id=${video.user.id}'">
+                    <div class="search-result-video" onclick="window.location.href='index.php?video_id=${encodeURIComponent(video.id)}&user_id=${encodeURIComponent(video.user.id)}'">
                         <video class="search-result-thumbnail" muted preload="metadata">
-                            <source src="${resolveVideoUrl(video.video_path)}#t=0.5" type="video/mp4">
+                            <source src="${escapeHtml(resolveVideoUrl(video.video_path))}#t=0.5" type="video/mp4">
                         </video>
                         <div class="search-result-video-info">
-                            <div class="search-result-video-title">${video.title || 'Sem título'}</div>
+                            <div class="search-result-video-title">${escapeHtml(video.title || 'Sem título')}</div>
                             <div class="search-result-video-author">
-                                @${video.user.username}
+                                @${escapeHtml(video.user.username)}
                                 ${video.user.is_verified ? '<i class="fas fa-check-circle verified-badge" style="color:#3b82f6;font-size:11px;"></i>' : ''}
                             </div>
                             <div class="search-result-video-stats">

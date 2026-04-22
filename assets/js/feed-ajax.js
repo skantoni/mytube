@@ -542,12 +542,12 @@ class FeedManager {
                 <div class="video-info-overlay">
                     <div class="video-author-row">
                         <a href="perfil.php?id=${video.user.id}" class="video-author-link">
-                            <img src="${video.user.profile_picture_url || 'assets/images/avatars/' + video.user.profile_picture}" 
-                                 alt="${video.user.username}" 
+                            <img src="${video.user.profile_picture_url || 'assets/images/avatars/' + escapeHtml(video.user.profile_picture)}" 
+                                 alt="${escapeHtml(video.user.username)}" 
                                  class="video-author-avatar"
                                  loading="lazy">
                             <span class="video-author-name">
-                                ${video.user.full_name || video.user.username}
+                                ${escapeHtml(video.user.full_name || video.user.username)}
                                 ${video.user.is_verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}
                             </span>
                         </a>
@@ -572,24 +572,24 @@ class FeedManager {
                 <div class="video-info">
                     <div class="video-author">
                         <a href="perfil.php?id=${video.user.id}" class="avatar-link">
-                            <img src="${video.user.profile_picture_url || 'assets/images/avatars/' + video.user.profile_picture}" 
-                                 alt="${video.user.username}" 
+                            <img src="${video.user.profile_picture_url || 'assets/images/avatars/' + escapeHtml(video.user.profile_picture)}" 
+                                 alt="${escapeHtml(video.user.username)}" 
                                  class="author-avatar"
                                  loading="lazy">
                         </a>
                         <div>
                             <div class="author-name">
                                 <a href="perfil.php?id=${video.user.id}" class="username-link">
-                                    ${video.user.full_name || video.user.username}
+                                    ${escapeHtml(video.user.full_name || video.user.username)}
                                     ${video.user.is_verified ? '<span class="verified-badge">✓</span>' : ''}
                                 </a>
                             </div>
                         </div>
                     </div>
                     
-                    <h3 class="video-title">${video.title}</h3>
+                    <h3 class="video-title">${escapeHtml(video.title)}</h3>
                     
-                    ${video.description ? `<p class="video-description">${video.description.length > 120 ? video.description.substring(0, 120) + '...' : video.description}</p>` : ''}
+                    ${video.description ? `<p class="video-description">${escapeHtml(video.description.length > 120 ? video.description.substring(0, 120) + '...' : video.description)}</p>` : ''}
                 </div>
             </div>
             

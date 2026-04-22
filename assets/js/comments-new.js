@@ -1943,23 +1943,24 @@ class CommentsSystem {
     }
 
     createCommentHTML(comment) {
-        let html = '<div class="comment-item" data-comment-id="' + comment.id + '">';
-        html += '<img src="' + (comment.profile_picture_url || 'assets/images/avatars/' + (comment.profile_picture || 'default.webp')) + '" alt="' + comment.full_name + '" class="comment-avatar" loading="lazy">';
+        const esc = (v) => this.escapeHtml(String(v ?? ''));
+        let html = '<div class="comment-item" data-comment-id="' + esc(comment.id) + '">';
+        html += '<img src="' + esc(comment.profile_picture_url || 'assets/images/avatars/' + (comment.profile_picture || 'default.webp')) + '" alt="' + esc(comment.full_name) + '" class="comment-avatar" loading="lazy">';
         html += '<div class="comment-content">';
         html += '<div class="comment-header">';
-        html += '<a href="perfil.php?id=' + comment.user_id + '" class="comment-username" data-username="' + (comment.username || '') + '">' + (comment.full_name || comment.username) + '</a>';
+        html += '<a href="perfil.php?id=' + esc(comment.user_id) + '" class="comment-username" data-username="' + esc(comment.username) + '">' + esc(comment.full_name || comment.username) + '</a>';
         if (comment.is_verified) {
             html += '<i class="fas fa-check-circle verified-badge"></i>';
         }
-        html += '<span class="comment-time">' + comment.time_ago + '</span>';
+        html += '<span class="comment-time">' + esc(comment.time_ago) + '</span>';
         html += '</div>';
         html += '<div class="comment-text">' + this.formatMentions(comment.comment_text) + '</div>';
         html += '<div class="comment-actions">';
-        html += '<button class="comment-like-btn ' + (comment.user_liked ? 'liked' : '') + '" data-comment-id="' + comment.id + '">';
+        html += '<button class="comment-like-btn ' + (comment.user_liked ? 'liked' : '') + '" data-comment-id="' + esc(comment.id) + '">';
         html += '<i class="fas fa-heart"></i>';
-        html += '<span class="like-count">' + (comment.likes_count || 0) + '</span>';
+        html += '<span class="like-count">' + (parseInt(comment.likes_count) || 0) + '</span>';
         html += '</button>';
-        html += '<button class="comment-reply-btn" data-comment-id="' + comment.id + '">';
+        html += '<button class="comment-reply-btn" data-comment-id="' + esc(comment.id) + '">';
         html += '<i class="fas fa-reply"></i> Responder';
         html += '</button>';
         html += '</div>';
@@ -2004,23 +2005,24 @@ class CommentsSystem {
     }
     
     createReplyHTML(reply) {
-        let html = '<div class="reply-item" data-comment-id="' + reply.id + '">';
-        html += '<img src="' + (reply.profile_picture_url || 'assets/images/avatars/' + (reply.profile_picture || 'default.webp')) + '" alt="' + reply.full_name + '" class="reply-avatar" loading="lazy">';
+        const esc = (v) => this.escapeHtml(String(v ?? ''));
+        let html = '<div class="reply-item" data-comment-id="' + esc(reply.id) + '">';
+        html += '<img src="' + esc(reply.profile_picture_url || 'assets/images/avatars/' + (reply.profile_picture || 'default.webp')) + '" alt="' + esc(reply.full_name) + '" class="reply-avatar" loading="lazy">';
         html += '<div class="comment-content">';
         html += '<div class="comment-header">';
-        html += '<a href="perfil.php?id=' + reply.user_id + '" class="comment-username" data-username="' + (reply.username || '') + '">' + (reply.full_name || reply.username) + '</a>';
+        html += '<a href="perfil.php?id=' + esc(reply.user_id) + '" class="comment-username" data-username="' + esc(reply.username) + '">' + esc(reply.full_name || reply.username) + '</a>';
         if (reply.is_verified) {
             html += '<i class="fas fa-check-circle verified-badge"></i>';
         }
-        html += '<span class="comment-time">' + reply.time_ago + '</span>';
+        html += '<span class="comment-time">' + esc(reply.time_ago) + '</span>';
         html += '</div>';
         html += '<div class="comment-text">' + this.formatMentions(reply.comment_text) + '</div>';
         html += '<div class="comment-actions">';
-        html += '<button class="comment-like-btn ' + (reply.user_liked ? 'liked' : '') + '" data-comment-id="' + reply.id + '">';
+        html += '<button class="comment-like-btn ' + (reply.user_liked ? 'liked' : '') + '" data-comment-id="' + esc(reply.id) + '">';
         html += '<i class="fas fa-heart"></i>';
-        html += '<span class="like-count">' + (reply.likes_count || 0) + '</span>';
+        html += '<span class="like-count">' + (parseInt(reply.likes_count) || 0) + '</span>';
         html += '</button>';
-        html += '<button class="comment-reply-btn" data-comment-id="' + reply.id + '">';
+        html += '<button class="comment-reply-btn" data-comment-id="' + esc(reply.id) + '">';
         html += '<i class="fas fa-reply"></i> Responder';
         html += '</button>';
         html += '</div>';
@@ -2030,18 +2032,18 @@ class CommentsSystem {
             const timeLeft = reply.edit_time_left || 0;
             const isExpiringSoon = timeLeft <= 30;
             html += '<div class="comment-options-wrapper">';
-            html += '<button class="comment-options-btn" data-comment-id="' + reply.id + '"><i class="fas fa-ellipsis-v"></i></button>';
+            html += '<button class="comment-options-btn" data-comment-id="' + esc(reply.id) + '"><i class="fas fa-ellipsis-v"></i></button>';
             html += '<div class="comment-options-menu">';
             if (reply.can_edit) {
-                html += '<button class="comment-option-edit' + (isExpiringSoon ? ' expiring' : '') + '" data-comment-id="' + reply.id + '" data-time-left="' + timeLeft + '">';
+                html += '<button class="comment-option-edit' + (isExpiringSoon ? ' expiring' : '') + '" data-comment-id="' + esc(reply.id) + '" data-time-left="' + esc(timeLeft) + '">';
                 html += '<i class="fas fa-edit"></i> Editar';
                 if (isExpiringSoon && timeLeft > 0) {
-                    html += ' (' + timeLeft + 's)';
+                    html += ' (' + esc(timeLeft) + 's)';
                 }
                 html += '</button>';
             }
             if (reply.can_delete) {
-                html += '<button class="comment-option-delete" data-comment-id="' + reply.id + '"><i class="fas fa-trash"></i> Eliminar</button>';
+                html += '<button class="comment-option-delete" data-comment-id="' + esc(reply.id) + '"><i class="fas fa-trash"></i> Eliminar</button>';
             }
             html += '</div>';
             html += '</div>';

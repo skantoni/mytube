@@ -140,10 +140,12 @@ try {
         $comment['time_ago'] = timeAgo($comment['created_at']);
         $comment['replies_count'] = (int)$comment['replies_count'];
         
-        // Sanitizar campos de texto do utilizador para prevenir XSS
-        $comment['comment_text'] = htmlspecialchars($comment['comment_text'] ?? '', ENT_QUOTES, 'UTF-8');
-        $comment['username'] = htmlspecialchars($comment['username'] ?? '', ENT_QUOTES, 'UTF-8');
-        $comment['full_name'] = htmlspecialchars($comment['full_name'] ?? '', ENT_QUOTES, 'UTF-8');
+        // NOTA: Campos de texto são retornados em bruto no JSON.
+        // A sanitização XSS é feita no JS (escapeHtml / formatMentions)
+        // antes de inserir no DOM. htmlspecialchars() em JSON causa duplo-escape.
+        $comment['comment_text'] = $comment['comment_text'] ?? '';
+        $comment['username']     = $comment['username'] ?? '';
+        $comment['full_name']    = $comment['full_name'] ?? '';
         
         $is_author = (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $comment['user_id']);
         $time_since_created = time() - strtotime($comment['created_at']);

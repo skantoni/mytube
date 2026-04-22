@@ -120,16 +120,18 @@ try {
         }
         
         return [
-            'id' => $notif['id'],
-            'type' => htmlspecialchars($notif['type'] ?? '', ENT_QUOTES, 'UTF-8'),
-            'actor_username' => htmlspecialchars($notif['actor_username'] ?? '', ENT_QUOTES, 'UTF-8'),
-            'actor_avatar' => htmlspecialchars($notif['actor_avatar'] ?? 'default.webp', ENT_QUOTES, 'UTF-8'),
-            'message' => htmlspecialchars($message, ENT_QUOTES, 'UTF-8'),
-            'reference_id' => $notif['reference_id'],
-            'comment_id' => $notif['comment_id'] ?? null,
-            'is_read' => (bool)$notif['is_read'],
-            'time_ago' => htmlspecialchars($notif['time_ago'] ?? '', ENT_QUOTES, 'UTF-8'),
-            'notif_scope' => htmlspecialchars($notif['notif_scope'] ?? 'personal', ENT_QUOTES, 'UTF-8')
+            'id'             => $notif['id'],
+            // Texto bruto no JSON: o JS (escapeHtml + data-attributes) sanitiza antes de inserir no DOM.
+            // htmlspecialchars() em JSON causa duplo-encode quando o JS re-escapa para innerHTML.
+            'type'           => $notif['type'] ?? '',
+            'actor_username' => $notif['actor_username'] ?? '',
+            'actor_avatar'   => $notif['actor_avatar'] ?? 'default.webp',
+            'message'        => $message,
+            'reference_id'   => $notif['reference_id'],
+            'comment_id'     => $notif['comment_id'] ?? null,
+            'is_read'        => (bool)$notif['is_read'],
+            'time_ago'       => $notif['time_ago'] ?? '',
+            'notif_scope'    => $notif['notif_scope'] ?? 'personal'
         ];
     }, $notifications);
     

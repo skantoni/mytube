@@ -68,21 +68,22 @@ try {
     }
 
     $formattedUsers = array_map(function($user) use ($context) {
+        // Texto bruto no JSON: o JS (escapeHtml) sanitiza antes de inserir no DOM
         $data = [
-            'id' => $user['id'],
-            'username' => htmlspecialchars($user['username'] ?? '', ENT_QUOTES, 'UTF-8'),
-            'full_name' => htmlspecialchars($user['full_name'] ?? '', ENT_QUOTES, 'UTF-8'),
-            'profile_picture' => $user['profile_picture'] ?? 'default.webp',
+            'id'                  => $user['id'],
+            'username'            => $user['username'] ?? '',
+            'full_name'           => $user['full_name'] ?? '',
+            'profile_picture'     => $user['profile_picture'] ?? 'default.webp',
             'profile_picture_url' => avatar_url($user['profile_picture'] ?? null),
-            'is_verified' => (bool)$user['is_verified'],
-            'followers_count' => (int)$user['followers_count'],
-            'videos_count' => (int)$user['videos_count'],
+            'is_verified'         => (bool)$user['is_verified'],
+            'followers_count'     => (int)$user['followers_count'],
+            'videos_count'        => (int)$user['videos_count'],
         ];
 
         if ($context === 'ranking') {
             $data['ranking_points'] = (int)($user['ranking_points'] ?? 0);
-            $data['school_name'] = htmlspecialchars($user['school_name'] ?? '', ENT_QUOTES, 'UTF-8');
-            $data['school_short'] = htmlspecialchars($user['school_short'] ?? '', ENT_QUOTES, 'UTF-8');
+            $data['school_name']    = $user['school_name'] ?? '';
+            $data['school_short']   = $user['school_short'] ?? '';
         }
 
         return $data;
@@ -90,27 +91,27 @@ try {
 
     $formattedVideos = array_map(function($video) {
         return [
-            'id' => $video['id'],
-            'title' => htmlspecialchars($video['title'] ?? '', ENT_QUOTES, 'UTF-8'),
-            'description' => htmlspecialchars($video['description'] ?? '', ENT_QUOTES, 'UTF-8'),
-            'video_path' => $video['video_path'],
+            'id'          => $video['id'],
+            'title'       => $video['title'] ?? '',
+            'description' => $video['description'] ?? '',
+            'video_path'  => $video['video_path'],
             'views_count' => (int)$video['views_count'],
             'likes_count' => (int)$video['likes_count'],
             'user' => [
-                'id' => $video['user_id'],
-                'username' => htmlspecialchars($video['username'] ?? '', ENT_QUOTES, 'UTF-8'),
-                'profile_picture' => $video['profile_picture'] ?? 'default.webp',
+                'id'                  => $video['user_id'],
+                'username'            => $video['username'] ?? '',
+                'profile_picture'     => $video['profile_picture'] ?? 'default.webp',
                 'profile_picture_url' => avatar_url($video['profile_picture'] ?? null),
-                'is_verified' => (bool)$video['is_verified'],
+                'is_verified'         => (bool)$video['is_verified'],
             ],
         ];
     }, $videos);
 
     $formattedHashtags = array_map(function($hashtag) {
         return [
-            'id' => (int)$hashtag['id'],
-            'name' => htmlspecialchars($hashtag['name'] ?? '', ENT_QUOTES, 'UTF-8'),
-            'slug' => htmlspecialchars($hashtag['slug'] ?? '', ENT_QUOTES, 'UTF-8'),
+            'id'          => (int)$hashtag['id'],
+            'name'        => $hashtag['name'] ?? '',
+            'slug'        => $hashtag['slug'] ?? '',
             'posts_count' => (int)($hashtag['posts_count'] ?? 0),
         ];
     }, $hashtags);

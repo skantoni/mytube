@@ -7,6 +7,13 @@
  * - Código centralizado para todas as páginas
  */
 const NotificationSystem = (function() {
+
+    // Utility: escapar HTML para prevenir XSS via innerHTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = String(text ?? '');
+        return div.innerHTML;
+    }
     // Estado interno
     let cache = {
         notifications: [],
@@ -138,17 +145,22 @@ const NotificationSystem = (function() {
                          notif.type === 'friend_accept' ? 'fa-user-check' :
                          notif.type === 'unfollow' ? 'fa-user-minus' : 'fa-user-plus';
             
+            // Usar data-* attributes em vez de parâmetros inline no onclick (previne JS injection)
             return `
                 <div class="notification-item ${notif.is_read ? '' : 'unread'}" 
-                     data-notif-id="${notif.id}"
-                     onclick="NotificationSystem.handleClick(${notif.id}, '${notif.type}', ${notif.reference_id || 'null'}, ${notif.comment_id || 'null'}, '${notif.actor_username}', '${notif.notif_scope || 'personal'}')">
-                    <img src="assets/images/avatars/${notif.actor_avatar || 'default.webp'}" 
+                     data-notif-id="${escapeHtml(notif.id)}"
+                     data-notif-type="${escapeHtml(notif.type)}"
+                     data-ref-id="${escapeHtml(notif.reference_id ?? '')}"
+                     data-comment-id="${escapeHtml(notif.comment_id ?? '')}"
+                     data-actor-username="${escapeHtml(notif.actor_username)}"
+                     data-notif-scope="${escapeHtml(notif.notif_scope || 'personal')}">
+                    <img src="assets/images/avatars/${escapeHtml(notif.actor_avatar || 'default.webp')}" 
                          alt="" class="notification-avatar" loading="lazy">
                     <div class="notification-content">
                         <div class="notification-text">
-                            <strong>@${notif.actor_username}</strong> ${notif.message}
+                            <strong>@${escapeHtml(notif.actor_username)}</strong> ${escapeHtml(notif.message)}
                         </div>
-                        <div class="notification-time">${notif.time_ago}</div>
+                        <div class="notification-time">${escapeHtml(notif.time_ago)}</div>
                     </div>
                     <div class="notification-icon ${iconClass}">
                         <i class="fas ${icon}"></i>
@@ -166,6 +178,9 @@ const NotificationSystem = (function() {
             list.innerHTML = html;
         }
 
+        // Vincular event delegation para os itens recém-renderizados
+        _bindNotifClickEvents(list);
+
         // Botão "Carregar mais" se houver mais
         if (cache.hasMore) {
             const existing = list.querySelector('.notif-load-more-wrapper');
@@ -180,6 +195,28 @@ const NotificationSystem = (function() {
         }
     }
 
+    // Event delegation seguro — lê parâmetros via data-attributes (sem injecção JS inline)
+    let _notifListenerBound = false;
+    function _bindNotifClickEvents(list) {
+        if (_notifListenerBound) return;
+        _notifListenerBound = true;
+
+        list.addEventListener('click', (e) => {
+            const item = e.target.closest('.notification-item');
+            if (!item) return;
+
+            const notifId  = parseInt(item.dataset.notifId, 10);
+            const type     = item.dataset.notifType || '';
+            const refId    = item.dataset.refId ? parseInt(item.dataset.refId, 10) : null;
+            const commentId = item.dataset.commentId ? parseInt(item.dataset.commentId, 10) : null;
+            const actor    = item.dataset.actorUsername || '';
+            const scope    = item.dataset.notifScope || 'personal';
+
+            handleClick(notifId, type, refId, commentId, actor, scope);
+        });
+    }
+
+
     function getChatUnreadCount() {
         if (window.ChatUnreadSystem && typeof window.ChatUnreadSystem.getCount === 'function') {
             const count = Number.parseInt(window.ChatUnreadSystem.getCount(), 10);
@@ -189,6 +226,7 @@ const NotificationSystem = (function() {
         const fallback = Number.parseInt(window.chatUnreadCount || 0, 10);
         return Number.isFinite(fallback) ? Math.max(0, fallback) : 0;
     }
+
 
     function updateBadgeUI(count) {
         // Suporta diferentes formatos de badge (dot, count badge)
