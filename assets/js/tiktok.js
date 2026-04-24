@@ -1432,9 +1432,6 @@ class TikTokPlayer {
             
             // Esconder prompts de áudio
             this.hideAllAudioPrompts();
-            
-            // Mostrar feedback
-            showMessage('🔊 Som ativado', 'success');
         } else {
             // Desativar som
             video.muted = true;
@@ -1442,9 +1439,6 @@ class TikTokPlayer {
             button.classList.remove('active');
             icon.className = 'fas fa-volume-mute';
             button.title = 'Ativar Som';
-            
-            // Mostrar feedback
-            showMessage('🔇 Som desativado', 'info');
         }
         
         // Aplicar a todas as outras instâncias de vídeo
@@ -1542,9 +1536,6 @@ class TikTokPlayer {
         
         // Atualizar todos os botões
         this.updateAllVideosMuteState(false);
-        
-        // Feedback
-        showMessage('🔊 Som ativado para todos os vídeos!', 'success');
     }
 
     updateAudioButtonState(videoId, isMuted) {

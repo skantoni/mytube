@@ -303,8 +303,8 @@ body * {
 /* Controles de vídeo */
 .video-controls {
     position: absolute;
-    top: calc(18px + env(safe-area-inset-top, 0px));
-    right: 15px;
+    top: 15px;
+    left: 15px;
     z-index: 4;
 }
 
@@ -312,41 +312,63 @@ body * {
  */
 @media (min-width: 370px) and (max-height: 670px) {
     .video-controls {
-        top: calc(30px + env(safe-area-inset-top, 0px));
+        top: 20px;
     }
 }
 
 .audio-toggle {
-    width: 45px;
-    height: 45px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.6);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.4);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     color: #fff;
-    font-size: 1.2rem;
+    font-size: 0.95rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: auto;
+    opacity: 0;
+    transform: scale(0.85);
+}
+
+.video-player:hover .audio-toggle {
+    opacity: 1;
+    transform: scale(1);
 }
 
 .audio-toggle:hover {
-    background: rgba(0, 0, 0, 0.8);
-    transform: scale(1.1);
+    background: rgba(0, 0, 0, 0.7);
+    transform: scale(1.1) !important;
 }
 
 .audio-toggle.active {
-    /*     background: rgba(59, 130, 246, 0.8);
- */
     color: #fff;
 }
 
 .audio-toggle.active:hover {
-    background: rgba(59, 130, 246, 1);
+    background: rgba(0, 0, 0, 0.8);
+}
+
+/* No mobile, mostrar sempre pois não há hover */
+@media (max-width: 768px) {
+    .audio-toggle {
+        opacity: 1;
+        transform: scale(1);
+        width: 43px;
+        height: 43px;
+        background: rgba(0, 0, 0, 0.5);
+    }
+    
+    .video-controls {
+        top: 12px;
+        right: 12px;
+        left: auto;
+    }
 }
 
 /* Overlay para prompt de áudio */
