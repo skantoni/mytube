@@ -16,7 +16,7 @@ try {
         // Pedidos recebidos pendentes
         $stmt = $pdo->prepare("
             SELECT fr.id, fr.sender_id, fr.created_at, 
-                   u.username, u.profile_picture, u.is_verified
+                   u.username, u.full_name, u.profile_picture, u.is_verified
             FROM friend_requests fr
             JOIN users u ON fr.sender_id = u.id
             WHERE fr.receiver_id = ? AND fr.status = 'pending'
@@ -27,7 +27,7 @@ try {
         // Pedidos enviados pendentes
         $stmt = $pdo->prepare("
             SELECT fr.id, fr.receiver_id, fr.status, fr.created_at,
-                   u.username, u.profile_picture, u.is_verified
+                   u.username, u.full_name, u.profile_picture, u.is_verified
             FROM friend_requests fr
             JOIN users u ON fr.receiver_id = u.id
             WHERE fr.sender_id = ? AND fr.status = 'pending'
@@ -40,7 +40,7 @@ try {
             SELECT fr.id, 
                    CASE WHEN fr.sender_id = ? THEN fr.receiver_id ELSE fr.sender_id END as friend_id,
                    fr.updated_at as accepted_at,
-                   u.username, u.profile_picture, u.is_verified
+                   u.username, u.full_name, u.profile_picture, u.is_verified
             FROM friend_requests fr
             JOIN users u ON u.id = CASE WHEN fr.sender_id = ? THEN fr.receiver_id ELSE fr.sender_id END
             WHERE (fr.sender_id = ? OR fr.receiver_id = ?) AND fr.status = 'accepted'

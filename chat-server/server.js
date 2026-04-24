@@ -250,7 +250,7 @@ async function updateOnlineStatus(userId, isOnline) {
 async function getUserById(userId) {
     try {
         const [rows] = await pool.execute(
-            'SELECT id, username, profile_picture as avatar, is_verified FROM users WHERE id = ?',
+            'SELECT id, username, full_name, profile_picture as avatar, is_verified FROM users WHERE id = ?',
             [userId]
         );
         return rows[0] || null;
@@ -348,9 +348,11 @@ async function getMessages(conversationId, limit = 50, beforeId = null, userId =
                    m.forwarded_from_user_id,
                    m.forwarded_from_username,
                    u.username as sender_username, 
+                   u.full_name as sender_full_name,
                    u.profile_picture as sender_avatar,
                    rm.message as reply_content,
-                   ru.username as reply_username
+                   ru.username as reply_username,
+                   ru.full_name as reply_full_name
             FROM messages m
             JOIN users u ON m.sender_id = u.id
             LEFT JOIN messages rm ON m.reply_to_message_id = rm.id
@@ -405,6 +407,7 @@ async function getUserConversations(userId) {
                     ELSE c.user1_id 
                 END as other_user_id,
                 u.username,
+                u.full_name,
                 u.profile_picture as avatar,
                 u.is_verified,
                 (SELECT CASE
@@ -703,12 +706,12 @@ async function getMessageInfo(messageId) {
 async function searchUsers(query, currentUserId, limit = 20) {
     try {
         const [rows] = await pool.execute(`
-            SELECT id, username, profile_picture as avatar, is_verified
+            SELECT id, username, full_name, profile_picture as avatar, is_verified
             FROM users
-            WHERE id != ? AND username LIKE ?
-            ORDER BY username
+            WHERE id != ? AND (username LIKE ? OR full_name LIKE ?)
+            ORDER BY COALESCE(full_name, username)
             LIMIT ${parseInt(limit)}
-        `, [currentUserId || 0, `%${query}%`]);
+        `, [currentUserId || 0, `%${query}%`, `%${query}%`]);
         
         return rows;
     } catch (error) {
@@ -1028,9 +1031,11 @@ io.on('connection', (socket) => {
                    m.forwarded_from_user_id,
                    m.forwarded_from_username,
                    u.username as sender_username, 
+                   u.full_name as sender_full_name,
                    u.profile_picture as sender_avatar,
                    rm.message as reply_content,
-                   ru.username as reply_username
+                   ru.username as reply_username,
+                   ru.full_name as reply_full_name
             FROM messages m
             JOIN users u ON m.sender_id = u.id
             LEFT JOIN messages rm ON m.reply_to_message_id = rm.id

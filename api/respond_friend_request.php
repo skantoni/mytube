@@ -43,7 +43,7 @@ try {
 
     if ($action === 'accept') {
         // Buscar info do sender para mostrar no frontend
-        $senderStmt = $pdo->prepare("SELECT id, username, profile_picture, is_verified FROM users WHERE id = ?");
+        $senderStmt = $pdo->prepare("SELECT id, username, full_name, profile_picture, is_verified FROM users WHERE id = ?");
         $senderStmt->execute([$request['sender_id']]);
         $sender = $senderStmt->fetch();
         $response['message'] = 'Pedido aceite! Agora podem conversar.';

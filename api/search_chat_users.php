@@ -38,11 +38,11 @@ try {
                 full_name,
                 profile_picture
             FROM users
-            WHERE username LIKE ?
+            WHERE (username LIKE ? OR full_name LIKE ?)
             AND id != ?
             LIMIT 20
         ");
-        $stmt->execute([$search_param, $current_user_id]);
+        $stmt->execute([$search_param, $search_param, $current_user_id]);
     }
     
     $users = $stmt->fetchAll();

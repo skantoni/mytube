@@ -23,7 +23,7 @@ $chat_with_user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : null;
 $chat_user_info = null;
 
 if ($chat_with_user_id) {
-    $stmt = $pdo->prepare("SELECT id, username, profile_picture, is_verified FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT id, username, full_name, profile_picture, is_verified FROM users WHERE id = ?");
     $stmt->execute([$chat_with_user_id]);
     $chat_user_info = $stmt->fetch();
     
@@ -39,7 +39,7 @@ if ($chat_with_user_id) {
 }
 
 // Pegar informações do usuário atual
-$stmt = $pdo->prepare("SELECT username, profile_picture FROM users WHERE id = ?");
+$stmt = $pdo->prepare("SELECT username, full_name, profile_picture FROM users WHERE id = ?");
 $stmt->execute([$current_user_id]);
 $current_user = $stmt->fetch();
 ?>
@@ -119,7 +119,7 @@ $current_user = $stmt->fetch();
                              alt="<?php echo htmlspecialchars($chat_user_info['username']); ?>">
                         <div class="chat-header-info">
                             <h3>
-                                <span class="chat-header-name"><?php echo htmlspecialchars($chat_user_info['username']); ?></span>
+                                <span class="chat-header-name"><?php echo htmlspecialchars($chat_user_info['full_name'] ?: $chat_user_info['username']); ?></span>
                                 <?php if (!empty($chat_user_info['is_verified'])): ?>
                                     <i class="fas fa-check-circle chat-verified-icon" aria-label="Verificado"></i>
                                 <?php endif; ?>
@@ -260,8 +260,9 @@ $current_user = $stmt->fetch();
         // Configuração para o Socket.IO
         const currentUserId = <?php echo $current_user_id; ?>;
         const currentUsername = '<?php echo addslashes($current_user['username']); ?>';
+        const currentFullName = '<?php echo addslashes($current_user['full_name'] ?: $current_user['username']); ?>';
         let chatWithUserId = <?php echo $chat_with_user_id ?? 'null'; ?>;
-        let chatWithUsername = <?php echo $chat_user_info ? "'" . addslashes($chat_user_info['username']) . "'" : 'null'; ?>;
+        let chatWithUsername = <?php echo $chat_user_info ? "'" . addslashes($chat_user_info['full_name'] ?: $chat_user_info['username']) . "'" : 'null'; ?>;
         let chatWithIsVerified = <?php echo $chat_user_info ? (!empty($chat_user_info['is_verified']) ? 'true' : 'false') : 'false'; ?>;
         const fromPage = '<?php echo $from_page; ?>';
 
@@ -373,7 +374,7 @@ $current_user = $stmt->fetch();
                             <div class="fr-item" id="fr-${req.id}">
                                 <img src="${avatar}" alt="${req.username}" class="fr-avatar" onerror="this.src='assets/images/default-avatar.svg'" onclick="window.location.href='perfil.php?id=${req.sender_id}'">
                                 <div class="fr-info">
-                                    <span class="fr-name">${escapeHtml(req.username)} ${verified}</span>
+                                    <span class="fr-name">${escapeHtml(req.full_name || req.username)} ${verified}</span>
                                     <span class="fr-time">${time}</span>
                                 </div>
                                 <div class="fr-actions">
@@ -390,7 +391,7 @@ $current_user = $stmt->fetch();
                             <div class="fr-item">
                                 <img src="${avatar}" alt="${req.username}" class="fr-avatar" onerror="this.src='assets/images/default-avatar.svg'" onclick="window.location.href='perfil.php?id=${req.receiver_id}'">
                                 <div class="fr-info">
-                                    <span class="fr-name">${escapeHtml(req.username)} ${verified}</span>
+                                    <span class="fr-name">${escapeHtml(req.full_name || req.username)} ${verified}</span>
                                     <span class="fr-time">${time}</span>
                                 </div>
                                 <div class="fr-status-label">Pendente</div>
@@ -400,7 +401,7 @@ $current_user = $stmt->fetch();
                             <div class="fr-item">
                                 <img src="${avatar}" alt="${req.username}" class="fr-avatar" onerror="this.src='assets/images/default-avatar.svg'" onclick="window.location.href='perfil.php?id=${req.friend_id}'">
                                 <div class="fr-info">
-                                    <span class="fr-name">${escapeHtml(req.username)} ${verified}</span>
+                                    <span class="fr-name">${escapeHtml(req.full_name || req.username)} ${verified}</span>
                                     <span class="fr-time">${time}</span>
                                 </div>
                                 <div class="fr-actions">
@@ -436,9 +437,9 @@ $current_user = $stmt->fetch();
                             const avatar = getAvatarUrl(data.sender.profile_picture);
                             const verified = data.sender.is_verified ? '<i class="fas fa-check-circle chat-verified-icon"></i>' : '';
                             item.innerHTML = `
-                                <img src="${avatar}" alt="${escapeHtml(data.sender.username)}" class="fr-avatar" onerror="this.src='assets/images/default-avatar.svg'" onclick="window.location.href='perfil.php?id=${data.sender.id}'">
+                                <img src="${avatar}" alt="${escapeHtml(data.sender.full_name || data.sender.username)}" class="fr-avatar" onerror="this.src='assets/images/default-avatar.svg'" onclick="window.location.href='perfil.php?id=${data.sender.id}'">
                                 <div class="fr-info">
-                                    <span class="fr-name">${escapeHtml(data.sender.username)} ${verified}</span>
+                                    <span class="fr-name">${escapeHtml(data.sender.full_name || data.sender.username)} ${verified}</span>
                                     <span class="fr-accepted-label"><i class="fas fa-check"></i> Amigos agora!</span>
                                 </div>
                                 <div class="fr-actions">

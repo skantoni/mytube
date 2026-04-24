@@ -457,6 +457,7 @@ function filterConversations(query) {
     
     // Filtrar pelo nome do utilizador ou pela última mensagem
     const filtered = cachedConversations.filter(conv => 
+        (conv.full_name && conv.full_name.toLowerCase().includes(query)) ||
         conv.username.toLowerCase().includes(query) ||
         (conv.last_message && conv.last_message.toLowerCase().includes(query))
     );
@@ -516,7 +517,7 @@ function openChatFromHistory(userId) {
     subscribeContactPresence();
     
     const conversationItem = document.querySelector(`.conversation-item[data-user-id="${userId}"]`);
-    const username = conversationItem ? conversationItem.dataset.username : 'Usuário';
+    const username = conversationItem ? (conversationItem.dataset.fullName || conversationItem.dataset.username) : 'Usuário';
     const avatar = conversationItem ? (conversationItem.dataset.avatar || conversationItem.querySelector('img')?.src) : DEFAULT_AVATAR;
     const isVerified = conversationItem ? conversationItem.dataset.isVerified === '1' : false;
     chatWithUsername = username;
@@ -743,6 +744,7 @@ function renderConversationsList(conversations) {
                  data-user-id="${conv.other_user_id}"
                  data-conversation-id="${conv.conversation_id}"
                  data-username="${escapeHtml(conv.username)}"
+                 data-full-name="${escapeHtml(conv.full_name || conv.username)}"
                  data-avatar="${escapeHtml(getAvatarUrl(conv.avatar))}"
                  data-is-verified="${conv.is_verified ? '1' : '0'}">
                 <div class="conversation-avatar">
@@ -753,7 +755,7 @@ function renderConversationsList(conversations) {
                 </div>
                 <div class="conversation-info">
                     <div class="conversation-header">
-                        <h4><span>${escapeHtml(conv.username)}</span>${verifiedBadge}</h4>
+                        <h4><span>${escapeHtml(conv.full_name || conv.username)}</span>${verifiedBadge}</h4>
                         <span class="conversation-time">${lastTime}</span>
                     </div>
                     <div class="conversation-preview">
@@ -920,7 +922,7 @@ function handleConversationStarted(data) {
     currentConversationId = data.conversationId;
 
     if (data.otherUser) {
-        chatWithUsername = data.otherUser.username || chatWithUsername;
+        chatWithUsername = data.otherUser.full_name || data.otherUser.username || chatWithUsername;
         chatWithIsVerified = Boolean(data.otherUser.is_verified);
         updateChatHeader(
             chatWithUserId,
@@ -1372,7 +1374,7 @@ function handleSearchResults(users) {
 
 function handleMessageNotification(data) {
     // Extrair dados (suporta formato direto e formato com message object)
-    const senderUsername = data.senderUsername || (data.message && data.message.sender_username) || 'Alguém';
+    const senderUsername = data.senderFullName || data.senderUsername || (data.message && (data.message.sender_full_name || data.message.sender_username)) || 'Alguém';
     const senderAvatar = data.senderAvatar || (data.message && (data.message.sender_avatar || data.message.sender_picture)) || '';
     const senderId = data.senderId || (data.message && data.message.sender_id);
     const content = data.content || (data.message && data.message.message) || 'Nova mensagem';
@@ -1930,7 +1932,7 @@ function createMessageElement(msg, isTemp = false) {
     if (replyId && msg.reply_content) {
         replyHTML = `
             <div class="message-reply" onclick="scrollToMessage(${replyId})">
-                <span class="reply-user">~${escapeHtml(msg.reply_username || 'Usuário')}</span>
+                <span class="reply-user">~${escapeHtml(msg.reply_full_name || msg.reply_username || 'Usuário')}</span>
                 <span class="reply-text">${escapeHtml(msg.reply_content)}</span>
             </div>
         `;
@@ -2257,7 +2259,7 @@ function replyToMessageFromMenu(messageId) {
     if (msgElement) {
         const content = msgElement.querySelector('.message-text')?.textContent || '';
         const isSent = msgElement.classList.contains('sent');
-        const username = isSent ? currentUsername : chatWithUsername;
+        const username = isSent ? (window.currentFullName || currentUsername) : chatWithUsername;
         replyToMessage(messageId, content, username);
     }
 }
@@ -2388,7 +2390,7 @@ function loadForwardContacts() {
     const contacts = [];
     conversationItems.forEach(item => {
         const userId = item.dataset.userId;
-        const username = item.dataset.username;
+        const username = item.dataset.fullName || item.dataset.username;
         const avatar = item.dataset.avatar || item.querySelector('img')?.src || DEFAULT_AVATAR;
         const isVerified = item.dataset.isVerified === '1';
         
@@ -2421,7 +2423,7 @@ function renderForwardContacts(contacts) {
                      onerror="this.src='${DEFAULT_AVATAR}'" 
                      alt="${escapeHtml(contact.username)}">
                 <div class="forward-user-info">
-                    <h4><span>${escapeHtml(contact.username)}</span> ${verified}</h4>
+                    <h4><span>${escapeHtml(contact.full_name || contact.username || contact.name)}</span> ${verified}</h4>
                 </div>
                 <div class="forward-user-check">
                     <i class="fas ${isSelected ? 'fa-check-circle' : 'fa-circle'}"></i>
@@ -2469,9 +2471,9 @@ function updateForwardSelectedChips() {
     
     container.style.display = 'flex';
     container.innerHTML = Array.from(selected.values()).map(user => `
-        <div class="forward-chip" onclick="toggleForwardUser(${user.id}, '${escapeHtml(user.username).replace(/'/g, "\\'")}', '${escapeHtml(user.avatar).replace(/'/g, "\\'")}', ${user.is_verified})">
-            <img src="${getAvatarUrl(user.avatar)}" onerror="this.src='${DEFAULT_AVATAR}'" alt="${escapeHtml(user.username)}">
-            <span>${escapeHtml(user.username)}</span>
+        <div class="forward-chip" onclick="toggleForwardUser(${user.id}, '${escapeHtml(user.username || user.name).replace(/'/g, "\\'")}', '${escapeHtml(user.avatar).replace(/'/g, "\\'")}', ${user.is_verified})">
+            <img src="${getAvatarUrl(user.avatar)}" onerror="this.src='${DEFAULT_AVATAR}'" alt="${escapeHtml(user.username || user.name)}">
+            <span>${escapeHtml(user.full_name || user.username || user.name)}</span>
             <i class="fas fa-times"></i>
         </div>
     `).join('');
@@ -2493,6 +2495,7 @@ function searchForwardUsers(query) {
                 renderForwardContacts(data.users.map(u => ({
                     id: u.id,
                     username: u.username,
+                    full_name: u.full_name,
                     avatar: u.avatar || u.profile_picture,
                     is_verified: u.is_verified || false
                 })));
@@ -2581,6 +2584,7 @@ function displaySearchResults(users) {
         <div class="user-item"
              data-user-id="${user.id}"
              data-username="${escapeHtml(user.username)}"
+             data-full-name="${escapeHtml(user.full_name || user.username)}"
              data-avatar="${escapeHtml(getAvatarUrl(user.avatar))}"
              data-is-verified="${user.is_verified ? '1' : '0'}"
              onclick="openChat(${user.id})">
@@ -2588,7 +2592,7 @@ function displaySearchResults(users) {
                  onerror="this.src='${DEFAULT_AVATAR}'" 
                  alt="${escapeHtml(user.username)}">
             <div class="user-item-info">
-                <h4><span>${escapeHtml(user.username)}</span>${getVerifiedBadgeMarkup(user.is_verified)}</h4>
+                <h4><span>${escapeHtml(user.full_name || user.username)}</span>${getVerifiedBadgeMarkup(user.is_verified)}</h4>
             </div>
         </div>
     `).join('');
