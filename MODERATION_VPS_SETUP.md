@@ -56,19 +56,27 @@ cd /var/www/mytube.social   # ou o teu caminho
 bash moderation/install.sh
 ```
 
+O script cria um **ambiente virtual Python isolado** em `moderation/venv/`  
+(não toca no Python do sistema — resolve o erro `externally-managed-environment`).
+
 O script faz:
-1. Verifica Python3 e pip3
-2. Instala `nudenet>=3.4.0` via pip
-3. Faz download do modelo IA (≈ 50 MB, só na primeira vez)
+1. Verifica Python3
+2. Cria `moderation/venv/` com `python3 -m venv`
+3. Instala `nudenet>=3.4.0` **dentro do venv**
+4. Faz download do modelo IA (≈ 50 MB, só na primeira vez)
+
+> **O venv não precisa de estar "ligado"** — o PHP chama directamente  
+> `moderation/venv/bin/python3` pelo caminho absoluto. Não há nenhum  
+> `source activate` necessário, nem processo permanente em memória.
 
 **Confirmar que funcionou:**
 ```bash
-python3 -c "from nudenet import NudeDetector; print('OK')"
+moderation/venv/bin/python3 -c "from nudenet import NudeDetector; print('OK')"
 ```
 
 Testar com um vídeo real:
 ```bash
-python3 moderation/analyze_video.py uploads/videos/SEU_VIDEO.mp4
+moderation/venv/bin/python3 moderation/analyze_video.py uploads/videos/SEU_VIDEO.mp4
 ```
 Deverá retornar JSON com `{"status": "clean", ...}` ou `{"status": "nsfw", ...}`.
 
@@ -127,10 +135,14 @@ sudo systemctl restart php8.3-fpm
 
 ---
 
-## 5. Executar a migração de base de dados
+## 5. Migração de base de dados
 
-Apenas na **primeira vez** (adiciona colunas `moderation_status`, `moderation_score`, `moderation_checked_at`):
+**Não precisas de correr nada manualmente.**
 
+O `upload.php` faz a migração automaticamente na primeira vez que alguém faz upload  
+(detecta que as colunas não existem e adiciona-as).
+
+Se preferires garantir antes do primeiro upload:
 ```bash
 php migrations/add_moderation_status.php
 ```

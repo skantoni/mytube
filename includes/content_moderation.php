@@ -45,7 +45,15 @@ function moderation_get_python(): ?string
     }
 
     $is_win = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
-    $candidates = ['python3', 'python', '/usr/bin/python3', '/usr/local/bin/python3'];
+    // Procurar primeiro no venv isolado (instalação recomendada na VPS)
+    $venv_python = __DIR__ . '/../moderation/venv/bin/python3';
+    $candidates = [
+        $venv_python,                   // venv isolado (VPS)
+        'python3',
+        'python',
+        '/usr/bin/python3',
+        '/usr/local/bin/python3',
+    ];
 
     foreach ($candidates as $candidate) {
         $check   = $is_win
