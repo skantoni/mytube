@@ -317,15 +317,15 @@ body * {
 }
 
 .audio-toggle {
-    width: 34px;
-    height: 34px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.4);
     -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.15);
     color: #fff;
-    font-size: 0.95rem;
+    font-size: 1.1rem;
     cursor: pointer;
     display: flex;
     align-items: center;
