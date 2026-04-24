@@ -25,6 +25,12 @@ if ! python3 -m venv --help &>/dev/null; then
 fi
 
 # Criar ambiente virtual isolado em moderation/venv/
+# Validar se o venv existente está íntegro (tem bin/pip)
+if [ -d "$VENV_DIR" ] && [ ! -f "$VENV_DIR/bin/pip" ]; then
+    echo "Venv incompleto detectado — a recriar..."
+    rm -rf "$VENV_DIR"
+fi
+
 if [ ! -d "$VENV_DIR" ]; then
     echo "Criando ambiente virtual em $VENV_DIR ..."
     python3 -m venv "$VENV_DIR"
