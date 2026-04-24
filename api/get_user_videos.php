@@ -35,7 +35,7 @@ try {
             v.views_count,
             v.created_at
         FROM videos v
-        WHERE v.user_id = ? AND v.is_public = 1
+        WHERE v.user_id = ? AND v.is_public = 1 AND v.moderation_status = 'approved'
         ORDER BY v.created_at DESC
         LIMIT ? OFFSET ?
     ");

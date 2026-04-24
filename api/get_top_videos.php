@@ -33,7 +33,7 @@ try {
             v.created_at,
             (v.likes_count * 3 + v.comments_count * 2 + v.views_count * 0.5) AS interaction_score
         FROM videos v
-        WHERE v.user_id = ? AND v.is_public = 1
+        WHERE v.user_id = ? AND v.is_public = 1 AND v.moderation_status = 'approved'
         ORDER BY interaction_score DESC, v.created_at DESC
         LIMIT 10
     ");

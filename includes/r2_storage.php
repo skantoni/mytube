@@ -88,6 +88,34 @@ function r2_upload_video(string $local_file_path, string $r2_file_name, string $
 }
 
 /**
+ * Descarregar um ficheiro do R2 para um caminho local.
+ * Usado pela moderação de conteúdo para analisar vídeos armazenados no R2.
+ *
+ * @param string $video_path  O video_path do banco (com prefixo r2:// ou nome do ficheiro)
+ * @param string $local_dest  Caminho local de destino
+ * @return bool
+ */
+function r2_download_to_file(string $video_path, string $local_dest): bool
+{
+    try {
+        $client   = r2_get_client();
+        $filename = r2_strip_prefix($video_path);
+        $key      = R2_VIDEO_FOLDER . $filename;
+
+        $result = $client->getObject([
+            'Bucket' => R2_BUCKET_NAME,
+            'Key'    => $key,
+            'SaveAs' => $local_dest,
+        ]);
+
+        return file_exists($local_dest) && filesize($local_dest) > 0;
+    } catch (Throwable $e) {
+        error_log('R2 Download Error: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * Apagar um vídeo do Cloudflare R2
  * 
  * @param string $video_path O video_path do banco de dados (com ou sem prefixo r2://)

@@ -1,230 +1,734 @@
 <?php
 require_once 'includes/config.php';
 require_once 'includes/r2_storage.php';
+require_once 'includes/content_moderation.php';
 
 ensureUserData();
 
-if (!isLoggedIn()) {
-    redirect('login.php');
+if (!isLoggedIn()) redirect('login.php');
+if (!isAdminUser()) redirect('index.php');
+
+// ── Helpers ───────────────────────────────────────────────────
+function apShortText(string $text, int $limit = 90): string {
+    $text = trim($text);
+    if ($text === '') return '';
+    if (function_exists('mb_strimwidth')) return mb_strimwidth($text, 0, $limit, '…');
+    return strlen($text) > $limit ? substr($text, 0, $limit - 1) . '…' : $text;
 }
 
-if (!isAdminUser()) {
-    redirect('index.php');
-}
+// ── Overview stats ────────────────────────────────────────────
+$total_videos   = (int)$pdo->query("SELECT COUNT(*) FROM videos")->fetchColumn();
+$total_users    = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE COALESCE(role,'user') != 'admin'")->fetchColumn();
+$pending_count  = (int)$pdo->query("SELECT COUNT(*) FROM videos WHERE moderation_status='pending'")->fetchColumn();
+$rejected_count = (int)$pdo->query("SELECT COUNT(*) FROM videos WHERE moderation_status='rejected'")->fetchColumn();
+$boosted_total  = (int)$pdo->query("SELECT COUNT(*) FROM videos WHERE is_boosted=1 AND is_public=1")->fetchColumn();
+$total_views    = (int)$pdo->query("SELECT COALESCE(SUM(views_count),0) FROM videos")->fetchColumn();
+$total_likes    = (int)$pdo->query("SELECT COALESCE(SUM(likes_count),0) FROM videos")->fetchColumn();
+$videos_today   = (int)$pdo->query("SELECT COUNT(*) FROM videos WHERE DATE(created_at)=CURDATE()")->fetchColumn();
 
-function boostedShortText($text, $limit = 140) {
-    $text = trim((string) $text);
-    if ($text === '') {
-        return '';
-    }
+// ── Pending moderation ────────────────────────────────────────
+$pending_stmt = $pdo->query("
+    SELECT v.id, v.title, v.video_path, v.thumbnail_path,
+           v.moderation_score, v.created_at,
+           u.id AS user_id, u.username, u.full_name, u.profile_picture, u.is_verified
+    FROM videos v
+    INNER JOIN users u ON v.user_id = u.id
+    WHERE v.moderation_status = 'pending'
+    ORDER BY v.created_at ASC
+    LIMIT 50
+");
+$pending_videos = $pending_stmt->fetchAll();
 
-    if (function_exists('mb_strimwidth')) {
-        return mb_strimwidth($text, 0, $limit, '...');
-    }
-
-    return strlen($text) > $limit ? substr($text, 0, $limit - 3) . '...' : $text;
-}
-
-$stmt = $pdo->query("\n    SELECT
-        v.id,
-        v.user_id,
-        v.title,
-        v.description,
-        v.video_path,
-        v.thumbnail_path,
-        v.views_count,
-        v.likes_count,
-        v.comments_count,
-        v.created_at,
-        v.updated_at,
-        u.username,
-        u.full_name,
-        u.profile_picture,
-        u.is_verified
+// ── Boosted videos ────────────────────────────────────────────
+$boosted_stmt = $pdo->query("
+    SELECT v.id, v.user_id, v.title, v.description, v.video_path, v.thumbnail_path,
+           v.views_count, v.likes_count, v.comments_count, v.created_at, v.updated_at,
+           u.username, u.full_name, u.profile_picture, u.is_verified
     FROM videos v
     INNER JOIN users u ON u.id = v.user_id
     WHERE v.is_public = 1 AND v.is_boosted = 1
     ORDER BY v.updated_at DESC, v.created_at DESC
 ");
-$boosted_videos = $stmt->fetchAll();
+$boosted_videos   = $boosted_stmt->fetchAll();
+$boosted_count    = count($boosted_videos);
+$boosted_creators = count(array_unique(array_map(static fn($v) => (int)$v['user_id'], $boosted_videos)));
+$boosted_views    = array_sum(array_map(static fn($v) => (int)$v['views_count'], $boosted_videos));
 
-$boosted_count = count($boosted_videos);
-$boosted_creators = count(array_unique(array_map(static fn($video) => (int) $video['user_id'], $boosted_videos)));
-$boosted_views = array_sum(array_map(static fn($video) => (int) $video['views_count'], $boosted_videos));
+// ── Rankings: top criadores ───────────────────────────────────
+$top_creators = $pdo->query("
+    SELECT u.id, u.username, u.full_name, u.profile_picture, u.is_verified,
+           u.ranking_points, u.videos_count, u.followers_count,
+           COALESCE(SUM(v.views_count), 0) AS total_views
+    FROM users u
+    LEFT JOIN videos v ON v.user_id = u.id AND v.is_public = 1
+    WHERE COALESCE(u.role,'user') != 'admin'
+    GROUP BY u.id
+    ORDER BY u.ranking_points DESC
+    LIMIT 10
+")->fetchAll();
+
+// ── Rankings: top vídeos ──────────────────────────────────────
+$top_videos_rank = $pdo->query("
+    SELECT v.id, v.title, v.thumbnail_path, v.views_count, v.likes_count,
+           v.comments_count, v.created_at,
+           u.username, u.is_verified
+    FROM videos v
+    INNER JOIN users u ON v.user_id = u.id
+    WHERE v.is_public = 1 AND v.moderation_status = 'approved'
+    ORDER BY v.views_count DESC
+    LIMIT 10
+")->fetchAll();
+
+$nudenet_available = moderation_is_nudenet_available();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Boosted - MyTube</title>
-    <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
+    <meta name="csrf-token" content="<?php echo csrf_token(); ?>">
+    <title>Painel Admin — MyTube</title>
     <link rel="stylesheet" href="<?php echo asset('assets/css/boosted-videos.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="<?php echo asset('assets/js/csrf.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/avatar-fallback.js'); ?>"></script>
     <?php include __DIR__ . '/includes/favicon.php'; ?>
 </head>
-<body class="boosted-page">
-    <main class="boosted-panel-main">
-        <div class="boosted-panel-container">
-            <section class="boosted-hero">
-                <div class="boosted-title-row">
-                    <div>
-                        <p class="boosted-eyebrow">Painel Admin</p>
-                        <h1>Vídeos Boosted</h1>
-                        <p class="boosted-subtitle-text">Veja todos os vídeos em destaque e remova o boost sem entrar no feed.</p>
-                    </div>
-                    <a href="index.php" class="btn btn-primary">
-                        <i class="fas fa-play"></i>
-                        Abrir feed
-                    </a>
-                </div>
+<body class="ap-page">
 
-                <div class="boosted-stats-grid" id="boostedStatsGrid">
-                    <div class="card boosted-stat-card">
-                        <span class="boosted-stat-label">Boosted ativos</span>
-                        <strong class="boosted-stat-value" id="boostedCount"><?php echo $boosted_count; ?></strong>
-                    </div>
-                    <div class="card boosted-stat-card">
-                        <span class="boosted-stat-label">Criadores destacados</span>
-                        <strong class="boosted-stat-value" id="boostedCreatorsCount"><?php echo $boosted_creators; ?></strong>
-                    </div>
-                    <div class="card boosted-stat-card">
-                        <span class="boosted-stat-label">Views somadas</span>
-                        <strong class="boosted-stat-value" id="boostedViewsCount"><?php echo formatNumberShort($boosted_views); ?></strong>
-                    </div>
-                    <div class="card boosted-stat-card">
-                        <span class="boosted-stat-label">Impressões (30d)</span>
-                        <strong class="boosted-stat-value" id="boostedImpressions"><i class="fas fa-spinner fa-spin" style="font-size:1rem;color:#94a3b8"></i></strong>
-                    </div>
-                    <div class="card boosted-stat-card">
-                        <span class="boosted-stat-label">Alcance único (30d)</span>
-                        <strong class="boosted-stat-value" id="boostedReach"><i class="fas fa-spinner fa-spin" style="font-size:1rem;color:#94a3b8"></i></strong>
-                    </div>
-                    <div class="card boosted-stat-card">
-                        <span class="boosted-stat-label">CTR médio</span>
-                        <strong class="boosted-stat-value" id="boostedAvgCtr"><i class="fas fa-spinner fa-spin" style="font-size:1rem;color:#94a3b8"></i></strong>
-                    </div>
-                </div>
-            </section>
+<!-- ═══════════════════════════════════════════════════════════
+     SIDEBAR
+═══════════════════════════════════════════════════════════════ -->
+<nav class="ap-sidebar" id="apSidebar">
+    <div class="ap-sidebar-brand">
+        <span class="ap-brand-icon">MT</span>
+        <span class="ap-brand-label">Admin</span>
+    </div>
 
-            <section class="boosted-list-section">
-                <div class="boosted-list-header">
-                    <h2>Todos os vídeos em destaque</h2>
-                    <span class="boosted-list-meta" id="boostedListMeta"><?php echo $boosted_count; ?> vídeo<?php echo $boosted_count !== 1 ? 's' : ''; ?> com boost ativo</span>
-                </div>
+    <ul class="ap-nav-list">
+        <li class="ap-nav-item active" data-section="overview" role="button" tabindex="0">
+            <i class="fas fa-chart-line"></i>
+            <span>Visão Geral</span>
+        </li>
+        <li class="ap-nav-item" data-section="moderation" role="button" tabindex="0">
+            <i class="fas fa-shield-halved"></i>
+            <span>Moderação</span>
+            <?php if ($pending_count > 0): ?>
+                <span class="ap-badge" id="apModerationBadge"><?php echo $pending_count; ?></span>
+            <?php endif; ?>
+        </li>
+        <li class="ap-nav-item" data-section="boosted" role="button" tabindex="0">
+            <i class="fas fa-bolt"></i>
+            <span>Boosted</span>
+            <?php if ($boosted_count > 0): ?>
+                <span class="ap-badge ap-badge-yellow"><?php echo $boosted_count; ?></span>
+            <?php endif; ?>
+        </li>
+        <li class="ap-nav-item" data-section="rankings" role="button" tabindex="0">
+            <i class="fas fa-trophy"></i>
+            <span>Rankings</span>
+        </li>
 
-                <div class="card boosted-empty-state<?php echo $boosted_count > 0 ? ' boosted-hidden' : ''; ?>" id="boostedEmptyState">
-                    <i class="fas fa-bolt"></i>
-                    <h3>Nenhum vídeo boosted</h3>
-                    <p>Quando você der boost em um vídeo no feed, ele vai aparecer aqui.</p>
-                    <a href="index.php" class="btn btn-primary">
-                        <i class="fas fa-home"></i>
-                        Ir para o feed
-                    </a>
-                </div>
+        <li class="ap-nav-divider"></li>
 
-                <div class="boosted-grid<?php echo $boosted_count === 0 ? ' boosted-hidden' : ''; ?>" id="boostedGrid">
-                    <?php foreach ($boosted_videos as $video): ?>
-                        <article class="card boosted-video-card"
-                                 data-video-id="<?php echo (int) $video['id']; ?>"
-                                 data-user-id="<?php echo (int) $video['user_id']; ?>"
-                                 data-views="<?php echo (int) $video['views_count']; ?>">
-                            <div class="boosted-video-media" onclick="window.location.href='index.php?video_id=<?php echo (int) $video['id']; ?>'">
-                                <?php if (!empty($video['thumbnail_path']) && file_exists(__DIR__ . '/uploads/thumbnails/' . $video['thumbnail_path'])): ?>
-                                    <img src="uploads/thumbnails/<?php echo htmlspecialchars($video['thumbnail_path']); ?>"
-                                         alt="<?php echo htmlspecialchars($video['title']); ?>"
-                                         loading="lazy">
-                                <?php elseif (!empty($video['video_path'])): ?>
-                                    <video preload="metadata" muted loop playsinline class="video-preview-player lazy-video">
-                                        <?php $resolved_url = resolve_video_url($video['video_path']); ?>
-                                        <source src="<?php echo htmlspecialchars($resolved_url); ?>" type="video/mp4">
-                                    </video>
-                                <?php else: ?>
-                                    <div class="boosted-video-fallback">
-                                        <i class="fas fa-play"></i>
-                                    </div>
-                                <?php endif; ?>
+        <!-- Secções futuras (placeholder) -->
+        <li class="ap-nav-item ap-nav-future" title="Em breve">
+            <i class="fas fa-chart-bar"></i>
+            <span>Analytics</span>
+            <span class="ap-soon-chip">em breve</span>
+        </li>
+        <li class="ap-nav-item ap-nav-future" title="Em breve">
+            <i class="fas fa-users"></i>
+            <span>Utilizadores</span>
+            <span class="ap-soon-chip">em breve</span>
+        </li>
+        <li class="ap-nav-item ap-nav-future" title="Em breve">
+            <i class="fas fa-flag"></i>
+            <span>Denúncias</span>
+            <span class="ap-soon-chip">em breve</span>
+        </li>
+        <li class="ap-nav-item ap-nav-future" title="Em breve">
+            <i class="fas fa-gear"></i>
+            <span>Configurações</span>
+            <span class="ap-soon-chip">em breve</span>
+        </li>
+    </ul>
 
-                                <div class="boosted-media-overlay">
-                                    <span class="boost-chip">
-                                        <i class="fas fa-bolt"></i>
-                                        Boosted
-                                    </span>
-                                    <button type="button" class="boosted-open-btn" onclick="event.stopPropagation(); window.location.href='index.php?video_id=<?php echo (int) $video['id']; ?>'">
-                                        <i class="fas fa-up-right-from-square"></i>
-                                        Abrir no feed
-                                    </button>
-                                </div>
-                            </div>
+    <div class="ap-sidebar-footer">
+        <a href="index.php" class="ap-back-btn">
+            <i class="fas fa-arrow-left"></i>
+            <span>Voltar ao feed</span>
+        </a>
+    </div>
+</nav>
 
-                            <div class="boosted-video-body">
-                                <div class="boosted-author-row">
-                                    <a href="perfil.php?id=<?php echo (int) $video['user_id']; ?>" class="boosted-author-link">
-                                        <img src="<?php echo htmlspecialchars(avatar_url($video['profile_picture'] ?? null)); ?>"
-                                             alt="<?php echo htmlspecialchars($video['username']); ?>"
-                                             class="boosted-author-avatar"
-                                             loading="lazy">
-                                        <div>
-                                            <div class="boosted-author-name">
-                                                <?php echo htmlspecialchars($video['full_name'] ?: $video['username']); ?>
-                                                <?php if (!empty($video['is_verified'])): ?>
-                                                    <i class="fas fa-check-circle"></i>
-                                                <?php endif; ?>
-                                            </div>
-                                            <div class="boosted-author-username">@<?php echo htmlspecialchars($video['username']); ?></div>
-                                        </div>
-                                    </a>
-                                </div>
+<!-- ═══════════════════════════════════════════════════════════
+     CONTEÚDO PRINCIPAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="ap-main" id="apMain">
 
-                                <h3 class="boosted-video-title"><?php echo htmlspecialchars($video['title']); ?></h3>
-
-                                <?php $description = boostedShortText($video['description'] ?? ''); ?>
-                                <?php if ($description !== ''): ?>
-                                    <p class="boosted-video-description"><?php echo htmlspecialchars($description); ?></p>
-                                <?php endif; ?>
-
-                                <div class="boosted-video-stats">
-                                    <span><i class="fas fa-eye"></i> <?php echo formatNumberShort($video['views_count']); ?></span>
-                                    <span><i class="fas fa-heart"></i> <?php echo formatNumberShort($video['likes_count']); ?></span>
-                                    <span><i class="fas fa-comment"></i> <?php echo formatNumberShort($video['comments_count']); ?></span>
-                                    <span><i class="fas fa-clock"></i> <?php echo htmlspecialchars(timeAgo($video['created_at'])); ?></span>
-                                </div>
-
-                                <div class="boosted-ctr-bar" id="ctrBar_<?php echo (int) $video['id']; ?>">
-                                    <div class="ctr-bar-header">
-                                        <span class="ctr-label">CTR</span>
-                                        <span class="ctr-value" id="ctrValue_<?php echo (int) $video['id']; ?>">—</span>
-                                    </div>
-                                    <div class="ctr-bar-track">
-                                        <div class="ctr-bar-fill" id="ctrFill_<?php echo (int) $video['id']; ?>" style="width:0%"></div>
-                                    </div>
-                                    <div class="ctr-bar-details">
-                                        <span id="ctrImpressions_<?php echo (int) $video['id']; ?>">— impressões</span>
-                                        <span id="ctrReach_<?php echo (int) $video['id']; ?>">— users</span>
-                                    </div>
-                                </div>
-
-                                <div class="boosted-video-actions">
-                                    <a href="index.php?video_id=<?php echo (int) $video['id']; ?>" class="btn btn-secondary btn-sm">
-                                        <i class="fas fa-play"></i>
-                                        Ver vídeo
-                                    </a>
-                                    <button type="button"
-                                            class="btn btn-sm btn-boost-remove js-remove-boost"
-                                            data-video-id="<?php echo (int) $video['id']; ?>">
-                                        <i class="fas fa-bolt"></i>
-                                        Remover boost
-                                    </button>
-                                </div>
-                            </div>
-                        </article>
-                    <?php endforeach; ?>
-                </div>
-            </section>
+    <!-- ──────────────────────────────────────────────────────
+         SECÇÃO: VISÃO GERAL
+    ────────────────────────────────────────────────────────── -->
+    <section class="ap-section active" id="section-overview">
+        <div class="ap-section-header">
+            <div>
+                <p class="ap-eyebrow">Painel Admin</p>
+                <h1>Visão Geral</h1>
+            </div>
+            <div class="ap-header-actions">
+                <?php if ($pending_count > 0): ?>
+                    <button class="ap-btn ap-btn-warn ap-nav-trigger" data-section="moderation">
+                        <i class="fas fa-shield-halved"></i>
+                        <?php echo $pending_count; ?> pendente<?php echo $pending_count !== 1 ? 's' : ''; ?>
+                    </button>
+                <?php endif; ?>
+            </div>
         </div>
-    </main>
 
-    <script src="<?php echo asset('assets/js/boosted-videos.js'); ?>"></script>
+        <!-- Stats grid -->
+        <div class="ap-stats-grid">
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(59,130,246,.15);color:#3b82f6">
+                    <i class="fas fa-video"></i>
+                </div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Total de vídeos</span>
+                    <strong class="ap-stat-value"><?php echo formatNumberShort($total_videos); ?></strong>
+                </div>
+            </div>
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(16,185,129,.15);color:#10b981">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Utilizadores</span>
+                    <strong class="ap-stat-value"><?php echo formatNumberShort($total_users); ?></strong>
+                </div>
+            </div>
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(239,68,68,.15);color:#ef4444">
+                    <i class="fas fa-eye"></i>
+                </div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Views totais</span>
+                    <strong class="ap-stat-value"><?php echo formatNumberShort($total_views); ?></strong>
+                </div>
+            </div>
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(244,63,94,.15);color:#f43f5e">
+                    <i class="fas fa-heart"></i>
+                </div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Likes totais</span>
+                    <strong class="ap-stat-value"><?php echo formatNumberShort($total_likes); ?></strong>
+                </div>
+            </div>
+            <div class="ap-stat-card <?php echo $pending_count > 0 ? 'ap-stat-card--alert' : ''; ?>">
+                <div class="ap-stat-icon" style="background:rgba(245,158,11,.15);color:#f59e0b">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Pendentes mod.</span>
+                    <strong class="ap-stat-value"><?php echo $pending_count; ?></strong>
+                </div>
+            </div>
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(239,68,68,.15);color:#ef4444">
+                    <i class="fas fa-ban"></i>
+                </div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Rejeitados</span>
+                    <strong class="ap-stat-value"><?php echo $rejected_count; ?></strong>
+                </div>
+            </div>
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(234,179,8,.15);color:#facc15">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Vídeos boosted</span>
+                    <strong class="ap-stat-value"><?php echo $boosted_total; ?></strong>
+                </div>
+            </div>
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(139,92,246,.15);color:#8b5cf6">
+                    <i class="fas fa-calendar-day"></i>
+                </div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Uploads hoje</span>
+                    <strong class="ap-stat-value"><?php echo $videos_today; ?></strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estado do sistema -->
+        <div class="ap-system-status">
+            <h2 class="ap-section-title"><i class="fas fa-server"></i> Estado do Sistema</h2>
+            <div class="ap-status-grid">
+                <div class="ap-status-item">
+                    <span class="ap-status-dot <?php echo $nudenet_available ? 'ap-dot-green' : 'ap-dot-yellow'; ?>"></span>
+                    <div>
+                        <strong>NudeNet (moderação IA)</strong>
+                        <span><?php echo $nudenet_available ? 'Ativo — análise automática a funcionar' : 'Inativo — modo de revisão manual ativo'; ?></span>
+                        <?php if (!$nudenet_available): ?>
+                            <code class="ap-status-hint">bash moderation/install.sh</code>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="ap-status-item">
+                    <span class="ap-status-dot ap-dot-green"></span>
+                    <div>
+                        <strong>Base de dados</strong>
+                        <span>Conectada e operacional</span>
+                    </div>
+                </div>
+                <div class="ap-status-item">
+                    <span class="ap-status-dot <?php echo defined('R2_ENABLED') && R2_ENABLED ? 'ap-dot-green' : 'ap-dot-blue'; ?>"></span>
+                    <div>
+                        <strong>Armazenamento</strong>
+                        <span><?php echo (defined('R2_ENABLED') && R2_ENABLED) ? 'Cloudflare R2 ativo' : 'Armazenamento local'; ?></span>
+                    </div>
+                </div>
+                <!-- Placeholder: futuras verificações -->
+                <div class="ap-status-item ap-status-future">
+                    <span class="ap-status-dot ap-dot-gray"></span>
+                    <div>
+                        <strong>Push Notifications</strong>
+                        <span class="ap-status-hint-text">Monitorização em breve</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ações rápidas -->
+        <div class="ap-quick-actions">
+            <h2 class="ap-section-title"><i class="fas fa-zap"></i> Ações Rápidas</h2>
+            <div class="ap-qa-grid">
+                <button class="ap-qa-card ap-nav-trigger" data-section="moderation">
+                    <i class="fas fa-shield-halved"></i>
+                    <strong>Rever moderação</strong>
+                    <span><?php echo $pending_count; ?> pendente<?php echo $pending_count !== 1 ? 's' : ''; ?></span>
+                </button>
+                <button class="ap-qa-card ap-nav-trigger" data-section="boosted">
+                    <i class="fas fa-bolt"></i>
+                    <strong>Gerir boosted</strong>
+                    <span><?php echo $boosted_count; ?> ativo<?php echo $boosted_count !== 1 ? 's' : ''; ?></span>
+                </button>
+                <button class="ap-qa-card ap-nav-trigger" data-section="rankings">
+                    <i class="fas fa-trophy"></i>
+                    <strong>Ver rankings</strong>
+                    <span>Top criadores e vídeos</span>
+                </button>
+                <a href="upload.php" class="ap-qa-card">
+                    <i class="fas fa-plus-circle"></i>
+                    <strong>Novo upload</strong>
+                    <span>Publicar vídeo</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────
+         SECÇÃO: MODERAÇÃO
+    ────────────────────────────────────────────────────────── -->
+    <section class="ap-section" id="section-moderation">
+        <div class="ap-section-header">
+            <div>
+                <p class="ap-eyebrow">Moderação de Conteúdo</p>
+                <h1>Revisão Manual</h1>
+            </div>
+            <div class="ap-header-actions">
+                <span class="ap-count-pill" id="pendingCountPill">
+                    <?php echo $pending_count; ?> vídeo<?php echo $pending_count !== 1 ? 's' : ''; ?> pendente<?php echo $pending_count !== 1 ? 's' : ''; ?>
+                </span>
+            </div>
+        </div>
+
+        <?php if (!$nudenet_available): ?>
+            <div class="ap-notice ap-notice--warn">
+                <i class="fas fa-triangle-exclamation"></i>
+                <div>
+                    <strong>NudeNet não está instalado.</strong>
+                    Novos uploads ficam em fila de revisão manual. Para ativar a análise automática no servidor:
+                    <code>bash moderation/install.sh</code>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <?php if (empty($pending_videos)): ?>
+            <div class="ap-empty-state" id="moderationEmptyState">
+                <i class="fas fa-shield-check"></i>
+                <h3>Sem vídeos pendentes</h3>
+                <p>Todos os vídeos foram analisados. Boa trabalho!</p>
+            </div>
+        <?php else: ?>
+            <div class="ap-mod-grid" id="moderationGrid">
+                <?php foreach ($pending_videos as $v): ?>
+                    <article class="ap-mod-card" id="modCard_<?php echo (int)$v['id']; ?>" data-video-id="<?php echo (int)$v['id']; ?>">
+                        <div class="ap-mod-thumb" onclick="window.open('index.php?video_id=<?php echo (int)$v['id']; ?>','_blank')">
+                            <?php if (!empty($v['thumbnail_path']) && file_exists(__DIR__ . '/uploads/thumbnails/' . $v['thumbnail_path'])): ?>
+                                <img src="uploads/thumbnails/<?php echo htmlspecialchars($v['thumbnail_path']); ?>" alt="" loading="lazy">
+                            <?php elseif (!empty($v['video_path'])): ?>
+                                <video preload="none" muted playsinline>
+                                    <source src="<?php echo htmlspecialchars(resolve_video_url($v['video_path'])); ?>" type="video/mp4">
+                                </video>
+                            <?php else: ?>
+                                <div class="ap-mod-thumb-fallback"><i class="fas fa-video"></i></div>
+                            <?php endif; ?>
+                            <div class="ap-mod-thumb-overlay">
+                                <i class="fas fa-up-right-from-square"></i>
+                            </div>
+                        </div>
+
+                        <div class="ap-mod-body">
+                            <div class="ap-mod-author">
+                                <img src="<?php echo htmlspecialchars(avatar_url($v['profile_picture'] ?? null)); ?>"
+                                     alt="" class="ap-mod-avatar" loading="lazy">
+                                <div>
+                                    <span class="ap-mod-author-name">
+                                        <?php echo htmlspecialchars($v['full_name'] ?: $v['username']); ?>
+                                        <?php if (!empty($v['is_verified'])): ?><i class="fas fa-check-circle" style="color:#3b82f6;font-size:.8em"></i><?php endif; ?>
+                                    </span>
+                                    <span class="ap-mod-author-user">@<?php echo htmlspecialchars($v['username']); ?></span>
+                                </div>
+                            </div>
+
+                            <h3 class="ap-mod-title"><?php echo htmlspecialchars($v['title']); ?></h3>
+
+                            <div class="ap-mod-meta">
+                                <span><i class="fas fa-clock"></i> <?php echo timeAgo($v['created_at']); ?></span>
+                                <?php if ($v['moderation_score'] !== null): ?>
+                                    <span class="ap-mod-score">
+                                        <i class="fas fa-robot"></i>
+                                        Score: <?php echo number_format((float)$v['moderation_score'] * 100, 0); ?>%
+                                    </span>
+                                <?php else: ?>
+                                    <span class="ap-mod-score-na"><i class="fas fa-robot"></i> Sem score</span>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="ap-mod-actions">
+                                <button class="ap-btn ap-btn-approve js-mod-approve"
+                                        data-video-id="<?php echo (int)$v['id']; ?>">
+                                    <i class="fas fa-check"></i> Aprovar
+                                </button>
+                                <button class="ap-btn ap-btn-reject js-mod-reject"
+                                        data-video-id="<?php echo (int)$v['id']; ?>">
+                                    <i class="fas fa-xmark"></i> Rejeitar
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────
+         SECÇÃO: BOOSTED
+    ────────────────────────────────────────────────────────── -->
+    <section class="ap-section" id="section-boosted">
+        <div class="ap-section-header">
+            <div>
+                <p class="ap-eyebrow">Vídeos em Destaque</p>
+                <h1>Boosted</h1>
+            </div>
+            <a href="index.php" class="ap-btn ap-btn-secondary">
+                <i class="fas fa-play"></i> Abrir feed
+            </a>
+        </div>
+
+        <!-- Mini stats de boost -->
+        <div class="ap-stats-grid ap-stats-grid--sm" style="margin-bottom:28px">
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(234,179,8,.15);color:#facc15"><i class="fas fa-bolt"></i></div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Boosted ativos</span>
+                    <strong class="ap-stat-value" id="boostedCount"><?php echo $boosted_count; ?></strong>
+                </div>
+            </div>
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(59,130,246,.15);color:#3b82f6"><i class="fas fa-user"></i></div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Criadores</span>
+                    <strong class="ap-stat-value" id="boostedCreatorsCount"><?php echo $boosted_creators; ?></strong>
+                </div>
+            </div>
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(239,68,68,.15);color:#ef4444"><i class="fas fa-eye"></i></div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Views somadas</span>
+                    <strong class="ap-stat-value" id="boostedViewsCount"><?php echo formatNumberShort($boosted_views); ?></strong>
+                </div>
+            </div>
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(16,185,129,.15);color:#10b981"><i class="fas fa-percent"></i></div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">CTR médio (30d)</span>
+                    <strong class="ap-stat-value" id="boostedAvgCtr">
+                        <i class="fas fa-spinner fa-spin" style="font-size:.9rem;color:#64748b"></i>
+                    </strong>
+                </div>
+            </div>
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(139,92,246,.15);color:#8b5cf6"><i class="fas fa-eye"></i></div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Impressões (30d)</span>
+                    <strong class="ap-stat-value" id="boostedImpressions">
+                        <i class="fas fa-spinner fa-spin" style="font-size:.9rem;color:#64748b"></i>
+                    </strong>
+                </div>
+            </div>
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(244,63,94,.15);color:#f43f5e"><i class="fas fa-users"></i></div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Alcance único (30d)</span>
+                    <strong class="ap-stat-value" id="boostedReach">
+                        <i class="fas fa-spinner fa-spin" style="font-size:.9rem;color:#64748b"></i>
+                    </strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="ap-list-header">
+            <h2>Todos os vídeos em destaque</h2>
+            <span class="ap-list-meta" id="boostedListMeta"><?php echo $boosted_count; ?> vídeo<?php echo $boosted_count !== 1 ? 's' : ''; ?> com boost ativo</span>
+        </div>
+
+        <div class="ap-empty-state<?php echo $boosted_count > 0 ? ' ap-hidden' : ''; ?>" id="boostedEmptyState">
+            <i class="fas fa-bolt"></i>
+            <h3>Nenhum vídeo boosted</h3>
+            <p>Dá boost em vídeos no feed para os ver aqui.</p>
+            <a href="index.php" class="ap-btn ap-btn-primary">
+                <i class="fas fa-home"></i> Ir para o feed
+            </a>
+        </div>
+
+        <div class="boosted-grid<?php echo $boosted_count === 0 ? ' ap-hidden' : ''; ?>" id="boostedGrid">
+            <?php foreach ($boosted_videos as $video): ?>
+                <article class="card boosted-video-card"
+                         data-video-id="<?php echo (int)$video['id']; ?>"
+                         data-user-id="<?php echo (int)$video['user_id']; ?>"
+                         data-views="<?php echo (int)$video['views_count']; ?>">
+                    <div class="boosted-video-media" onclick="window.location.href='index.php?video_id=<?php echo (int)$video['id']; ?>'">
+                        <?php if (!empty($video['thumbnail_path']) && file_exists(__DIR__ . '/uploads/thumbnails/' . $video['thumbnail_path'])): ?>
+                            <img src="uploads/thumbnails/<?php echo htmlspecialchars($video['thumbnail_path']); ?>"
+                                 alt="<?php echo htmlspecialchars($video['title']); ?>" loading="lazy">
+                        <?php elseif (!empty($video['video_path'])): ?>
+                            <video preload="metadata" muted loop playsinline class="video-preview-player lazy-video">
+                                <source src="<?php echo htmlspecialchars(resolve_video_url($video['video_path'])); ?>" type="video/mp4">
+                            </video>
+                        <?php else: ?>
+                            <div class="boosted-video-fallback"><i class="fas fa-play"></i></div>
+                        <?php endif; ?>
+                        <div class="boosted-media-overlay">
+                            <span class="boost-chip"><i class="fas fa-bolt"></i> Boosted</span>
+                            <button type="button" class="boosted-open-btn"
+                                    onclick="event.stopPropagation();window.location.href='index.php?video_id=<?php echo (int)$video['id']; ?>'">
+                                <i class="fas fa-up-right-from-square"></i> Abrir
+                            </button>
+                        </div>
+                    </div>
+                    <div class="boosted-video-body">
+                        <div class="boosted-author-row">
+                            <a href="perfil.php?id=<?php echo (int)$video['user_id']; ?>" class="boosted-author-link">
+                                <img src="<?php echo htmlspecialchars(avatar_url($video['profile_picture'] ?? null)); ?>"
+                                     alt="" class="boosted-author-avatar" loading="lazy">
+                                <div>
+                                    <div class="boosted-author-name">
+                                        <?php echo htmlspecialchars($video['full_name'] ?: $video['username']); ?>
+                                        <?php if (!empty($video['is_verified'])): ?><i class="fas fa-check-circle"></i><?php endif; ?>
+                                    </div>
+                                    <div class="boosted-author-username">@<?php echo htmlspecialchars($video['username']); ?></div>
+                                </div>
+                            </a>
+                        </div>
+                        <h3 class="boosted-video-title"><?php echo htmlspecialchars($video['title']); ?></h3>
+                        <?php $desc = apShortText($video['description'] ?? ''); ?>
+                        <?php if ($desc !== ''): ?>
+                            <p class="boosted-video-description"><?php echo htmlspecialchars($desc); ?></p>
+                        <?php endif; ?>
+                        <div class="boosted-video-stats">
+                            <span><i class="fas fa-eye"></i> <?php echo formatNumberShort($video['views_count']); ?></span>
+                            <span><i class="fas fa-heart"></i> <?php echo formatNumberShort($video['likes_count']); ?></span>
+                            <span><i class="fas fa-comment"></i> <?php echo formatNumberShort($video['comments_count']); ?></span>
+                            <span><i class="fas fa-clock"></i> <?php echo timeAgo($video['created_at']); ?></span>
+                        </div>
+                        <div class="boosted-ctr-bar" id="ctrBar_<?php echo (int)$video['id']; ?>">
+                            <div class="ctr-bar-header">
+                                <span class="ctr-label">CTR</span>
+                                <span class="ctr-value" id="ctrValue_<?php echo (int)$video['id']; ?>">—</span>
+                            </div>
+                            <div class="ctr-bar-track">
+                                <div class="ctr-bar-fill" id="ctrFill_<?php echo (int)$video['id']; ?>" style="width:0%"></div>
+                            </div>
+                            <div class="ctr-bar-details">
+                                <span id="ctrImpressions_<?php echo (int)$video['id']; ?>">— impressões</span>
+                                <span id="ctrReach_<?php echo (int)$video['id']; ?>">— users</span>
+                            </div>
+                        </div>
+                        <div class="boosted-video-actions">
+                            <a href="index.php?video_id=<?php echo (int)$video['id']; ?>" class="btn btn-secondary btn-sm">
+                                <i class="fas fa-play"></i> Ver
+                            </a>
+                            <button type="button" class="btn btn-sm btn-boost-remove js-remove-boost"
+                                    data-video-id="<?php echo (int)$video['id']; ?>">
+                                <i class="fas fa-bolt"></i> Remover boost
+                            </button>
+                        </div>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────
+         SECÇÃO: RANKINGS
+    ────────────────────────────────────────────────────────── -->
+    <section class="ap-section" id="section-rankings">
+        <div class="ap-section-header">
+            <div>
+                <p class="ap-eyebrow">Dados de Desempenho</p>
+                <h1>Rankings</h1>
+            </div>
+        </div>
+
+        <!-- Sub-tabs de ranking -->
+        <div class="ap-subtabs" id="rankingSubtabs">
+            <button class="ap-subtab active" data-subtab="creators">
+                <i class="fas fa-crown"></i> Top Criadores
+            </button>
+            <button class="ap-subtab" data-subtab="videos">
+                <i class="fas fa-fire"></i> Top Vídeos
+            </button>
+        </div>
+
+        <!-- Top Criadores -->
+        <div class="ap-subtab-panel active" id="subtab-creators">
+            <?php if (empty($top_creators)): ?>
+                <div class="ap-empty-state"><i class="fas fa-users"></i><h3>Sem dados de criadores</h3></div>
+            <?php else: ?>
+                <div class="ap-table-wrap">
+                    <table class="ap-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Criador</th>
+                                <th>Pontos</th>
+                                <th>Vídeos</th>
+                                <th>Seguidores</th>
+                                <th>Views totais</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($top_creators as $i => $creator): ?>
+                                <tr class="<?php echo $i < 3 ? 'ap-tr-top' : ''; ?>">
+                                    <td class="ap-td-rank">
+                                        <?php if ($i === 0): ?>
+                                            <i class="fas fa-crown" style="color:#facc15"></i>
+                                        <?php elseif ($i === 1): ?>
+                                            <i class="fas fa-crown" style="color:#94a3b8"></i>
+                                        <?php elseif ($i === 2): ?>
+                                            <i class="fas fa-crown" style="color:#cd7c2f"></i>
+                                        <?php else: ?>
+                                            <span><?php echo $i + 1; ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <div class="ap-td-user">
+                                            <img src="<?php echo htmlspecialchars(avatar_url($creator['profile_picture'] ?? null)); ?>"
+                                                 alt="" class="ap-td-avatar" loading="lazy">
+                                            <div>
+                                                <span class="ap-td-name">
+                                                    <?php echo htmlspecialchars($creator['full_name'] ?: $creator['username']); ?>
+                                                    <?php if (!empty($creator['is_verified'])): ?>
+                                                        <i class="fas fa-check-circle" style="color:#3b82f6;font-size:.8em"></i>
+                                                    <?php endif; ?>
+                                                </span>
+                                                <span class="ap-td-sub">@<?php echo htmlspecialchars($creator['username']); ?></span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td><strong class="ap-td-pts"><?php echo formatNumberShort($creator['ranking_points']); ?></strong></td>
+                                    <td><?php echo (int)$creator['videos_count']; ?></td>
+                                    <td><?php echo formatNumberShort($creator['followers_count']); ?></td>
+                                    <td><?php echo formatNumberShort($creator['total_views']); ?></td>
+                                    <td>
+                                        <a href="perfil.php?id=<?php echo (int)$creator['id']; ?>" class="ap-btn ap-btn-ghost ap-btn-xs" target="_blank">
+                                            <i class="fas fa-up-right-from-square"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Top Vídeos -->
+        <div class="ap-subtab-panel" id="subtab-videos">
+            <?php if (empty($top_videos_rank)): ?>
+                <div class="ap-empty-state"><i class="fas fa-film"></i><h3>Sem vídeos publicados</h3></div>
+            <?php else: ?>
+                <div class="ap-table-wrap">
+                    <table class="ap-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Vídeo</th>
+                                <th>Autor</th>
+                                <th>Views</th>
+                                <th>Likes</th>
+                                <th>Comentários</th>
+                                <th>Data</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($top_videos_rank as $i => $tv): ?>
+                                <tr class="<?php echo $i < 3 ? 'ap-tr-top' : ''; ?>">
+                                    <td class="ap-td-rank"><?php echo $i + 1; ?></td>
+                                    <td>
+                                        <div class="ap-td-video-title">
+                                            <?php if (!empty($tv['thumbnail_path']) && file_exists(__DIR__ . '/uploads/thumbnails/' . $tv['thumbnail_path'])): ?>
+                                                <img src="uploads/thumbnails/<?php echo htmlspecialchars($tv['thumbnail_path']); ?>"
+                                                     alt="" class="ap-td-thumb" loading="lazy">
+                                            <?php else: ?>
+                                                <div class="ap-td-thumb ap-td-thumb-empty"><i class="fas fa-video"></i></div>
+                                            <?php endif; ?>
+                                            <span><?php echo htmlspecialchars(apShortText($tv['title'], 48)); ?></span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @<?php echo htmlspecialchars($tv['username']); ?>
+                                        <?php if (!empty($tv['is_verified'])): ?><i class="fas fa-check-circle" style="color:#3b82f6;font-size:.8em"></i><?php endif; ?>
+                                    </td>
+                                    <td><strong><?php echo formatNumberShort($tv['views_count']); ?></strong></td>
+                                    <td><?php echo formatNumberShort($tv['likes_count']); ?></td>
+                                    <td><?php echo formatNumberShort($tv['comments_count']); ?></td>
+                                    <td class="ap-td-date"><?php echo date('d/m/y', strtotime($tv['created_at'])); ?></td>
+                                    <td>
+                                        <a href="index.php?video_id=<?php echo (int)$tv['id']; ?>" class="ap-btn ap-btn-ghost ap-btn-xs" target="_blank">
+                                            <i class="fas fa-play"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+    </section>
+
+</div><!-- /.ap-main -->
+
+<!-- Toast container -->
+<div id="apToastContainer" class="ap-toast-container"></div>
+
+<script src="<?php echo asset('assets/js/boosted-videos.js'); ?>"></script>
 </body>
 </html>

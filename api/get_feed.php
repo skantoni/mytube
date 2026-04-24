@@ -231,7 +231,7 @@ function fetchCandidateRows($pdo, string $where_sql, array $params, int $candida
     $sql = "
         SELECT v.id, v.is_boosted, ($weight_sql) AS base_weight
         FROM videos v
-        WHERE v.is_public = 1 $where_sql
+        WHERE v.is_public = 1 AND v.moderation_status = 'approved' $where_sql
         ORDER BY base_weight DESC
         LIMIT $candidate_limit
     ";
@@ -445,7 +445,7 @@ function fetchBatch(
         if ($start_video_id > 0 && empty($exclude_ids)) {
             $limit_rest = $batch_size - 1;
             $params_start = [$start_video_id, $profile_user_id];
-            $stmt = $pdo->prepare("\n                (SELECT v.id, 1 AS sort_order\n                 FROM videos v\n                 WHERE v.id = ? AND v.is_public = 1)\n                UNION ALL\n                (SELECT v.id, 2 AS sort_order\n                 FROM videos v\n                 WHERE v.is_public = 1 AND v.user_id = ? AND v.id != " . (int)$start_video_id . "\n                 ORDER BY v.created_at DESC\n                 LIMIT $limit_rest)\n            ");
+            $stmt = $pdo->prepare("\n                (SELECT v.id, 1 AS sort_order\n                 FROM videos v\n                 WHERE v.id = ? AND v.is_public = 1 AND v.moderation_status = 'approved')\n                UNION ALL\n                (SELECT v.id, 2 AS sort_order\n                 FROM videos v\n                 WHERE v.is_public = 1 AND v.moderation_status = 'approved' AND v.user_id = ? AND v.id != " . (int)$start_video_id . "\n                 ORDER BY v.created_at DESC\n                 LIMIT $limit_rest)\n            ");
             $stmt->execute($params_start);
             return $stmt->fetchAll(PDO::FETCH_COLUMN);
         }
@@ -457,7 +457,7 @@ function fetchBatch(
             $params = array_merge($params, $exclude_ids);
         }
 
-        $stmt = $pdo->prepare("\n            SELECT v.id\n            FROM videos v\n            WHERE v.is_public = 1 AND v.user_id = ? $exclude_clause\n            ORDER BY v.created_at DESC\n            LIMIT $batch_size\n        ");
+        $stmt = $pdo->prepare("\n            SELECT v.id\n            FROM videos v\n            WHERE v.is_public = 1 AND v.moderation_status = 'approved' AND v.user_id = ? $exclude_clause\n            ORDER BY v.created_at DESC\n            LIMIT $batch_size\n        ");
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
@@ -470,7 +470,7 @@ function fetchBatch(
     if ($start_video_id > 0 && empty($exclude_ids)) {
         $ordered_ids = [];
 
-        $stmt = $pdo->prepare("SELECT id, is_boosted FROM videos WHERE id = ? AND is_public = 1 LIMIT 1");
+        $stmt = $pdo->prepare("SELECT id, is_boosted FROM videos WHERE id = ? AND is_public = 1 AND moderation_status = 'approved' LIMIT 1");
         $stmt->execute([$start_video_id]);
         $start_video = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -624,7 +624,7 @@ if ($guest_mode) {
         }
 
         $placeholders = implode(',', array_fill(0, count($slice_ids), '?'));
-        $stmt = $pdo->prepare("\n            SELECT\n                v.id, v.title, v.description, v.video_path, v.thumbnail_path,\n                v.views_count, v.likes_count, v.comments_count,\n                v.created_at, v.user_id as video_user_id, v.is_boosted, v.hashtags,\n                u.username, u.full_name, u.profile_picture, u.is_verified\n            FROM videos v\n            INNER JOIN users u ON v.user_id = u.id\n            WHERE v.id IN ($placeholders) AND v.is_public = 1\n        ");
+        $stmt = $pdo->prepare("\n            SELECT\n                v.id, v.title, v.description, v.video_path, v.thumbnail_path,\n                v.views_count, v.likes_count, v.comments_count,\n                v.created_at, v.user_id as video_user_id, v.is_boosted, v.hashtags,\n                u.username, u.full_name, u.profile_picture, u.is_verified\n            FROM videos v\n            INNER JOIN users u ON v.user_id = u.id\n            WHERE v.id IN ($placeholders) AND v.is_public = 1 AND v.moderation_status = 'approved'\n        ");
         $stmt->execute($slice_ids);
         $videos_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -717,7 +717,7 @@ if (isset($_GET['validate_ids'])) {
         exit;
     }
     $ph = implode(',', array_fill(0, count($raw_ids), '?'));
-    $stmt = $pdo->prepare("SELECT id FROM videos WHERE id IN ($ph) AND is_public = 1");
+    $stmt = $pdo->prepare("SELECT id FROM videos WHERE id IN ($ph) AND is_public = 1 AND moderation_status = 'approved'");
     $stmt->execute($raw_ids);
     $valid_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
     echo json_encode(['valid_ids' => array_map('intval', $valid_ids)]);
@@ -822,7 +822,7 @@ try {
     }
 
     $placeholders = implode(',', array_fill(0, count($slice_ids), '?'));
-    $stmt = $pdo->prepare("\n        SELECT\n            v.id, v.title, v.description, v.video_path, v.thumbnail_path,\n            v.views_count, v.likes_count, v.comments_count,\n            v.created_at, v.user_id as video_user_id, v.is_boosted, v.hashtags,\n            u.username, u.full_name, u.profile_picture, u.is_verified\n        FROM videos v\n        INNER JOIN users u ON v.user_id = u.id\n        WHERE v.id IN ($placeholders) AND v.is_public = 1\n    ");
+    $stmt = $pdo->prepare("\n        SELECT\n            v.id, v.title, v.description, v.video_path, v.thumbnail_path,\n            v.views_count, v.likes_count, v.comments_count,\n            v.created_at, v.user_id as video_user_id, v.is_boosted, v.hashtags,\n            u.username, u.full_name, u.profile_picture, u.is_verified\n        FROM videos v\n        INNER JOIN users u ON v.user_id = u.id\n        WHERE v.id IN ($placeholders) AND v.is_public = 1 AND v.moderation_status = 'approved'\n    ");
     $stmt->execute($slice_ids);
     $videos_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

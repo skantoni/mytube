@@ -5,6 +5,7 @@ require_once 'includes/hashtag_helper.php';
 require_once 'includes/r2_storage.php';
 require_once 'includes/video_processing.php';
 require_once 'includes/music_config.php';
+require_once 'includes/content_moderation.php';
 
 // Verificar se está logado
 if (!isLoggedIn()) {
@@ -56,6 +57,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } catch (Throwable $e2) {
             $has_music_cols = false;
             error_log('upload.php: falha ao adicionar colunas de música: ' . $e2->getMessage());
+        }
+    }
+
+    // ── Auto-migração: garantir colunas de moderação ──
+    $has_moderation_cols = false;
+    try {
+        $pdo->query("SELECT moderation_status FROM videos LIMIT 0");
+        $has_moderation_cols = true;
+    } catch (Throwable $e) {
+        try {
+            $pdo->exec("ALTER TABLE videos
+                ADD COLUMN moderation_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'approved' AFTER is_boosted,
+                ADD COLUMN moderation_score FLOAT DEFAULT NULL AFTER moderation_status,
+                ADD COLUMN moderation_checked_at DATETIME DEFAULT NULL AFTER moderation_score");
+            $has_moderation_cols = true;
+            error_log('upload.php: colunas de moderação adicionadas automaticamente');
+        } catch (Throwable $e2) {
+            $has_moderation_cols = false;
+            error_log('upload.php: falha ao adicionar colunas de moderação: ' . $e2->getMessage());
         }
     }
 
@@ -188,6 +208,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             if (!$error) {
 
+            // ============================================
+            // MODERAÇÃO DE CONTEÚDO (NudeNet)
+            // O ficheiro local ainda existe neste ponto.
+            // Se rejeitado, abortar ANTES de subir para R2.
+            // ============================================
+            $moderation_status = 'approved'; // fallback se colunas não existem
+            $moderation_score  = null;
+
+            if ($has_moderation_cols) {
+                $mod_decision = moderation_decide_status($processed_video_path);
+                error_log('upload.php moderation: ' . $mod_decision['log']);
+
+                if ($mod_decision['db_status'] === 'rejected') {
+                    // NudeNet flagged — em vez de apagar, colocar em pending para revisão do admin
+                    // (o humano tem a palavra final; a IA pode enganar-se)
+                    $moderation_status = 'pending';
+                    $moderation_score  = $mod_decision['score'];
+                } else {
+                    $moderation_status = $mod_decision['db_status'];  // 'approved' ou 'pending'
+                    $moderation_score  = $mod_decision['score'];
+                }
+            }
+
+            if (!$error) {
+
             $uniqueName = uniqid() . '_' . time() . '.' . $processed_video_ext;
 
             // ============================================
@@ -237,18 +282,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 try {
                     $pdo->beginTransaction();
 
-                    // INSERT com ou sem colunas de música (detectado por auto-migração acima)
-                    if ($has_music_cols) {
+                    // INSERT com ou sem colunas de música + moderação
+                    if ($has_music_cols && $has_moderation_cols) {
                         $stmt = $pdo->prepare("
-                            INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, music_name, music_artist, created_at) 
+                            INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, music_name, music_artist, moderation_status, moderation_score, moderation_checked_at, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                        ");
+                        if (!$stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public, $music_name, $music_artist, $moderation_status, $moderation_score])) {
+                            throw new RuntimeException('Erro ao salvar vídeo no banco de dados.');
+                        }
+                    } elseif ($has_music_cols) {
+                        $stmt = $pdo->prepare("
+                            INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, music_name, music_artist, created_at)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
                         ");
                         if (!$stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public, $music_name, $music_artist])) {
                             throw new RuntimeException('Erro ao salvar vídeo no banco de dados.');
                         }
+                    } elseif ($has_moderation_cols) {
+                        $stmt = $pdo->prepare("
+                            INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, moderation_status, moderation_score, moderation_checked_at, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                        ");
+                        if (!$stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public, $moderation_status, $moderation_score])) {
+                            throw new RuntimeException('Erro ao salvar vídeo no banco de dados.');
+                        }
                     } else {
                         $stmt = $pdo->prepare("
-                            INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, created_at) 
+                            INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, created_at)
                             VALUES (?, ?, ?, ?, ?, ?, NOW())
                         ");
                         if (!$stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public])) {
@@ -276,12 +337,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         @unlink($processed_video_path);
                     }
 
-                    $success = 'Vídeo enviado com sucesso!';
+                    $success = ($moderation_status === 'pending')
+                        ? 'Vídeo enviado! Está a aguardar revisão antes de ser publicado.'
+                        : 'Vídeo enviado com sucesso!';
 
                     if ($isAjax) {
                         if (ob_get_level()) ob_end_clean();
                         header('Content-Type: application/json');
-                        echo json_encode(['success' => true, 'message' => $success, 'video_id' => $video_id]);
+                        echo json_encode(['success' => true, 'message' => $success, 'video_id' => $video_id, 'moderation_status' => $moderation_status]);
                         exit;
                     }
 
@@ -307,7 +370,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             } else {
                 $error = 'Erro ao fazer upload do arquivo.';
             }
-            }
+            }   // fecha if (!$error) interno (pós-moderação)
+            }   // fecha if (!$error) externo (bloco de moderação)
         }
     }
 
