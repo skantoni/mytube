@@ -370,7 +370,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         const renderOptions = {
             theme: "outline",
             size: "large",
-            width: document.querySelector('.google-signin-btn').offsetWidth,
+            width: 300, // Largura fixa garantida para evitar colapso em containers ocultos
             text: "continue_with",
             shape: "rectangular",
             logo_alignment: "left"
