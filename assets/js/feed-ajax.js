@@ -522,24 +522,6 @@ class FeedManager {
                     Seu navegador não suporta o elemento de vídeo.
                 </video>
                 
-            </div>
-            
-            <!-- Controles de áudio - Movidos para fora do player para alinhamento preciso com o header -->
-            <div class="video-controls">
-                <button class="audio-toggle" data-video-id="${video.id}" title="Ativar/Desativar Som">
-                    <i class="fas fa-volume-up"></i>
-                </button>
-            </div>
-            
-            <!-- Overlay para ativar som -->
-            <div class="audio-prompt-overlay" id="audio-prompt-${video.id}" style="display: none;">
-                <div class="audio-prompt-content">
-                    <i class="fas fa-volume-up"></i>
-                    <h3>Toque para ativar o som</h3>
-                    <p>Clique aqui para reproduzir com áudio</p>
-                </div>
-            </div>
-                
                 <!-- Informações do vídeo na parte inferior -->
                 <div class="video-info-overlay">
                     <div class="video-author-row">
@@ -566,6 +548,22 @@ class FeedManager {
                         <div class="progress-bar" id="progress-${video.id}"></div>
                     </div>
                     <div class="progress-time" id="progress-time-${video.id}">0:00</div>
+                </div>
+            </div>
+            
+            <!-- Controles de áudio - Movidos para fora do player para alinhamento preciso com o header -->
+            <div class="video-controls">
+                <button class="audio-toggle" data-video-id="${video.id}" title="Ativar/Desativar Som">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+            </div>
+            
+            <!-- Overlay para ativar som -->
+            <div class="audio-prompt-overlay" id="audio-prompt-${video.id}" style="display: none;">
+                <div class="audio-prompt-content">
+                    <i class="fas fa-volume-up"></i>
+                    <h3>Toque para ativar o som</h3>
+                    <p>Clique aqui para reproduzir com áudio</p>
                 </div>
             </div>
             
