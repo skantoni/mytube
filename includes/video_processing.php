@@ -231,9 +231,40 @@ function video_prepare_for_storage(string $input_path, string $original_extensio
     $is_mp4 = strtolower($original_extension) === 'mp4';
 
     if ($is_mp4 && video_is_web_compatible($probe_data)) {
-        $result['success'] = true;
+        // Vídeo já é H.264+AAC — apenas garantir que o moov atom está no início
+        // (faststart). Usa -c copy: sem re-codificação, operação quase instantânea.
+        $faststart_output = rtrim((string)sys_get_temp_dir(), DIRECTORY_SEPARATOR)
+            . DIRECTORY_SEPARATOR
+            . uniqid('mytube_fs_', true)
+            . '.mp4';
+
+        $faststart_cmd = sprintf(
+            '%s -y -i %s -c copy -movflags +faststart %s 2>&1',
+            escapeshellarg($ffmpeg),
+            escapeshellarg($input_path),
+            escapeshellarg($faststart_output)
+        );
+
+        $fs_output = [];
+        $fs_exit   = 1;
+        exec($faststart_cmd, $fs_output, $fs_exit);
+
+        if ($fs_exit === 0 && file_exists($faststart_output) && filesize($faststart_output) > 0) {
+            $result['success']     = true;
+            $result['output_path'] = $faststart_output;
+            $result['extension']   = 'mp4';
+            $result['transcoded']  = false; // não re-codificado, só reposicionado
+            return $result;
+        }
+
+        // Se o faststart falhou (raro), servir o ficheiro original sem falhar
+        if (file_exists($faststart_output)) {
+            @unlink($faststart_output);
+        }
+        error_log('video_processing: faststart falhou, a usar ficheiro original.');
+        $result['success']     = true;
         $result['output_path'] = $input_path;
-        $result['extension'] = 'mp4';
+        $result['extension']   = 'mp4';
         return $result;
     }
 
