@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (isset($_POST['update_profile'])) {
         // Buscar dados atuais do utilizador para comparação
-        $currentStmt = $pdo->prepare("SELECT full_name, bio, instituicao, school_id FROM users WHERE id = ?");
+        $currentStmt = $pdo->prepare("SELECT full_name, bio, instituicao, school_id, name_icon FROM users WHERE id = ?");
         $currentStmt->execute([$user_id]);
         $currentData = $currentStmt->fetch();
 
@@ -86,6 +86,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             
+            // Processar upload do ícone de nome
+            $name_icon = null;
+            if (isset($_FILES['name_icon']) && $_FILES['name_icon']['error'] === UPLOAD_ERR_OK) {
+                require_once 'includes/upload_validation.php';
+                $icon_validation = validate_image_upload(
+                    $_FILES['name_icon']['tmp_name'],
+                    $_FILES['name_icon']['name'],
+                    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif']
+                );
+                
+                if (!$icon_validation['valid']) {
+                    $error = "Ícone de nome: " . $icon_validation['error'];
+                } else {
+                    $upload_dir = 'assets/images/icons/';
+                    if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+                    
+                    $file_extension = $icon_validation['extension'];
+                    $new_filename = 'icon_' . $user_id . '_' . time() . '.' . $file_extension;
+                    if (move_uploaded_file($_FILES['name_icon']['tmp_name'], $upload_dir . $new_filename)) {
+                        $name_icon = $new_filename;
+                    } else {
+                        $error = 'Erro ao fazer upload do ícone.';
+                    }
+                }
+            }
+            
             if (empty($error)) {
                 // Detectar quais campos realmente mudaram
                 $changedFields = [];
@@ -132,6 +158,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($profile_picture) {
                     $changedFields[] = "profile_picture = ?";
                     $params[] = $profile_picture;
+                }
+                
+                if ($name_icon) {
+                    $changedFields[] = "name_icon = ?";
+                    $params[] = $name_icon;
                 }
 
                 // Só executar UPDATE se algo realmente mudou
@@ -353,7 +384,13 @@ $has_more_videos = $total_user_videos > count($user_videos);
             </div>
             
             <div class="profile-details">
-                <h2 class="profile-name"><?php echo htmlspecialchars($user['full_name']); ?></h2>
+                <h2 class="profile-name">
+                    <?php echo htmlspecialchars($user['full_name']); ?>
+                    <?php if (!empty($user['name_icon'])): ?>
+                        <img src="assets/images/icons/<?php echo htmlspecialchars($user['name_icon']); ?>" 
+                             alt="Badge" class="name-icon-badge">
+                    <?php endif; ?>
+                </h2>
                 <p class="profile-username">@<?php echo htmlspecialchars($user['username']); ?></p>
                 
                 <?php if ($user['bio']): ?>
@@ -495,6 +532,22 @@ $has_more_videos = $total_user_videos > count($user_videos);
                         <label for="profilePicture" class="upload-btn">
                             <i class="fas fa-camera"></i>
                             Alterar Foto
+                        </label>
+                    </div>
+                <div class="form-group">
+                    <label>Ícone de Nome (Badge)</label>
+                    <div class="avatar-upload">
+                        <?php
+                        $iconFile = $user['name_icon'] ?? '';
+                        $iconPath = !empty($iconFile) ? 'assets/images/icons/' . $iconFile : '';
+                        ?>
+                        <img src="<?php echo !empty($iconPath) && file_exists($iconPath) ? htmlspecialchars($iconPath) : 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2364748b\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Ccircle cx=\'12\' cy=\'12\' r=\'10\'%3E%3C/circle%3E%3Cline x1=\'12\' y1=\'8\' x2=\'12\' y2=\'12\'%3E%3C/line%3E%3Cline x1=\'12\' y1=\'16\' x2=\'12.01\' y2=\'16\'%3E%3C/line%3E%3C/svg%3E'; ?>" 
+                             alt="Ícone" class="current-avatar" id="nameIconPreview" 
+                             style="width: 40px; height: 40px; border-radius: 4px; object-fit: contain;">
+                        <input type="file" name="name_icon" id="nameIcon" accept="image/*" onchange="previewAvatar(this, 'nameIconPreview')">
+                        <label for="nameIcon" class="upload-btn">
+                            <i class="fas fa-image"></i>
+                            Escolher Ícone
                         </label>
                     </div>
                 </div>
@@ -1800,7 +1853,24 @@ $has_more_videos = $total_user_videos > count($user_videos);
             margin-bottom: 40px;
         }
     }
+    /* Estilos para o ícone de nome */
+    .profile-name {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .name-icon-badge {
+        height: 1.1em;
+        width: auto;
+        vertical-align: middle;
+        display: inline-block;
+        object-fit: contain;
+        border-radius: 4px;
+        margin-bottom: 2px;
+    }
     </style>
+
 
     <script>
     // === Avatar Action Sheet (profile.php) ===

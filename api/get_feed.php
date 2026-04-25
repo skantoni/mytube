@@ -624,7 +624,7 @@ if ($guest_mode) {
         }
 
         $placeholders = implode(',', array_fill(0, count($slice_ids), '?'));
-        $stmt = $pdo->prepare("\n            SELECT\n                v.id, v.title, v.description, v.video_path, v.thumbnail_path,\n                v.views_count, v.likes_count, v.comments_count,\n                v.created_at, v.user_id as video_user_id, v.is_boosted, v.hashtags,\n                u.username, u.full_name, u.profile_picture, u.is_verified\n            FROM videos v\n            INNER JOIN users u ON v.user_id = u.id\n            WHERE v.id IN ($placeholders) AND v.is_public = 1 AND v.moderation_status = 'approved'\n        ");
+        $stmt = $pdo->prepare("\n            SELECT\n                v.id, v.title, v.description, v.video_path, v.thumbnail_path,\n                v.views_count, v.likes_count, v.comments_count,\n                v.created_at, v.user_id as video_user_id, v.is_boosted, v.hashtags,\n                u.username, u.full_name, u.profile_picture, u.is_verified, u.name_icon\n            FROM videos v\n            INNER JOIN users u ON v.user_id = u.id\n            WHERE v.id IN ($placeholders) AND v.is_public = 1 AND v.moderation_status = 'approved'\n        ");
         $stmt->execute($slice_ids);
         $videos_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -685,6 +685,7 @@ if ($guest_mode) {
                     'profile_picture' => $video['profile_picture'] ?? 'default.webp',
                     'profile_picture_url' => avatar_url($video['profile_picture'] ?? null),
                     'is_verified' => (bool)$video['is_verified'],
+                    'name_icon' => $video['name_icon'] ?? null,
                 ],
             ];
         }
@@ -822,7 +823,7 @@ try {
     }
 
     $placeholders = implode(',', array_fill(0, count($slice_ids), '?'));
-    $stmt = $pdo->prepare("\n        SELECT\n            v.id, v.title, v.description, v.video_path, v.thumbnail_path,\n            v.views_count, v.likes_count, v.comments_count,\n            v.created_at, v.user_id as video_user_id, v.is_boosted, v.hashtags,\n            u.username, u.full_name, u.profile_picture, u.is_verified\n        FROM videos v\n        INNER JOIN users u ON v.user_id = u.id\n        WHERE v.id IN ($placeholders) AND v.is_public = 1 AND v.moderation_status = 'approved'\n    ");
+    $stmt = $pdo->prepare("\n        SELECT\n            v.id, v.title, v.description, v.video_path, v.thumbnail_path,\n            v.views_count, v.likes_count, v.comments_count,\n            v.created_at, v.user_id as video_user_id, v.is_boosted, v.hashtags,\n            u.username, u.full_name, u.profile_picture, u.is_verified, u.name_icon\n        FROM videos v\n        INNER JOIN users u ON v.user_id = u.id\n        WHERE v.id IN ($placeholders) AND v.is_public = 1 AND v.moderation_status = 'approved'\n    ");
     $stmt->execute($slice_ids);
     $videos_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -935,6 +936,7 @@ try {
                 'profile_picture' => $video['profile_picture'] ?? 'default.webp',
                 'profile_picture_url' => avatar_url($video['profile_picture'] ?? null),
                 'is_verified' => (bool)$video['is_verified'],
+                'name_icon' => $video['name_icon'] ?? null,
             ],
         ];
     }

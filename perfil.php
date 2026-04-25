@@ -217,7 +217,13 @@ try {
                 </div>
 
                 <div class="profile-details">
-                    <h2 class="profile-name"><?php echo htmlspecialchars($user_data['full_name']); ?></h2>
+                    <h2 class="profile-name">
+                        <?php echo htmlspecialchars($user_data['full_name']); ?>
+                        <?php if (!empty($user_data['name_icon'])): ?>
+                            <img src="assets/images/icons/<?php echo htmlspecialchars($user_data['name_icon']); ?>" 
+                                 alt="Badge" class="name-icon-badge">
+                        <?php endif; ?>
+                    </h2>
                     <p class="profile-username">@<?php echo htmlspecialchars($user_data['username']); ?></p>
                     
                     <?php if ($user_data['bio']): ?>
@@ -605,6 +611,23 @@ try {
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+        }
+
+        /* Estilos para o ícone de nome */
+        .profile-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .name-icon-badge {
+            height: 1.1em;
+            width: auto;
+            vertical-align: middle;
+            display: inline-block;
+            object-fit: contain;
+            border-radius: 4px;
+            margin-bottom: 2px; /* Pequeno ajuste fino de alinhamento */
         }
     </style>
     

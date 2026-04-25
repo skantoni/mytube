@@ -17,14 +17,16 @@ function confirmLogout() {
     toggleLogoutModal();
 }
 
-// Preview da imagem de avatar
-function previewAvatar(input) {
+// Preview da imagem
+function previewAvatar(input, previewId = 'avatarPreview') {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         
         reader.onload = function(e) {
-            const preview = document.getElementById('avatarPreview');
-            preview.src = e.target.result;
+            const preview = document.getElementById(previewId);
+            if (preview) {
+                preview.src = e.target.result;
+            }
         };
         
         reader.readAsDataURL(input.files[0]);

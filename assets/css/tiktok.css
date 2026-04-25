@@ -9,8 +9,11 @@
     --video-inner-spacing: 15px;
     --video-inner-spacing-mobile: 12px;
     --safe-top: env(safe-area-inset-top, 0px);
-    /* Cálculo inteligente da altura total do header para evitar sobreposição */
     --header-total-height: calc(var(--header-btn-size) + (var(--header-py) * 2));
+    
+    /* Variáveis para cálculo de centralização do player */
+    --player-max-height: 90vh;
+    --player-top-offset: calc((100vh - var(--player-max-height)) / 2);
 }
 
 * {
@@ -315,10 +318,14 @@ body * {
 /* Controles de vídeo - Alinhados dinamicamente para ficarem SEMPRE abaixo do header */
 .video-controls {
     position: absolute;
-    /* Agora relativo ao .video-item (100vh), o cálculo é exato */
-    top: calc(var(--header-total-height) + var(--safe-top) + 1px);
+    /* Cálculo inteligente: 
+       Posição desejada na tela (Header + Safe + 1px) 
+       MENOS o deslocamento que o player já tem por estar centralizado.
+       Garante que fique 1px abaixo do header mesmo estando dentro do player.
+    */
+    top: calc(max(15px, var(--header-total-height) + var(--safe-top) + 1px - var(--player-top-offset)));
     left: var(--header-px);
-    z-index: 20; /* Aumentado para ficar acima do player e overlays */
+    z-index: 20;
 }
 
 /*  iPhone SE / dispositivos pequenos (375×667)
@@ -378,7 +385,8 @@ body * {
     }
     
     .video-controls {
-        top: calc(var(--header-total-height) + var(--safe-top) + 1px);
+        /* No mobile o player costuma ocupar 100% ou ser centralizado de forma diferente */
+        top: calc(max(10px, var(--header-total-height) + var(--safe-top) + 1px - var(--player-top-offset)));
         right: var(--header-px);
         left: auto;
         z-index: 20;

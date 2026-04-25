@@ -20,7 +20,7 @@ if ($profile_user_id > 0 && isLoggedIn()) {
     
     // Buscar dados do usuário do perfil
     $stmt = $pdo->prepare("
-        SELECT id, username, full_name, profile_picture, is_verified, videos_count
+        SELECT id, username, full_name, profile_picture, is_verified, videos_count, name_icon
         FROM users WHERE id = ?
     ");
     $stmt->execute([$profile_user_id]);
@@ -52,6 +52,21 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
     <link rel="stylesheet" href="<?php echo asset('assets/css/feed.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset('assets/css/splash.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .name-icon-badge {
+            height: 1.1em;
+            width: auto;
+            vertical-align: middle;
+            display: inline-block;
+            object-fit: contain;
+            border-radius: 2px;
+            margin-left: 4px;
+        }
+        .profile-header-name {
+            display: flex;
+            align-items: center;
+        }
+    </style>
     
     <!-- SEO & Social Media Meta Tags -->
     <?php include __DIR__ . '/includes/seo_meta.php'; ?>
@@ -250,6 +265,10 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
                             @<?php echo htmlspecialchars($profile_user['username']); ?>
                             <?php if ($profile_user['is_verified']): ?>
                                 <i class="fas fa-check-circle verified-badge"></i>
+                            <?php endif; ?>
+                            <?php if (!empty($profile_user['name_icon'])): ?>
+                                <img src="assets/images/icons/<?php echo htmlspecialchars($profile_user['name_icon']); ?>" 
+                                     alt="Badge" class="name-icon-badge">
                             <?php endif; ?>
                         </span>
                         <span class="profile-header-videos"><?php echo $profile_user['videos_count']; ?> vídeos</span>

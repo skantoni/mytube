@@ -522,6 +522,22 @@ class FeedManager {
                     Seu navegador não suporta o elemento de vídeo.
                 </video>
                 
+                <!-- Controles de áudio - Voltaram para dentro do player, mas com cálculo inteligente de posição -->
+                <div class="video-controls">
+                    <button class="audio-toggle" data-video-id="${video.id}" title="Ativar/Desativar Som">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                </div>
+                
+                <!-- Overlay para ativar som -->
+                <div class="audio-prompt-overlay" id="audio-prompt-${video.id}" style="display: none;">
+                    <div class="audio-prompt-content">
+                        <i class="fas fa-volume-up"></i>
+                        <h3>Toque para ativar o som</h3>
+                        <p>Clique aqui para reproduzir com áudio</p>
+                    </div>
+                </div>
+                
                 <!-- Informações do vídeo na parte inferior -->
                 <div class="video-info-overlay">
                     <div class="video-author-row">
@@ -533,6 +549,7 @@ class FeedManager {
                             <span class="video-author-name">
                                 ${escapeHtml(video.user.full_name || video.user.username)}
                                 ${video.user.is_verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}
+                                ${video.user.name_icon ? `<img src="assets/images/icons/${escapeHtml(video.user.name_icon)}" alt="Badge" class="name-icon-badge">` : ''}
                             </span>
                         </a>
                         ${followBtnInline}
@@ -551,22 +568,6 @@ class FeedManager {
                 </div>
             </div>
             
-            <!-- Controles de áudio - Movidos para fora do player para alinhamento preciso com o header -->
-            <div class="video-controls">
-                <button class="audio-toggle" data-video-id="${video.id}" title="Ativar/Desativar Som">
-                    <i class="fas fa-volume-up"></i>
-                </button>
-            </div>
-            
-            <!-- Overlay para ativar som -->
-            <div class="audio-prompt-overlay" id="audio-prompt-${video.id}" style="display: none;">
-                <div class="audio-prompt-content">
-                    <i class="fas fa-volume-up"></i>
-                    <h3>Toque para ativar o som</h3>
-                    <p>Clique aqui para reproduzir com áudio</p>
-                </div>
-            </div>
-            
             <!-- Overlay com informações (para compatibilidade) -->
             <div class="video-overlay" style="display: none;">
                 <div class="video-info">
@@ -582,6 +583,7 @@ class FeedManager {
                                 <a href="perfil.php?id=${video.user.id}" class="username-link">
                                     ${escapeHtml(video.user.full_name || video.user.username)}
                                     ${video.user.is_verified ? '<span class="verified-badge">✓</span>' : ''}
+                                    ${video.user.name_icon ? `<img src="assets/images/icons/${escapeHtml(video.user.name_icon)}" alt="Badge" class="name-icon-badge">` : ''}
                                 </a>
                             </div>
                         </div>
