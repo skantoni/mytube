@@ -17,6 +17,13 @@ uploads/*.log
 !uploads/videos/.gitkeep
 !uploads/chat/.gitkeep
 
+# Avatares e ícones gerados/enviados por utilizadores
+# (nunca devem estar no repositório — são ficheiros de produção)
+assets/images/avatars/*
+assets/images/icons/*
+!assets/images/avatars/.gitkeep
+!assets/images/icons/.gitkeep
+
 # === DEPENDÊNCIAS & BINÁRIOS ===
 aws.phar
 composer.phar
