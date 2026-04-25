@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (isset($_POST['update_profile'])) {
         // Buscar dados atuais do utilizador para comparação
-        $currentStmt = $pdo->prepare("SELECT full_name, bio, instituicao, school_id, name_icon FROM users WHERE id = ?");
+        $currentStmt = $pdo->prepare("SELECT full_name, bio, instituicao, school_id, name_icon, profile_picture FROM users WHERE id = ?");
         $currentStmt->execute([$user_id]);
         $currentData = $currentStmt->fetch();
 
