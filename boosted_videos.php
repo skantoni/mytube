@@ -80,6 +80,14 @@ $top_videos_rank = $pdo->query("
 ")->fetchAll();
 
 $nudenet_available = moderation_is_nudenet_available();
+
+// ── Premium users ─────────────────────────────────────────────
+// Column may not exist yet if migration hasn't run — safe fallback
+try {
+    $premium_count = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE is_premium = 1")->fetchColumn();
+} catch (Exception $e) {
+    $premium_count = 0;
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -127,6 +135,13 @@ $nudenet_available = moderation_is_nudenet_available();
         <li class="ap-nav-item" data-section="rankings" role="button" tabindex="0">
             <i class="fas fa-trophy"></i>
             <span>Rankings</span>
+        </li>
+        <li class="ap-nav-item" data-section="premium" role="button" tabindex="0">
+            <i class="fas fa-star"></i>
+            <span>Premium</span>
+            <?php if ($premium_count > 0): ?>
+                <span class="ap-badge ap-badge-gold"><?php echo $premium_count; ?></span>
+            <?php endif; ?>
         </li>
 
         <li class="ap-nav-divider"></li>
@@ -721,6 +736,66 @@ $nudenet_available = moderation_is_nudenet_available();
                     </table>
                 </div>
             <?php endif; ?>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+         PREMIUM
+    ════════════════════════════════════════════════════════════ -->
+    <section class="ap-section" id="section-premium">
+        <div class="ap-section-header">
+            <div>
+                <div class="ap-eyebrow"><i class="fas fa-star"></i> Perfis Premium</div>
+                <h1 class="ap-section-title">Utilizadores Premium</h1>
+                <p class="ap-section-sub">Gerir quais utilizadores têm acesso a funcionalidades premium (ícone de nome, etc.)</p>
+            </div>
+        </div>
+
+        <!-- Stat card -->
+        <div class="ap-stat-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-bottom:28px;">
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(245,158,11,.12);color:#f59e0b;">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="ap-stat-body">
+                    <div class="ap-stat-value" id="premiumCount"><?php echo $premium_count; ?></div>
+                    <div class="ap-stat-label">Utilizadores Premium</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search & Add -->
+        <div class="ap-card" style="margin-bottom:24px;">
+            <div class="ap-card-header">
+                <h3 class="ap-card-title"><i class="fas fa-user-plus"></i> Adicionar Utilizador Premium</h3>
+            </div>
+            <div class="ap-card-body">
+                <div class="premium-search-wrap">
+                    <div class="premium-search-input-row">
+                        <i class="fas fa-search premium-search-icon"></i>
+                        <input type="text" id="premiumSearchInput"
+                               class="premium-search-input"
+                               placeholder="Pesquisar por nome ou @username..."
+                               autocomplete="off">
+                    </div>
+                    <div id="premiumSearchResults" class="premium-search-results ap-hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current premium users list -->
+        <div class="ap-card ap-card-overflow-hidden">
+            <div class="ap-card-header">
+                <h3 class="ap-card-title"><i class="fas fa-crown"></i> Lista Premium</h3>
+            </div>
+            <div class="ap-card-body" style="padding:0;">
+                <div id="premiumUsersList">
+                    <div class="ap-empty-state" style="padding:40px 20px;">
+                        <i class="fas fa-spinner fa-spin" style="font-size:1.6rem;color:#475569;"></i>
+                        <p>A carregar...</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 

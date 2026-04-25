@@ -85,9 +85,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             
-            // Processar upload do ícone de nome
+            // Processar upload do ícone de nome (apenas utilizadores premium)
             $name_icon = null;
             if (isset($_FILES['name_icon']) && $_FILES['name_icon']['error'] === UPLOAD_ERR_OK) {
+                // Verificar se o utilizador é premium
+                $premChk = $pdo->prepare("SELECT is_premium FROM users WHERE id = ? LIMIT 1");
+                $premChk->execute([$user_id]);
+                $premRow = $premChk->fetch();
+                if (empty($premRow['is_premium'])) {
+                    $error = 'O ícone de nome é uma funcionalidade exclusiva para utilizadores Premium.';
+                } else {
                 require_once 'includes/upload_validation.php';
                 $icon_validation = validate_image_upload(
                     $_FILES['name_icon']['tmp_name'],
@@ -96,24 +103,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
                 
                 if (!$icon_validation['valid']) {
-                    $error = "Ícone de nome: " . $icon_validation['error'];
-                } else {
-                    $upload_dir = __DIR__ . '/assets/images/icons/';
-                    if (!is_dir($upload_dir)) {
-                        @mkdir($upload_dir, 0755, true);
-                    }
-                    if (!is_dir($upload_dir) || !is_writable($upload_dir)) {
-                        $error = 'Diretório de ícones não existe ou sem permissão de escrita. Contacte o administrador.';
+                        $error = "Ícone de nome: " . $icon_validation['error'];
                     } else {
-                        $file_extension = $icon_validation['extension'];
-                        $new_filename = 'icon_' . $user_id . '_' . time() . '.' . $file_extension;
-                        if (move_uploaded_file($_FILES['name_icon']['tmp_name'], $upload_dir . $new_filename)) {
-                            $name_icon = $new_filename;
+                        $upload_dir = __DIR__ . '/assets/images/icons/';
+                        if (!is_dir($upload_dir)) {
+                            @mkdir($upload_dir, 0755, true);
+                        }
+                        if (!is_dir($upload_dir) || !is_writable($upload_dir)) {
+                            $error = 'Diretório de ícones não existe ou sem permissão de escrita. Contacte o administrador.';
                         } else {
-                            $error = 'Erro ao mover o ficheiro do ícone.';
+                            $file_extension = $icon_validation['extension'];
+                            $new_filename = 'icon_' . $user_id . '_' . time() . '.' . $file_extension;
+                            if (move_uploaded_file($_FILES['name_icon']['tmp_name'], $upload_dir . $new_filename)) {
+                                $name_icon = $new_filename;
+                            } else {
+                                $error = 'Erro ao mover o ficheiro do ícone.';
+                            }
                         }
                     }
-                }
+                } // end premium check
             }
             
             if (empty($error)) {
@@ -554,39 +562,55 @@ $has_more_videos = $total_user_videos > count($user_videos);
                         <input type="hidden" name="remove_photo" id="removePhotoInput" value="0">
                     </div>
                 </div>
+                <?php $isPremiumUser = !empty($user['is_premium']) || isAdminUser(); ?>
                 <div class="form-group">
-                    <label>Ícone de Nome <small style="color:#64748b;font-weight:400;">(opcional — aparece ao lado do nome)</small></label>
-                    <?php
-                    $iconFile = $user['name_icon'] ?? '';
-                    $iconPath = !empty($iconFile) ? 'assets/images/icons/' . $iconFile : '';
-                    $hasIcon = !empty($iconPath) && file_exists($iconPath);
-                    ?>
-                    <div class="icon-upload-row">
-                        <div class="icon-preview-wrap <?php echo $hasIcon ? '' : 'icon-preview-empty'; ?>" id="iconPreviewWrap">
-                            <img id="nameIconPreview"
-                                 src="<?php echo $hasIcon ? htmlspecialchars($iconPath) : ''; ?>"
-                                 alt="Ícone"
-                                 style="<?php echo $hasIcon ? '' : 'display:none;'; ?>">
-                            <?php if (!$hasIcon): ?>
-                                <i class="fas fa-image" style="color:#475569;font-size:1.1rem;"></i>
-                            <?php endif; ?>
+                    <label>
+                        Ícone de Nome
+                        <?php if ($isPremiumUser): ?>
+                            <span class="premium-badge"><i class="fas fa-star"></i> Premium</span>
+                        <?php else: ?>
+                            <span class="premium-badge premium-badge-locked"><i class="fas fa-lock"></i> Premium</span>
+                        <?php endif; ?>
+                        <small style="color:#64748b;font-weight:400;">(aparece ao lado do nome)</small>
+                    </label>
+                    <?php if ($isPremiumUser): ?>
+                        <?php
+                        $iconFile = $user['name_icon'] ?? '';
+                        $iconPath = !empty($iconFile) ? 'assets/images/icons/' . $iconFile : '';
+                        $hasIcon = !empty($iconPath) && file_exists(__DIR__ . '/' . $iconPath);
+                        ?>
+                        <div class="icon-upload-row">
+                            <div class="icon-preview-wrap <?php echo $hasIcon ? '' : 'icon-preview-empty'; ?>" id="iconPreviewWrap">
+                                <img id="nameIconPreview"
+                                     src="<?php echo $hasIcon ? htmlspecialchars($iconPath) : ''; ?>"
+                                     alt="Ícone"
+                                     style="<?php echo $hasIcon ? '' : 'display:none;'; ?>">
+                                <?php if (!$hasIcon): ?>
+                                    <i class="fas fa-image" style="color:#475569;font-size:1.1rem;"></i>
+                                <?php endif; ?>
+                            </div>
+                            <div class="media-btn-row">
+                                <input type="file" name="name_icon" id="nameIcon" accept="image/*"
+                                       style="display:none"
+                                       onchange="previewNameIcon(this)">
+                                <label for="nameIcon" class="upload-btn upload-btn-sm" id="nameIconLabel">
+                                    <i class="fas fa-image"></i>
+                                    <?php echo $hasIcon ? 'Trocar' : 'Escolher'; ?>
+                                </label>
+                                <button type="button" class="btn-remove-media" id="removeIconBtn"
+                                        style="<?php echo $hasIcon ? '' : 'display:none;'; ?>"
+                                        onclick="markRemoveIcon()">
+                                    <i class="fas fa-times"></i> Remover
+                                </button>
+                            </div>
                         </div>
-                        <div class="media-btn-row">
-                            <input type="file" name="name_icon" id="nameIcon" accept="image/*"
-                                   style="display:none"
-                                   onchange="previewNameIcon(this)">
-                            <label for="nameIcon" class="upload-btn upload-btn-sm" id="nameIconLabel">
-                                <i class="fas fa-image"></i>
-                                <?php echo $hasIcon ? 'Trocar' : 'Escolher'; ?>
-                            </label>
-                            <button type="button" class="btn-remove-media" id="removeIconBtn"
-                                    style="<?php echo $hasIcon ? '' : 'display:none;'; ?>"
-                                    onclick="markRemoveIcon()">
-                                <i class="fas fa-times"></i> Remover
-                            </button>
+                        <input type="hidden" name="remove_icon" id="removeIconInput" value="0">
+                    <?php else: ?>
+                        <div class="premium-locked-notice">
+                            <i class="fas fa-star"></i>
+                            Esta funcionalidade está disponível para utilizadores <strong>Premium</strong>.
                         </div>
-                    </div>
-                    <input type="hidden" name="remove_icon" id="removeIconInput" value="0">
+                    <?php endif; ?>
                 </div>
                 
                 <div class="form-group">
@@ -1962,6 +1986,38 @@ $has_more_videos = $total_user_videos > count($user_videos);
     .btn-remove-media:hover {
         background: rgba(239,68,68,0.25);
     }
+    .premium-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #f59e0b, #f97316);
+        color: #fff;
+        margin-left: 6px;
+        vertical-align: middle;
+    }
+    .premium-badge-locked {
+        background: rgba(100,116,139,.25);
+        color: #94a3b8;
+    }
+    .premium-locked-notice {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        background: rgba(245,158,11,.07);
+        border: 1px solid rgba(245,158,11,.2);
+        border-radius: 10px;
+        color: #fbbf24;
+        font-size: .9rem;
+        font-weight: 500;
+    }
+    .premium-locked-notice i { flex-shrink: 0; }
     </style>
 
 

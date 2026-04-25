@@ -108,7 +108,7 @@
 
         // Restore from URL hash
         const hash = (window.location.hash || '').replace('#', '');
-        const validSections = ['overview', 'moderation', 'boosted', 'rankings'];
+        const validSections = ['overview', 'moderation', 'boosted', 'rankings', 'premium'];
         if (hash && validSections.indexOf(hash) !== -1) {
             switchSection(hash);
         }
@@ -403,6 +403,201 @@
         initBoostActions();
         initMobileTabs();
         loadBoostMetrics();
+        initPremium();
     });
+
+    // ── Premium section ───────────────────────────────────────
+    function initPremium() {
+        var searchInput = document.getElementById('premiumSearchInput');
+        var searchResults = document.getElementById('premiumSearchResults');
+        if (!searchInput) return;
+
+        // Load current premium users on first activation
+        var listLoaded = false;
+        document.querySelectorAll('.ap-nav-item[data-section="premium"]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (!listLoaded) {
+                    listLoaded = true;
+                    loadPremiumList();
+                }
+            });
+        });
+        // Also load if section is already active (direct URL hash)
+        if ((window.location.hash || '').replace('#', '') === 'premium') {
+            listLoaded = true;
+            loadPremiumList();
+        }
+
+        // Search debounce
+        var searchTimer;
+        searchInput.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            var q = searchInput.value.trim();
+            if (q.length < 2) {
+                searchResults.innerHTML = '';
+                searchResults.classList.add('ap-hidden');
+                return;
+            }
+            searchTimer = setTimeout(function () { runPremiumSearch(q); }, 300);
+        });
+
+        // Close dropdown on outside click
+        document.addEventListener('click', function (e) {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.classList.add('ap-hidden');
+            }
+        });
+    }
+
+    function loadPremiumList() {
+        fetch('api/admin_premium.php?action=list', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            var list = document.getElementById('premiumUsersList');
+            if (!list) return;
+            if (!data.success || !data.users.length) {
+                list.innerHTML = '<div class="ap-empty-state" style="padding:40px 20px;">' +
+                    '<i class="fas fa-star" style="font-size:2rem;color:#f59e0b;opacity:.3;"></i>' +
+                    '<p>Nenhum utilizador premium ainda.</p></div>';
+                return;
+            }
+            list.innerHTML = renderPremiumTable(data.users);
+        })
+        .catch(function () {
+            var list = document.getElementById('premiumUsersList');
+            if (list) list.innerHTML = '<div class="ap-empty-state" style="padding:40px 20px;"><p>Erro ao carregar.</p></div>';
+        });
+    }
+
+    function runPremiumSearch(q) {
+        var results = document.getElementById('premiumSearchResults');
+        if (!results) return;
+        results.innerHTML = '<div class="premium-sr-loading"><i class="fas fa-spinner fa-spin"></i></div>';
+        results.classList.remove('ap-hidden');
+
+        fetch('api/admin_premium.php?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.users || !data.users.length) {
+                results.innerHTML = '<div class="premium-sr-empty">Nenhum utilizador encontrado.</div>';
+                return;
+            }
+            results.innerHTML = data.users.map(function (u) {
+                var isPrem = parseInt(u.is_premium) === 1;
+                return '<div class="premium-sr-item" data-user-id="' + u.id + '" data-is-premium="' + (isPrem ? 1 : 0) + '">' +
+                    '<div class="premium-sr-avatar">' +
+                        (u.profile_picture ? '<img src="assets/images/avatars/' + escHtml(u.profile_picture) + '" onerror="apAvatarFallback(this)">' : '<i class="fas fa-user"></i>') +
+                    '</div>' +
+                    '<div class="premium-sr-info">' +
+                        '<strong>' + escHtml(u.full_name || u.username) + '</strong>' +
+                        '<span>@' + escHtml(u.username) + '</span>' +
+                    '</div>' +
+                    (isPrem
+                        ? '<button class="ap-btn ap-btn-sm" style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);" onclick="setPremium(' + u.id + ',0,this)"><i class="fas fa-star"></i> Remover</button>'
+                        : '<button class="ap-btn ap-btn-sm ap-btn-primary" onclick="setPremium(' + u.id + ',1,this)"><i class="far fa-star"></i> Tornar Premium</button>') +
+                    '</div>';
+            }).join('');
+        })
+        .catch(function () {
+            results.innerHTML = '<div class="premium-sr-empty">Erro ao pesquisar.</div>';
+        });
+    }
+
+    function setPremium(userId, value, triggerEl) {
+        if (triggerEl) { triggerEl.disabled = true; triggerEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+        fetch('api/admin_premium.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCsrfToken(),
+            },
+            body: JSON.stringify({ user_id: userId, value: value, csrf_token: getCsrfToken() }),
+            credentials: 'same-origin',
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                showToast(value ? '⭐ @' + data.username + ' é agora Premium!' : '@' + data.username + ' removido do Premium.', value ? 'success' : 'info');
+                loadPremiumList();
+                updatePremiumCounter(value ? 1 : -1);
+                // Refresh the search result row
+                var item = triggerEl && triggerEl.closest('.premium-sr-item');
+                if (item) {
+                    item.dataset.isPremium = value ? '1' : '0';
+                    var btn = item.querySelector('button');
+                    if (btn) {
+                        if (value) {
+                            btn.style = 'background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);';
+                            btn.innerHTML = '<i class="fas fa-star"></i> Remover';
+                            btn.setAttribute('onclick', 'setPremium(' + userId + ',0,this)');
+                        } else {
+                            btn.style = '';
+                            btn.className = 'ap-btn ap-btn-sm ap-btn-primary';
+                            btn.innerHTML = '<i class="far fa-star"></i> Tornar Premium';
+                            btn.setAttribute('onclick', 'setPremium(' + userId + ',1,this)');
+                        }
+                        btn.disabled = false;
+                    }
+                }
+            } else {
+                showToast(data.error || 'Erro desconhecido.', 'error');
+                if (triggerEl) { triggerEl.disabled = false; triggerEl.innerHTML = value ? '<i class="far fa-star"></i> Tornar Premium' : '<i class="fas fa-star"></i> Remover'; }
+            }
+        })
+        .catch(function () {
+            showToast('Erro de rede.', 'error');
+            if (triggerEl) { triggerEl.disabled = false; }
+        });
+    }
+
+    function updatePremiumCounter(delta) {
+        var el = document.getElementById('premiumCount');
+        if (el) el.textContent = Math.max(0, (parseInt(el.textContent) || 0) + delta);
+        var badge = document.querySelector('.ap-nav-item[data-section="premium"] .ap-badge');
+        if (badge) {
+            var n = Math.max(0, (parseInt(badge.textContent) || 0) + delta);
+            badge.textContent = n;
+            badge.style.display = n ? '' : 'none';
+        }
+    }
+
+    function renderPremiumTable(users) {
+        return '<table class="ap-table">' +
+            '<thead><tr>' +
+            '<th>Utilizador</th>' +
+            '<th style="text-align:right;">Ações</th>' +
+            '</tr></thead>' +
+            '<tbody>' +
+            users.map(function (u) {
+                return '<tr>' +
+                    '<td>' +
+                        '<div style="display:flex;align-items:center;gap:10px;">' +
+                            '<div style="width:36px;height:36px;border-radius:50%;overflow:hidden;background:#1e293b;flex-shrink:0;display:flex;align-items:center;justify-content:center;">' +
+                                (u.profile_picture ? '<img src="assets/images/avatars/' + escHtml(u.profile_picture) + '" style="width:36px;height:36px;object-fit:cover;" onerror="apAvatarFallback(this)">' : '<i class="fas fa-user" style="color:#475569;"></i>') +
+                            '</div>' +
+                            '<div>' +
+                                '<div style="font-weight:700;">' + escHtml(u.full_name || u.username) +
+                                    (parseInt(u.is_verified) ? ' <i class="fas fa-check-circle" style="color:#3b82f6;font-size:.8em"></i>' : '') +
+                                '</div>' +
+                                '<div style="color:#64748b;font-size:.85rem;">@' + escHtml(u.username) + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</td>' +
+                    '<td style="text-align:right;">' +
+                        '<button class="ap-btn ap-btn-sm" style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);" onclick="setPremium(' + u.id + ',0,this)">' +
+                            '<i class="fas fa-star"></i> Remover Premium' +
+                        '</button>' +
+                    '</td>' +
+                '</tr>';
+            }).join('') +
+            '</tbody></table>';
+    }
+
+    function escHtml(str) {
+        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Expose to global scope for inline onclick handlers
+    window.setPremium = setPremium;
 
 })();
