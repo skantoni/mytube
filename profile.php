@@ -336,7 +336,7 @@ $has_more_videos = $total_user_videos > count($user_videos);
 
         <!-- Informações do perfil -->
         <section class="profile-info">
-            <div class="profile-avatar">
+            <div class="profile-avatar" onclick="openAvatarActionSheet()" style="cursor:pointer">
                 <?php
                     $avatarFile = $user['profile_picture'] ?? 'default.jpg';
                     $avatarPath = 'assets/images/avatars/' . $avatarFile;
@@ -347,9 +347,7 @@ $has_more_videos = $total_user_videos > count($user_videos);
                 <img src="<?php echo htmlspecialchars($avatarPath, ENT_QUOTES, 'UTF-8'); ?>" 
                      alt="<?php echo htmlspecialchars($user['full_name']); ?>" 
                      class="avatar-image"
-                     onerror="this.onerror=null;this.src='assets/images/avatars/default.jpg';"
-                     onclick="openAvatarActionSheet()" 
-                     style="cursor:pointer">
+                     onerror="this.onerror=null;this.src='assets/images/avatars/default.jpg';">
                 <?php if ($user['is_verified']): ?>
                     <div class="verified-badge-large">
                         <i class="fas fa-check"></i>
@@ -534,20 +532,30 @@ $has_more_videos = $total_user_videos > count($user_videos);
                             Alterar Foto
                         </label>
                     </div>
+                </div>
                 <div class="form-group">
-                    <label>Ícone de Nome (Badge)</label>
-                    <div class="avatar-upload">
-                        <?php
-                        $iconFile = $user['name_icon'] ?? '';
-                        $iconPath = !empty($iconFile) ? 'assets/images/icons/' . $iconFile : '';
-                        ?>
-                        <img src="<?php echo !empty($iconPath) && file_exists($iconPath) ? htmlspecialchars($iconPath) : 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2364748b\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Ccircle cx=\'12\' cy=\'12\' r=\'10\'%3E%3C/circle%3E%3Cline x1=\'12\' y1=\'8\' x2=\'12\' y2=\'12\'%3E%3C/line%3E%3Cline x1=\'12\' y1=\'16\' x2=\'12.01\' y2=\'16\'%3E%3C/line%3E%3C/svg%3E'; ?>" 
-                             alt="Ícone" class="current-avatar" id="nameIconPreview" 
-                             style="width: 40px; height: 40px; border-radius: 4px; object-fit: contain;">
-                        <input type="file" name="name_icon" id="nameIcon" accept="image/*" onchange="previewAvatar(this, 'nameIconPreview')">
-                        <label for="nameIcon" class="upload-btn">
+                    <label>Ícone de Nome <small style="color:#64748b;font-weight:400;">(opcional — aparece ao lado do nome)</small></label>
+                    <?php
+                    $iconFile = $user['name_icon'] ?? '';
+                    $iconPath = !empty($iconFile) ? 'assets/images/icons/' . $iconFile : '';
+                    $hasIcon = !empty($iconPath) && file_exists($iconPath);
+                    ?>
+                    <div class="icon-upload-row">
+                        <div class="icon-preview-wrap <?php echo $hasIcon ? '' : 'icon-preview-empty'; ?>">
+                            <img id="nameIconPreview"
+                                 src="<?php echo $hasIcon ? htmlspecialchars($iconPath) : ''; ?>"
+                                 alt="Ícone"
+                                 style="<?php echo $hasIcon ? '' : 'display:none;'; ?>">
+                            <?php if (!$hasIcon): ?>
+                                <i class="fas fa-image" style="color:#475569;font-size:1.1rem;"></i>
+                            <?php endif; ?>
+                        </div>
+                        <input type="file" name="name_icon" id="nameIcon" accept="image/*"
+                               style="display:none"
+                               onchange="previewNameIcon(this)">
+                        <label for="nameIcon" class="upload-btn upload-btn-sm">
                             <i class="fas fa-image"></i>
-                            Escolher Ícone
+                            <?php echo $hasIcon ? 'Trocar' : 'Escolher'; ?>
                         </label>
                     </div>
                 </div>
@@ -1869,13 +1877,61 @@ $has_more_videos = $total_user_videos > count($user_videos);
         border-radius: 4px;
         margin-bottom: 2px;
     }
+    /* Icon picker inline */
+    .icon-upload-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: 8px;
+    }
+    .icon-preview-wrap {
+        width: 44px;
+        height: 44px;
+        border-radius: 8px;
+        border: 2px solid rgba(59,130,246,0.4);
+        background: rgba(255,255,255,0.05);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .icon-preview-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    .icon-preview-empty {
+        border-style: dashed;
+        border-color: rgba(100,116,139,0.5);
+    }
+    .upload-btn-sm {
+        padding: 8px 14px;
+        font-size: 0.85rem;
+    }
     </style>
 
 
     <script>
     // === Avatar Action Sheet (profile.php) ===
-    function openAvatarActionSheet() {
-        document.getElementById('avatarActionOverlay').classList.add('active');
+    function previewNameIcon(input) {
+        if (!input.files || !input.files[0]) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('nameIconPreview');
+            const wrap = preview.closest('.icon-preview-wrap');
+            preview.src = e.target.result;
+            preview.style.display = '';
+            wrap.classList.remove('icon-preview-empty');
+            const placeholder = wrap.querySelector('i.fas');
+            if (placeholder) placeholder.remove();
+            // Update button label
+            const lbl = document.querySelector('label[for="nameIcon"]');
+            if (lbl) lbl.innerHTML = '<i class="fas fa-image"></i> Trocar';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+    function openAvatarActionSheet() {        document.getElementById('avatarActionOverlay').classList.add('active');
         document.body.style.overflow = 'hidden';
     }
     function closeAvatarActionSheet() {

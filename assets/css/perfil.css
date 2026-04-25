@@ -587,6 +587,7 @@ body {
     
     .profile-name {
         font-size: 1.6rem;
+        justify-content: center;
     }
     
     .videos-grid {

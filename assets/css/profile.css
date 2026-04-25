@@ -731,6 +731,7 @@
 
     .profile-name {
         font-size: 2rem;
+        justify-content: center;
     }
 
     .profile-stats {

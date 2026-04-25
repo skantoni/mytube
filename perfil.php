@@ -170,7 +170,7 @@ try {
         <!-- Seção do perfil -->
         <section class="profile-section">
             <div class="profile-info">
-                <div class="profile-avatar">
+                <div class="profile-avatar" onclick="openPerfilAvatarSheet()" style="cursor:pointer">
                     <?php 
                     $avatar_pic = $user_data['profile_picture'] ?? 'default.webp';
                     $avatar_path = 'assets/images/avatars/' . $avatar_pic;
@@ -180,9 +180,7 @@ try {
                     ?>
                     <img src="<?php echo htmlspecialchars($avatar_path); ?>" 
                          alt="<?php echo htmlspecialchars($user_data['username']); ?>"
-                         class="avatar-image"
-                         onclick="openPerfilAvatarSheet()" 
-                         style="cursor:pointer">
+                         class="avatar-image">
                     <?php if ($user_data['is_verified']): ?>
                         <span class="verified-badge-large">
                             <i class="fas fa-check"></i>
