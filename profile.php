@@ -99,14 +99,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = "Ícone de nome: " . $icon_validation['error'];
                 } else {
                     $upload_dir = __DIR__ . '/assets/images/icons/';
-                    if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-                    
-                    $file_extension = $icon_validation['extension'];
-                    $new_filename = 'icon_' . $user_id . '_' . time() . '.' . $file_extension;
-                    if (move_uploaded_file($_FILES['name_icon']['tmp_name'], $upload_dir . $new_filename)) {
-                        $name_icon = $new_filename;
+                    if (!is_dir($upload_dir)) {
+                        @mkdir($upload_dir, 0755, true);
+                    }
+                    if (!is_dir($upload_dir) || !is_writable($upload_dir)) {
+                        $error = 'Diretório de ícones não existe ou sem permissão de escrita. Contacte o administrador.';
                     } else {
-                        $error = 'Erro ao fazer upload do ícone.';
+                        $file_extension = $icon_validation['extension'];
+                        $new_filename = 'icon_' . $user_id . '_' . time() . '.' . $file_extension;
+                        if (move_uploaded_file($_FILES['name_icon']['tmp_name'], $upload_dir . $new_filename)) {
+                            $name_icon = $new_filename;
+                        } else {
+                            $error = 'Erro ao mover o ficheiro do ícone.';
+                        }
                     }
                 }
             }
