@@ -19,10 +19,9 @@ uploads/*.log
 
 # Avatares e ícones gerados/enviados por utilizadores
 # (nunca devem estar no repositório — são ficheiros de produção)
-assets/images/avatars/*
-assets/images/icons/*
-!assets/images/avatars/.gitkeep
-!assets/images/icons/.gitkeep
+# Só excluir ficheiros de utilizadores específicos (user_*, icon_*)
+assets/images/avatars/user_*
+assets/images/icons/icon_*
 
 # === DEPENDÊNCIAS & BINÁRIOS ===
 aws.phar
