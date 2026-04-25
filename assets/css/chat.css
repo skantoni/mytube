@@ -902,6 +902,16 @@ body {
     font-size: 14.2px;
     line-height: 19px;
     word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+/* Media/file containers inside message-text must not inherit pre-wrap */
+.message-text .chat-image-container,
+.message-text .chat-video-container,
+.message-text .chat-file-container,
+.message-text .audio-message,
+.message-text .video-preview-card {
+    white-space: normal;
 }
 
 .message.sent .message-text {
@@ -1374,6 +1384,80 @@ body {
     padding: 10px 15px;
     display: flex;
     align-items: flex-end;
+}
+
+/* WhatsApp-style inline image preview inside the input */
+.input-wrapper.has-image-preview {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.input-image-preview {
+    position: relative;
+    display: inline-flex;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    align-self: flex-start;
+}
+
+.input-image-thumb {
+    max-width: 120px;
+    max-height: 120px;
+    width: auto;
+    height: auto;
+    border-radius: 8px;
+    object-fit: cover;
+    display: block;
+    border: 2px solid rgba(59, 130, 246, 0.6);
+}
+
+.input-image-remove {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    line-height: 1;
+    padding: 0;
+    z-index: 1;
+}
+
+.input-image-remove:hover {
+    background: #b91c1c;
+}
+
+/* When preview is active, the row (textarea + emoji) fills remaining space */
+.input-wrapper.has-image-preview .input-row {
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+}
+
+/* Always keep input-row as a flex row */
+.input-row {
+    display: flex;
+    align-items: flex-end;
+    flex: 1;
+    width: 100%;
+}
+
+/* Caption below image/video in a message bubble (WhatsApp-style) */
+.message-caption {
+    font-size: 14px;
+    line-height: 1.4;
+    color: #e2e8f0;
+    margin-top: 6px;
+    word-break: break-word;
+    white-space: pre-wrap;
 }
 
 #messageInput {

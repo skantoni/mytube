@@ -191,13 +191,15 @@ $current_user = $stmt->fetch();
                         <i class="fas fa-paperclip"></i>
                     </button>
                     <div class="input-wrapper">
-                        <textarea 
-                            id="messageInput" 
-                            placeholder="Mete dica..." 
-                            rows="1"></textarea>
-                        <button class="emoji-btn" onclick="showEmojiPicker()">
-                            <i class="fas fa-smile"></i>
-                        </button>
+                        <div class="input-row">
+                            <textarea 
+                                id="messageInput" 
+                                placeholder="Mete dica..." 
+                                rows="1"></textarea>
+                            <button class="emoji-btn" onclick="showEmojiPicker()">
+                                <i class="fas fa-smile"></i>
+                            </button>
+                        </div>
                     </div>
                     <button class="voice-btn" id="voiceBtn" onclick="toggleVoiceRecording()">
                         <i class="fas fa-microphone"></i>

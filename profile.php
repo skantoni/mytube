@@ -167,22 +167,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 
+                $defaultPhotos = ['default.jpg', 'default.webp', ''];
+
                 if ($profile_picture) {
                     $changedFields[] = "profile_picture = ?";
                     $params[] = $profile_picture;
+                    // Apagar foto antiga ao substituir
+                    $oldPhoto = $currentData['profile_picture'] ?? '';
+                    if (!empty($oldPhoto) && !in_array($oldPhoto, $defaultPhotos)) {
+                        $oldPhotoPath = __DIR__ . '/assets/images/avatars/' . $oldPhoto;
+                        if (file_exists($oldPhotoPath)) {
+                            @unlink($oldPhotoPath);
+                        }
+                    }
                 }
                 
                 if ($name_icon) {
                     $changedFields[] = "name_icon = ?";
                     $params[] = $name_icon;
+                    // Apagar ícone antigo ao substituir
+                    $oldIcon = $currentData['name_icon'] ?? '';
+                    if (!empty($oldIcon)) {
+                        $oldIconPath = __DIR__ . '/assets/images/icons/' . $oldIcon;
+                        if (file_exists($oldIconPath)) {
+                            @unlink($oldIconPath);
+                        }
+                    }
                 } elseif (!empty($_POST['remove_icon']) && $_POST['remove_icon'] === '1') {
                     $changedFields[] = "name_icon = ?";
                     $params[] = null;
+                    // Apagar ficheiro do ícone removido
+                    $oldIcon = $currentData['name_icon'] ?? '';
+                    if (!empty($oldIcon)) {
+                        $oldIconPath = __DIR__ . '/assets/images/icons/' . $oldIcon;
+                        if (file_exists($oldIconPath)) {
+                            @unlink($oldIconPath);
+                        }
+                    }
                 }
 
                 if (!$profile_picture && !empty($_POST['remove_photo']) && $_POST['remove_photo'] === '1') {
                     $changedFields[] = "profile_picture = ?";
                     $params[] = null;
+                    // Apagar ficheiro da foto removida
+                    $oldPhoto = $currentData['profile_picture'] ?? '';
+                    if (!empty($oldPhoto) && !in_array($oldPhoto, $defaultPhotos)) {
+                        $oldPhotoPath = __DIR__ . '/assets/images/avatars/' . $oldPhoto;
+                        if (file_exists($oldPhotoPath)) {
+                            @unlink($oldPhotoPath);
+                        }
+                    }
                 }
 
                 // Só executar UPDATE se algo realmente mudou

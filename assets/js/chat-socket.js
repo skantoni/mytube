@@ -26,6 +26,10 @@ let replyToMessageId = null;
 // Estado de edição de mensagem
 let editingMessageId = null;
 
+// Imagem colada (paste) pendente de envio
+let pendingPasteFile = null;
+let pendingPasteObjectUrl = null;
+
 // Heartbeat para manter last_seen atualizado (evita status online fantasma)
 let heartbeatInterval = null;
 
@@ -497,6 +501,9 @@ function setupMessageInput() {
             handleTyping();
             autoResizeTextarea(this);
         });
+
+        // Suporte a colar imagens (Ctrl+V)
+        messageInput.addEventListener('paste', handlePaste);
         
         console.log('✅ Event listeners configurados no messageInput');
     }
@@ -1564,6 +1571,22 @@ function sendMessage() {
     const messageInput = document.getElementById('messageInput');
     if (!messageInput) return;
 
+    // Se há imagem colada pendente, enviá-la com a legenda no mesmo bubble
+    if (pendingPasteFile) {
+        const caption = messageInput.value.trim();
+        const fileToSend = pendingPasteFile;
+
+        // Limpar estado de paste antes de enviar
+        messageInput.value = '';
+        autoResizeTextarea(messageInput);
+        clearInlineImagePreview();
+        cancelReply();
+        stopTypingStatus();
+
+        uploadAndSendFile(fileToSend, 'image', caption);
+        return;
+    }
+
     sendTextMessage(messageInput.value, {
         clearInput: true,
         allowEdit: true,
@@ -1980,10 +2003,12 @@ function createMessageElement(msg, isTemp = false) {
             </div>
         `;
     } else if (isImageMessage) {
+        const imgCaption = (msg.message || '').trim();
+        const imgCaptionHTML = imgCaption ? `<div class="message-caption">${escapeHtml(imgCaption)}</div>` : '';
         messageContent = `
             <div class="chat-image-container">
                 <img data-src="${msg.file_url}" class="chat-image" alt="Imagem" onclick="openImageViewer('${msg.file_url}')">
-            </div>
+            </div>${imgCaptionHTML}
         `;
     } else if (isVideoMessage) {
         messageContent = `
@@ -2869,13 +2894,15 @@ function createChatAreaHTML() {
                 <i class="fas fa-paperclip"></i>
             </button>
             <div class="input-wrapper">
-                <textarea 
-                    id="messageInput" 
-                    placeholder="Mete dica..." 
-                    rows="1"></textarea>
-                <button class="emoji-btn" onclick="showEmojiPicker()">
-                    <i class="fas fa-smile"></i>
-                </button>
+                <div class="input-row">
+                    <textarea 
+                        id="messageInput" 
+                        placeholder="Mete dica..." 
+                        rows="1"></textarea>
+                    <button class="emoji-btn" onclick="showEmojiPicker()">
+                        <i class="fas fa-smile"></i>
+                    </button>
+                </div>
             </div>
             <button class="voice-btn" id="voiceBtn" onclick="toggleVoiceRecording()">
                 <i class="fas fa-microphone"></i>
@@ -2982,13 +3009,90 @@ function toggleSendButton() {
     const sendBtn = document.getElementById('sendBtn');
     const voiceBtn = document.getElementById('voiceBtn');
     
-    if (messageInput && messageInput.value.trim().length > 0) {
+    if ((messageInput && messageInput.value.trim().length > 0) || pendingPasteFile) {
         if (sendBtn) sendBtn.style.display = 'flex';
         if (voiceBtn) voiceBtn.style.display = 'none';
     } else {
         if (sendBtn) sendBtn.style.display = 'none';
         if (voiceBtn) voiceBtn.style.display = 'flex';
     }
+}
+
+// ─── Paste de imagem ────────────────────────────────────────────
+function handlePaste(event) {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+        if (item.type.startsWith('image/')) {
+            event.preventDefault();
+            const file = item.getAsFile();
+            if (file) showInlineImagePreview(file);
+            return;
+        }
+    }
+}
+
+function showInlineImagePreview(file) {
+    // Revogar URL anterior
+    if (pendingPasteObjectUrl) {
+        URL.revokeObjectURL(pendingPasteObjectUrl);
+        pendingPasteObjectUrl = null;
+    }
+    clearInlineImagePreview();
+
+    pendingPasteFile = file;
+    pendingPasteObjectUrl = URL.createObjectURL(file);
+
+    const wrapper = document.querySelector('.input-wrapper');
+    if (!wrapper) return;
+
+    const previewEl = document.createElement('div');
+    previewEl.id = 'inputImagePreview';
+    previewEl.className = 'input-image-preview';
+
+    // Criar img via createElement para evitar sanitização de blob URLs no innerHTML
+    const thumb = document.createElement('img');
+    thumb.src = pendingPasteObjectUrl;
+    thumb.className = 'input-image-thumb';
+    thumb.alt = 'Preview';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'input-image-remove';
+    removeBtn.title = 'Remover imagem';
+    removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+    removeBtn.addEventListener('click', clearInlineImagePreview);
+
+    previewEl.appendChild(thumb);
+    previewEl.appendChild(removeBtn);
+
+    // Inserir antes da linha de input
+    const inputRow = wrapper.querySelector('.input-row');
+    if (inputRow) {
+        wrapper.insertBefore(previewEl, inputRow);
+    } else {
+        wrapper.appendChild(previewEl);
+    }
+
+    wrapper.classList.add('has-image-preview');
+
+    toggleSendButton();
+    const messageInput = document.getElementById('messageInput');
+    if (messageInput) messageInput.focus();
+}
+
+function clearInlineImagePreview() {
+    const el = document.getElementById('inputImagePreview');
+    if (el) el.remove();
+
+    const wrapper = document.querySelector('.input-wrapper');
+    if (wrapper) wrapper.classList.remove('has-image-preview');
+
+    if (pendingPasteObjectUrl) {
+        URL.revokeObjectURL(pendingPasteObjectUrl);
+        pendingPasteObjectUrl = null;
+    }
+    pendingPasteFile = null;
+    toggleSendButton();
 }
 
 function autoResizeTextarea(textarea) {
@@ -3450,30 +3554,27 @@ function showFilePreview(file, fileType) {
     // Remover preview anterior
     const existing = document.getElementById('filePreviewOverlay');
     if (existing) existing.remove();
-    
+
+    // Criar object URL antes do innerHTML (garante que é válido)
+    let mediaObjectUrl = null;
+
     const overlay = document.createElement('div');
     overlay.id = 'filePreviewOverlay';
     overlay.className = 'file-preview-overlay';
-    
-    let previewContent = '';
+
     const fileSize = formatFileSize(file.size);
-    
-    if (fileType === 'image') {
-        const objectUrl = URL.createObjectURL(file);
-        previewContent = `<img src="${objectUrl}" class="file-preview-image" alt="Preview">`;
-    } else if (fileType === 'video') {
-        const objectUrl = URL.createObjectURL(file);
-        previewContent = `<video src="${objectUrl}" class="file-preview-video" controls></video>`;
-    } else {
+
+    let docPreviewHTML = '';
+    if (fileType !== 'image' && fileType !== 'video') {
         const ext = file.name.split('.').pop().toUpperCase();
-        previewContent = `
+        docPreviewHTML = `
             <div class="file-preview-doc">
                 <i class="fas ${getFileIcon(file.name)}"></i>
                 <span class="file-preview-ext">${ext}</span>
             </div>
         `;
     }
-    
+
     overlay.innerHTML = `
         <div class="file-preview-modal">
             <div class="file-preview-header">
@@ -3482,8 +3583,8 @@ function showFilePreview(file, fileType) {
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="file-preview-body">
-                ${previewContent}
+            <div class="file-preview-body" id="filePreviewBody">
+                ${docPreviewHTML}
             </div>
             <div class="file-preview-footer">
                 <span class="file-preview-size">${fileSize}</span>
@@ -3496,14 +3597,35 @@ function showFilePreview(file, fileType) {
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(overlay);
-    
+
+    // Injetar media via createElement (evita sanitização do innerHTML)
+    const body = overlay.querySelector('#filePreviewBody');
+    if (fileType === 'image') {
+        mediaObjectUrl = URL.createObjectURL(file);
+        const img = document.createElement('img');
+        img.src = mediaObjectUrl;
+        img.className = 'file-preview-image';
+        img.alt = 'Preview';
+        body.appendChild(img);
+    } else if (fileType === 'video') {
+        mediaObjectUrl = URL.createObjectURL(file);
+        const vid = document.createElement('video');
+        vid.src = mediaObjectUrl;
+        vid.className = 'file-preview-video';
+        vid.controls = true;
+        body.appendChild(vid);
+    }
+
+    // Guardar URL no overlay para revogar ao fechar
+    if (mediaObjectUrl) overlay.dataset.objectUrl = mediaObjectUrl;
+
     // Fechar ao clicar fora
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) closeFilePreview();
     });
-    
+
     // Botão enviar
     document.getElementById('sendFileBtn').addEventListener('click', () => {
         closeFilePreview();
@@ -3515,37 +3637,40 @@ function closeFilePreview() {
     const overlay = document.getElementById('filePreviewOverlay');
     if (overlay) {
         // Limpar object URLs
-        const img = overlay.querySelector('.file-preview-image');
+        const url = overlay.dataset.objectUrl;
+        if (url) URL.revokeObjectURL(url);
         const vid = overlay.querySelector('.file-preview-video');
-        if (img) URL.revokeObjectURL(img.src);
-        if (vid) { vid.pause(); URL.revokeObjectURL(vid.src); }
+        if (vid) vid.pause();
         overlay.remove();
     }
 }
 
-async function uploadAndSendFile(file, fileType) {
+async function uploadAndSendFile(file, fileType, caption = '') {
     if (!chatWithUserId) return false;
     
     const tempId = 'file_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
     const fileSize = formatFileSize(file.size);
     const fileName = file.name;
+    const captionText = (caption || '').trim();
     
     // Criar mensagem temporária no DOM
     const tempDiv = document.createElement('div');
     tempDiv.className = 'message sent';
     tempDiv.setAttribute('data-temp-id', tempId);
     
+    // Construir caption HTML (abaixo da imagem, estilo WhatsApp)
+    const captionHTML = captionText
+        ? `<div class="message-caption">${escapeHtml(captionText)}</div>`
+        : '';
+
     let tempContent = '';
+    let tempImageObjectUrl = null;
+
     if (fileType === 'image') {
-        const objectUrl = URL.createObjectURL(file);
-        tempContent = `
-            <div class="chat-image-container loaded">
-                <img src="${objectUrl}" class="chat-image loaded loading" alt="Enviando...">
-                <div class="upload-progress-overlay">
-                    <div class="upload-progress-spinner"></div>
-                </div>
-            </div>
-        `;
+        tempImageObjectUrl = URL.createObjectURL(file);
+        tempContent = `<div class="chat-image-container loaded" id="tmp-img-${tempId}">
+            <div class="upload-progress-overlay"><div class="upload-progress-spinner"></div></div>
+        </div>`;
     } else if (fileType === 'video') {
         tempContent = `
             <div class="chat-video-container">
@@ -3575,7 +3700,7 @@ async function uploadAndSendFile(file, fileType) {
         <div class="message-content">
             <div class="message-bubble-wrapper">
                 <div class="message-bubble">
-                    <div class="message-text">${tempContent}</div>
+                    <div class="message-text">${tempContent}${captionHTML}</div>
                     <div class="message-meta">
                         <span class="message-time">${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</span>
                         <span class="message-status sending"><i class="fas fa-clock"></i></span>
@@ -3588,6 +3713,19 @@ async function uploadAndSendFile(file, fileType) {
     const chatMessages = document.getElementById('chatMessages');
     if (chatMessages) {
         chatMessages.appendChild(tempDiv);
+
+        // Injetar img via createElement para que o blob URL funcione
+        if (tempImageObjectUrl) {
+            const containerEl = document.getElementById(`tmp-img-${tempId}`);
+            if (containerEl) {
+                const imgEl = document.createElement('img');
+                imgEl.src = tempImageObjectUrl;
+                imgEl.className = 'chat-image loaded loading';
+                imgEl.alt = 'A enviar...';
+                containerEl.insertBefore(imgEl, containerEl.firstChild);
+            }
+        }
+
         scrollToBottom();
         playSentSound();
     }
@@ -3597,7 +3735,7 @@ async function uploadAndSendFile(file, fileType) {
     formData.append('file', file);
     formData.append('type', fileType);
     formData.append('receiver_id', chatWithUserId);
-    formData.append('message', fileType === 'file' ? `[file:${fileName}:${file.size}]` : '');
+    formData.append('message', fileType === 'file' ? `[file:${fileName}:${file.size}]` : captionText);
     
     try {
         const response = await fetch('api/upload_chat_file.php', {
@@ -3609,6 +3747,9 @@ async function uploadAndSendFile(file, fileType) {
         
         if (result.success) {
             console.log('✅ Arquivo enviado:', result.message.id);
+
+            // Revogar object URL temporária
+            if (tempImageObjectUrl) URL.revokeObjectURL(tempImageObjectUrl);
             
             // Atualizar mensagem temporária
             const tempMsg = document.querySelector(`[data-temp-id="${tempId}"]`);
@@ -3620,6 +3761,10 @@ async function uploadAndSendFile(file, fileType) {
                 const bubble = tempMsg.querySelector('.message-bubble');
                 if (bubble) {
                     const fileUrl = result.file_info.url;
+                    const savedCaption = (result.message.message || '').trim();
+                    const realCaptionHTML = savedCaption
+                        ? `<div class="message-caption">${escapeHtml(savedCaption)}</div>`
+                        : '';
                     let realContent = '';
                     
                     if (fileType === 'image') {
@@ -3654,7 +3799,7 @@ async function uploadAndSendFile(file, fileType) {
                         `;
                     }
                     
-                    bubble.querySelector('.message-text').innerHTML = realContent;
+                    bubble.querySelector('.message-text').innerHTML = realContent + realCaptionHTML;
                     
                     const statusEl = bubble.querySelector('.message-status');
                     if (statusEl) updateMessageStatusIcon(statusEl, result.message.status || 'sent');
@@ -3665,7 +3810,7 @@ async function uploadAndSendFile(file, fileType) {
                         const moreBtn = document.createElement('button');
                         moreBtn.className = 'msg-more-btn';
                         moreBtn.innerHTML = '<i class="fas fa-ellipsis-v"></i>';
-                        moreBtn.onclick = (e) => showMessageOptions(e, result.message.id, '', true);
+                        moreBtn.onclick = (e) => showMessageOptions(e, result.message.id, savedCaption || '', true);
                         msgContent.insertBefore(moreBtn, msgContent.firstChild);
                     }
                 }
