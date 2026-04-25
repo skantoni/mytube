@@ -69,16 +69,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$validation['valid']) {
                     $error = $validation['error'];
                 } else {
-                    $upload_dir = 'assets/images/avatars/';
+                    $upload_dir = __DIR__ . '/assets/images/avatars/';
                     if (!is_dir($upload_dir)) {
                         mkdir($upload_dir, 0755, true);
                     }
                     
                     $file_extension = $validation['extension'];
                     $new_filename = 'user_' . $user_id . '_' . time() . '.' . $file_extension;
-                    $upload_path = $upload_dir . $new_filename;
                     
-                    if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $upload_path)) {
+                    if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $upload_dir . $new_filename)) {
                         $profile_picture = $new_filename;
                     } else {
                         $error = 'Erro ao fazer upload da foto.';
@@ -99,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$icon_validation['valid']) {
                     $error = "Ícone de nome: " . $icon_validation['error'];
                 } else {
-                    $upload_dir = 'assets/images/icons/';
+                    $upload_dir = __DIR__ . '/assets/images/icons/';
                     if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
                     
                     $file_extension = $icon_validation['extension'];
@@ -163,6 +162,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($name_icon) {
                     $changedFields[] = "name_icon = ?";
                     $params[] = $name_icon;
+                } elseif (!empty($_POST['remove_icon']) && $_POST['remove_icon'] === '1') {
+                    $changedFields[] = "name_icon = ?";
+                    $params[] = null;
+                }
+
+                if (!$profile_picture && !empty($_POST['remove_photo']) && $_POST['remove_photo'] === '1') {
+                    $changedFields[] = "profile_picture = ?";
+                    $params[] = null;
                 }
 
                 // Só executar UPDATE se algo realmente mudou
@@ -526,11 +533,20 @@ $has_more_videos = $total_user_videos > count($user_videos);
                         <img src="<?php echo htmlspecialchars($avatarPath, ENT_QUOTES, 'UTF-8'); ?>" 
                              alt="Avatar" class="current-avatar" id="avatarPreview"
                              onerror="this.onerror=null;this.src='assets/images/avatars/default.jpg';">
-                        <input type="file" name="profile_picture" id="profilePicture" accept="image/*" onchange="previewAvatar(this)">
-                        <label for="profilePicture" class="upload-btn">
-                            <i class="fas fa-camera"></i>
-                            Alterar Foto
-                        </label>
+                        <div class="media-btn-row">
+                            <input type="file" name="profile_picture" id="profilePicture" accept="image/*" onchange="previewAvatar(this)">
+                            <label for="profilePicture" class="upload-btn upload-btn-sm">
+                                <i class="fas fa-camera"></i>
+                                Alterar Foto
+                            </label>
+                            <?php $isDefaultPhoto = empty($user['profile_picture']) || in_array($user['profile_picture'], ['default.jpg', 'default.webp', null]); ?>
+                            <?php if (!$isDefaultPhoto): ?>
+                            <button type="button" class="btn-remove-media" id="removePhotoBtn" onclick="markRemovePhoto()">
+                                <i class="fas fa-trash-alt"></i> Remover
+                            </button>
+                            <?php endif; ?>
+                        </div>
+                        <input type="hidden" name="remove_photo" id="removePhotoInput" value="0">
                     </div>
                 </div>
                 <div class="form-group">
@@ -541,7 +557,7 @@ $has_more_videos = $total_user_videos > count($user_videos);
                     $hasIcon = !empty($iconPath) && file_exists($iconPath);
                     ?>
                     <div class="icon-upload-row">
-                        <div class="icon-preview-wrap <?php echo $hasIcon ? '' : 'icon-preview-empty'; ?>">
+                        <div class="icon-preview-wrap <?php echo $hasIcon ? '' : 'icon-preview-empty'; ?>" id="iconPreviewWrap">
                             <img id="nameIconPreview"
                                  src="<?php echo $hasIcon ? htmlspecialchars($iconPath) : ''; ?>"
                                  alt="Ícone"
@@ -550,14 +566,22 @@ $has_more_videos = $total_user_videos > count($user_videos);
                                 <i class="fas fa-image" style="color:#475569;font-size:1.1rem;"></i>
                             <?php endif; ?>
                         </div>
-                        <input type="file" name="name_icon" id="nameIcon" accept="image/*"
-                               style="display:none"
-                               onchange="previewNameIcon(this)">
-                        <label for="nameIcon" class="upload-btn upload-btn-sm">
-                            <i class="fas fa-image"></i>
-                            <?php echo $hasIcon ? 'Trocar' : 'Escolher'; ?>
-                        </label>
+                        <div class="media-btn-row">
+                            <input type="file" name="name_icon" id="nameIcon" accept="image/*"
+                                   style="display:none"
+                                   onchange="previewNameIcon(this)">
+                            <label for="nameIcon" class="upload-btn upload-btn-sm" id="nameIconLabel">
+                                <i class="fas fa-image"></i>
+                                <?php echo $hasIcon ? 'Trocar' : 'Escolher'; ?>
+                            </label>
+                            <button type="button" class="btn-remove-media" id="removeIconBtn"
+                                    style="<?php echo $hasIcon ? '' : 'display:none;'; ?>"
+                                    onclick="markRemoveIcon()">
+                                <i class="fas fa-times"></i> Remover
+                            </button>
+                        </div>
                     </div>
+                    <input type="hidden" name="remove_icon" id="removeIconInput" value="0">
                 </div>
                 
                 <div class="form-group">
@@ -1909,6 +1933,30 @@ $has_more_videos = $total_user_videos > count($user_videos);
         padding: 8px 14px;
         font-size: 0.85rem;
     }
+    .media-btn-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .btn-remove-media {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        background: rgba(239,68,68,0.12);
+        color: #f87171;
+        border: 1px solid rgba(239,68,68,0.3);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+    .btn-remove-media:hover {
+        background: rgba(239,68,68,0.25);
+    }
     </style>
 
 
@@ -1919,17 +1967,43 @@ $has_more_videos = $total_user_videos > count($user_videos);
         const reader = new FileReader();
         reader.onload = function(e) {
             const preview = document.getElementById('nameIconPreview');
-            const wrap = preview.closest('.icon-preview-wrap');
+            const wrap = document.getElementById('iconPreviewWrap');
             preview.src = e.target.result;
             preview.style.display = '';
             wrap.classList.remove('icon-preview-empty');
             const placeholder = wrap.querySelector('i.fas');
             if (placeholder) placeholder.remove();
-            // Update button label
-            const lbl = document.querySelector('label[for="nameIcon"]');
-            if (lbl) lbl.innerHTML = '<i class="fas fa-image"></i> Trocar';
+            document.getElementById('nameIconLabel').innerHTML = '<i class="fas fa-image"></i> Trocar';
+            const removeBtn = document.getElementById('removeIconBtn');
+            if (removeBtn) removeBtn.style.display = '';
+            document.getElementById('removeIconInput').value = '0';
         };
         reader.readAsDataURL(input.files[0]);
+    }
+    function markRemoveIcon() {
+        document.getElementById('removeIconInput').value = '1';
+        document.getElementById('nameIcon').value = '';
+        const preview = document.getElementById('nameIconPreview');
+        const wrap = document.getElementById('iconPreviewWrap');
+        if (preview) { preview.src = ''; preview.style.display = 'none'; }
+        if (wrap) {
+            wrap.classList.add('icon-preview-empty');
+            if (!wrap.querySelector('i.fas')) {
+                const ic = document.createElement('i');
+                ic.className = 'fas fa-image';
+                ic.style.cssText = 'color:#475569;font-size:1.1rem;';
+                wrap.appendChild(ic);
+            }
+        }
+        document.getElementById('nameIconLabel').innerHTML = '<i class="fas fa-image"></i> Escolher';
+        document.getElementById('removeIconBtn').style.display = 'none';
+    }
+    function markRemovePhoto() {
+        document.getElementById('removePhotoInput').value = '1';
+        document.getElementById('profilePicture').value = '';
+        document.getElementById('avatarPreview').src = 'assets/images/avatars/default.jpg';
+        const btn = document.getElementById('removePhotoBtn');
+        if (btn) btn.style.display = 'none';
     }
     function openAvatarActionSheet() {        document.getElementById('avatarActionOverlay').classList.add('active');
         document.body.style.overflow = 'hidden';
