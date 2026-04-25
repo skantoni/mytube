@@ -840,22 +840,3 @@
         padding: 30px 20px;
     }
 }
-
-/* Estilos para o ícone de nome (Badge) */
-.name-icon-badge {
-    height: 1.1em;
-    width: auto;
-    vertical-align: middle;
-    display: inline-block;
-    object-fit: contain;
-    border-radius: 2px;
-    margin-left: 5px;
-    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));
-}
-
-/* Ajuste para o container do nome */
-.video-author-name, .author-name {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}

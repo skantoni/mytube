@@ -549,7 +549,6 @@ class FeedManager {
                             <span class="video-author-name">
                                 ${escapeHtml(video.user.full_name || video.user.username)}
                                 ${video.user.is_verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}
-                                ${video.user.name_icon ? `<img src="assets/images/icons/${escapeHtml(video.user.name_icon)}" alt="Badge" class="name-icon-badge">` : ''}
                             </span>
                         </a>
                         ${followBtnInline}
@@ -583,7 +582,6 @@ class FeedManager {
                                 <a href="perfil.php?id=${video.user.id}" class="username-link">
                                     ${escapeHtml(video.user.full_name || video.user.username)}
                                     ${video.user.is_verified ? '<span class="verified-badge">✓</span>' : ''}
-                                    ${video.user.name_icon ? `<img src="assets/images/icons/${escapeHtml(video.user.name_icon)}" alt="Badge" class="name-icon-badge">` : ''}
                                 </a>
                             </div>
                         </div>
