@@ -376,6 +376,13 @@ function initializeSocket() {
     socket.on('contact_presence_snapshot', handleContactPresenceSnapshot);
     socket.on('contact_presence_update', handleContactPresenceUpdate);
     
+    // Eventos de grupos
+    socket.on('groups_list', handleGroupsList);
+    socket.on('group_messages_list', handleGroupMessagesList);
+    socket.on('new_group_message', handleNewGroupMessage);
+    socket.on('group_message_sent', handleGroupMessageSent);
+    socket.on('group_message_notification', handleGroupMessageNotification);
+    
     // Erros
     socket.on('error', handleError);
 
@@ -1380,6 +1387,9 @@ function handleSearchResults(users) {
 }
 
 function handleMessageNotification(data) {
+    // Se é notificação de grupo, ignorar aqui — já tratado em handleGroupMessageNotification
+    if (data.groupId) return;
+
     // Extrair dados (suporta formato direto e formato com message object)
     const senderUsername = data.senderFullName || data.senderUsername || (data.message && (data.message.sender_full_name || data.message.sender_username)) || 'Alguém';
     const senderAvatar = data.senderAvatar || (data.message && (data.message.sender_avatar || data.message.sender_picture)) || '';
@@ -2686,6 +2696,16 @@ function closeNewChatModal() {
 
 function openChat(userId) {
     closeNewChatModal();
+
+    // Se grupo estiver aberto, fechá-lo sem tocar na sidebar (openChat trata disso)
+    if (currentGroupId) {
+        socket.emit('leave_group', { groupId: currentGroupId });
+        currentGroupId = null;
+        const groupMain = document.getElementById('groupChatMain');
+        if (groupMain) groupMain.style.display = 'none';
+        document.querySelectorAll('.group-item').forEach(el => el.classList.remove('active'));
+        closeEmojiPicker();
+    }
     
     // Atualizar URL sem recarregar a página
     const fromParam = typeof fromPage !== 'undefined' && fromPage ? `&from=${fromPage}` : '';
@@ -4254,7 +4274,9 @@ function attachEmojiItemEvents(picker) {
 }
 
 function insertEmoji(emoji) {
-    const input = document.getElementById('messageInput');
+    // Usar o input correcto: grupo ou 1:1
+    const inputId = currentGroupId ? 'groupMessageInput' : 'messageInput';
+    const input = document.getElementById(inputId);
     if (!input) return;
     
     // Inserir na posição do cursor
@@ -4292,8 +4314,8 @@ function closeEmojiPicker() {
     if (picker) picker.remove();
     emojiPickerOpen = false;
     
-    const emojiBtn = document.querySelector('.chat-main .emoji-btn');
-    if (emojiBtn) emojiBtn.style.color = '';
+    // Resetar cor do botão (1:1 ou grupo)
+    document.querySelectorAll('.emoji-btn').forEach(btn => btn.style.color = '');
     
     document.removeEventListener('click', closeEmojiPickerOnClickOutside);
 }
@@ -4907,3 +4929,679 @@ document.addEventListener('click', function(e) {
         attachMenu.style.display = 'none';
     }
 });
+
+// ========================================
+// GRUPOS DE CHAT
+// ========================================
+
+let currentGroupId = null;
+let groupReplyToMessageId = null;
+let groupTempMessageId = 0;
+let cachedGroups = [];
+let groupUnreadCounts = {}; // {groupId: count} — fonte de verdade local para badges
+
+// Variável injectada pelo PHP (true se admin, false caso contrário)
+// const isAdmin = false; — declarado no chat.php inline script
+
+// ---- SOCKET HANDLERS ----
+
+function handleGroupsList(groups) {
+    cachedGroups = groups || [];
+    // Sincronizar badge counts: usar server unread_count se não tivermos contagem local
+    cachedGroups.forEach(g => {
+        const servCount = parseInt(g.unread_count) || 0;
+        if (!(g.group_id in groupUnreadCounts) && servCount > 0) {
+            groupUnreadCounts[g.group_id] = servCount;
+        }
+    });
+    renderGroupsList(cachedGroups);
+}
+
+function handleGroupMessagesList(data) {
+    const { groupId, messages } = data;
+    if (groupId !== currentGroupId) return;
+
+    const container = document.getElementById('groupChatMessages');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (messages.length === 0) {
+        container.innerHTML = '<div class="no-messages-yet"><i class="fas fa-comments"></i><p>Nenhuma mensagem ainda</p></div>';
+        return;
+    }
+
+    messages.forEach(msg => {
+        container.appendChild(buildGroupMessageEl(msg));
+    });
+    container.scrollTop = container.scrollHeight;
+}
+
+function handleNewGroupMessage(data) {
+    const { groupId, message } = data;
+
+    // Atualizar lista de grupos na sidebar
+    if (socket && socket.connected) {
+        socket.emit('get_groups', {});
+    }
+
+    if (groupId !== currentGroupId) return;
+
+    const container = document.getElementById('groupChatMessages');
+    if (!container) return;
+
+    // Som só se a mensagem for de outro utilizador
+    // (não tocar aqui — o group_message_notification já toca para membros fora do grupo;
+    //  para membros dentro do grupo, toca uma vez aqui)
+    if (parseInt(message.sender_id) !== currentUserId) {
+        playNotificationSound();
+    }
+
+    container.appendChild(buildGroupMessageEl(message));
+    container.scrollTop = container.scrollHeight;
+}
+
+function handleGroupMessageSent(data) {
+    const { tempId, messageId, groupId, createdAt } = data;
+    const tempEl = document.querySelector(`[data-temp-id="group_${tempId}"]`);
+    if (tempEl) {
+        tempEl.dataset.messageId = messageId;
+        tempEl.removeAttribute('data-temp-id');
+        const statusEl = tempEl.querySelector('.group-msg-status');
+        if (statusEl) statusEl.innerHTML = '<i class="fas fa-check"></i>';
+    }
+}
+
+function handleGroupMessageNotification(data) {
+    const { groupId, senderId, senderUsername, content } = data;
+    // Normalizar para inteiro para comparar com currentGroupId
+    const gid = parseInt(groupId);
+
+    // Incrementar badge sempre (o mapa local gere a contagem)
+    groupUnreadCounts[gid] = (groupUnreadCounts[gid] || 0) + 1;
+
+    // Actualizar badge no DOM imediatamente
+    const groupItem = document.querySelector(`.group-item[data-group-id="${gid}"]`);
+    if (groupItem) {
+        let badge = groupItem.querySelector('.unread-badge');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'unread-badge';
+            groupItem.querySelector('.conversation-preview').appendChild(badge);
+        }
+        const count = groupUnreadCounts[gid];
+        badge.textContent = count > 99 ? '99+' : count;
+    }
+
+    // Som + notificação só se não estamos neste grupo (evitar duplo som com new_group_message)
+    if (gid !== currentGroupId) {
+        playNotificationSound();
+        const groupName = cachedGroups.find(g => g.group_id === gid)?.name || 'Grupo';
+        if (Notification.permission === 'granted' && document.hidden) {
+            new Notification(`${escapeHtml(senderUsername)} em ${escapeHtml(groupName)}`, {
+                body: content,
+                icon: '/assets/images/icon-192.png'
+            });
+        } else {
+            showToast(`${escapeHtml(senderUsername)} em ${escapeHtml(groupName)}: ${escapeHtml(content)}`, 'info');
+        }
+    }
+}
+
+// ---- RENDER ----
+
+function renderGroupsList(groups) {
+    const section = document.getElementById('groupsSection');
+    const listEl = document.getElementById('groupsList');
+    if (!listEl) return;
+
+    if (!groups || groups.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = 'block';
+    listEl.innerHTML = groups.map(g => {
+        const isActive = g.group_id === currentGroupId;
+        const lastMsg = g.last_message ? escapeHtml(g.last_message.substring(0, 35)) + (g.last_message.length > 35 ? '…' : '') : 'Nenhuma mensagem';
+        const lastSender = g.last_sender_username ? escapeHtml(g.last_sender_username) + ': ' : '';
+        const lastTime = g.last_message_time ? formatMessageTime(g.last_message_time) : '';
+        return `
+            <div class="group-item ${isActive ? 'active' : ''}" data-group-id="${g.group_id}" onclick="openGroupChat(${g.group_id})">
+                <div class="group-avatar">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="conversation-info">
+                    <div class="conversation-header">
+                        <h4>${escapeHtml(g.name)}</h4>
+                        <span class="conversation-time">${lastTime}</span>
+                    </div>
+                    <div class="conversation-preview">
+                        <p>${lastSender}${lastMsg}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function buildGroupMessageEl(msg) {
+    const isMine = parseInt(msg.sender_id) === currentUserId;
+    const avatar = getAvatarUrl(msg.sender_avatar);
+    const name = escapeHtml(msg.sender_full_name || msg.sender_username);
+    const time = formatMessageTime(msg.created_at);
+    const msgText = escapeHtml(msg.message);
+
+    const div = document.createElement('div');
+    div.className = `message ${isMine ? 'sent' : 'received'} group-message`;
+    div.dataset.messageId = msg.id;
+
+    let replyHtml = '';
+    if (msg.reply_to_message_id && msg.reply_content) {
+        replyHtml = `
+            <div class="message-reply">
+                <span class="reply-user">${escapeHtml(msg.reply_username || '')}</span>
+                <span class="reply-text">${escapeHtml(msg.reply_content.substring(0, 80))}</span>
+            </div>
+        `;
+    }
+
+    const statusHtml = isMine ? '<span class="group-msg-status"><i class="fas fa-check"></i></span>' : '';
+
+    div.innerHTML = `
+        ${!isMine ? `<img src="${avatar}" class="message-avatar" onerror="this.src='${DEFAULT_AVATAR}'" alt="${name}">` : ''}
+        <div class="message-content">
+            <div class="message-bubble-wrapper">
+                <div class="message-bubble">
+                    ${!isMine ? `<span class="group-sender-name">${name}</span>` : ''}
+                    ${replyHtml}
+                    <div class="message-text">${msgText}</div>
+                    <div class="message-meta">
+                        <span class="message-time">${time}</span>
+                        ${statusHtml}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Long-press / right-click para reply
+    div.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        setGroupReply(msg.id, msg.sender_username, msg.message);
+    });
+
+    return div;
+}
+
+// ---- ABRIR/FECHAR GRUPO ----
+
+function openGroupChat(groupId) {
+    // Fechar 1:1 chat se aberto
+    chatWithUserId = null;
+    currentConversationId = null;
+
+    currentGroupId = groupId;
+    groupReplyToMessageId = null;
+
+    const group = cachedGroups.find(g => g.group_id === groupId);
+
+    // Actualizar header
+    document.getElementById('groupChatName').textContent = group ? group.name : 'Grupo';
+    document.getElementById('groupMemberCount').textContent = group ? `${group.member_count} membros` : '';
+
+    // Mostrar área de grupo, esconder área de 1:1
+    const chatMain = document.getElementById('chatMain');
+    const groupMain = document.getElementById('groupChatMain');
+    if (chatMain) chatMain.style.display = 'none';
+    if (groupMain) groupMain.style.display = 'flex';
+
+    // Mostrar loading
+    const container = document.getElementById('groupChatMessages');
+    if (container) {
+        container.innerHTML = '<div class="loading-messages"><i class="fas fa-spinner fa-spin"></i><p>Carregando mensagens...</p></div>';
+    }
+
+    // Marcar grupo como activo
+    document.querySelectorAll('.group-item').forEach(el => el.classList.remove('active'));
+    const activeEl = document.querySelector(`.group-item[data-group-id="${groupId}"]`);
+    if (activeEl) activeEl.classList.add('active');
+
+    // Entrar na sala do grupo
+    socket.emit('join_group', { groupId });
+
+    // Marcar como lido: actualizar last_seen no servidor
+    socket.emit('mark_group_as_read', { groupId });
+
+    // Limpar badge do grupo na sidebar
+    delete groupUnreadCounts[groupId];
+    const groupItemToClear = document.querySelector(`.group-item[data-group-id="${groupId}"]`);
+    if (groupItemToClear) {
+        const badge = groupItemToClear.querySelector('.unread-badge');
+        if (badge) badge.remove();
+    }
+
+    // Mobile: esconder sidebar
+    hideSidebarOnMobile();
+
+    // Setup input
+    setupGroupMessageInput();
+}
+
+function closeGroupChat() {
+    if (currentGroupId) {
+        socket.emit('leave_group', { groupId: currentGroupId });
+    }
+    currentGroupId = null;
+    closeEmojiPicker();
+
+    const groupMain = document.getElementById('groupChatMain');
+    if (groupMain) groupMain.style.display = 'none';
+
+    const chatMain = document.getElementById('chatMain');
+    if (chatMain) chatMain.style.display = '';
+
+    // Remover selecção activa
+    document.querySelectorAll('.group-item').forEach(el => el.classList.remove('active'));
+
+    // Mobile: mostrar sidebar corretamente (remover classe hidden + inline style)
+    if (window.innerWidth <= 768) {
+        const sidebar = document.querySelector('.chat-sidebar');
+        if (sidebar) {
+            sidebar.classList.remove('hidden');
+            sidebar.style.display = 'flex';
+        }
+        // Esconder chatMain no mobile (sidebar ocupa o ecrã)
+        if (chatMain) chatMain.style.display = 'none';
+    }
+}
+
+// ---- ENVIAR MENSAGEM DE GRUPO ----
+
+function setupGroupMessageInput() {
+    const input = document.getElementById('groupMessageInput');
+    const sendBtn = document.getElementById('groupSendBtn');
+    if (!input || input.dataset.listenersAdded) return;
+    input.dataset.listenersAdded = 'true';
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendGroupMessage();
+        }
+    });
+    input.addEventListener('input', function() {
+        autoResizeTextarea(this);
+        const hasText = this.value.trim().length > 0;
+        if (sendBtn) sendBtn.style.display = hasText ? 'flex' : 'none';
+    });
+
+    if (sendBtn && !sendBtn.dataset.listenersAdded) {
+        sendBtn.dataset.listenersAdded = 'true';
+        sendBtn.addEventListener('click', sendGroupMessage);
+    }
+}
+
+function sendGroupMessage() {
+    const input = document.getElementById('groupMessageInput');
+    if (!input || !currentGroupId) return;
+
+    const content = input.value.trim();
+    if (!content) return;
+
+    const tempId = ++groupTempMessageId;
+
+    // Mensagem optimista
+    const container = document.getElementById('groupChatMessages');
+    if (container) {
+        const tempMsg = buildGroupMessageEl({
+            id: null,
+            group_id: currentGroupId,
+            sender_id: currentUserId,
+            sender_username: currentUsername,
+            sender_full_name: currentFullName,
+            sender_avatar: null,
+            message: content,
+            type: 'text',
+            reply_to_message_id: groupReplyToMessageId,
+            reply_content: groupReplyToMessageId ? document.querySelector('.group-reply-preview .reply-message')?.textContent : null,
+            reply_username: groupReplyToMessageId ? document.querySelector('.group-reply-preview .reply-user')?.textContent : null,
+            created_at: new Date().toISOString(),
+        });
+        tempMsg.dataset.tempId = `group_${tempId}`;
+        container.appendChild(tempMsg);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    socket.emit('send_group_message', {
+        groupId: currentGroupId,
+        content,
+        replyToId: groupReplyToMessageId,
+        tempId,
+    });
+
+    playSentSound();
+    input.value = '';
+    autoResizeTextarea(input);
+    document.getElementById('groupSendBtn').style.display = 'none';
+    cancelGroupReply();
+}
+
+// ---- REPLY ----
+
+function setGroupReply(messageId, username, text) {
+    groupReplyToMessageId = messageId;
+    const preview = document.getElementById('groupReplyPreview');
+    if (!preview) return;
+    preview.style.display = 'flex';
+    preview.querySelector('.reply-user').textContent = username;
+    preview.querySelector('.reply-message').textContent = text.substring(0, 100);
+}
+
+function cancelGroupReply() {
+    groupReplyToMessageId = null;
+    const preview = document.getElementById('groupReplyPreview');
+    if (preview) preview.style.display = 'none';
+}
+
+function showGroupEmojiPicker() {
+    if (emojiPickerOpen) {
+        closeEmojiPicker();
+        return;
+    }
+
+    const groupMain = document.getElementById('groupChatMain');
+    if (!groupMain) return;
+
+    const existingPicker = document.querySelector('.emoji-picker');
+    if (existingPicker) existingPicker.remove();
+
+    EMOJI_CATEGORIES.recent.emojis = recentEmojis;
+
+    const picker = document.createElement('div');
+    picker.className = 'emoji-picker';
+
+    const categories = Object.keys(EMOJI_CATEGORIES).filter(k =>
+        k === 'recent' ? recentEmojis.length > 0 : true
+    );
+    const defaultCategory = recentEmojis.length > 0 ? 'recent' : 'smileys';
+
+    const headerHTML = `<div class="emoji-picker-header">${categories.map(key => `<button class="emoji-category-btn ${key === defaultCategory ? 'active' : ''}" data-category="${key}" title="${EMOJI_CATEGORIES[key].label}">${EMOJI_CATEGORIES[key].icon}</button>`).join('')}</div>`;
+    const searchHTML = `<div class="emoji-search-wrapper"><input type="text" class="emoji-search" placeholder="Buscar emoji..." autocomplete="off"></div>`;
+    const bodyHTML = `<div class="emoji-picker-body">${renderEmojiCategory(defaultCategory)}</div>`;
+    const footerHTML = `<div class="emoji-picker-footer"><span class="emoji-preview"></span><span class="emoji-preview-name"></span></div>`;
+
+    picker.innerHTML = headerHTML + searchHTML + bodyHTML + footerHTML;
+    groupMain.appendChild(picker);
+    emojiPickerOpen = true;
+
+    const emojiBtn = groupMain.querySelector('.emoji-btn');
+    if (emojiBtn) emojiBtn.style.color = '#3b82f6';
+
+    picker.querySelectorAll('.emoji-category-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            picker.querySelectorAll('.emoji-category-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const body = picker.querySelector('.emoji-picker-body');
+            body.innerHTML = renderEmojiCategory(btn.dataset.category);
+            attachEmojiItemEvents(picker);
+            const si = picker.querySelector('.emoji-search');
+            if (si) si.value = '';
+        });
+    });
+
+    const searchInput = picker.querySelector('.emoji-search');
+    let sd = null;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(sd);
+        sd = setTimeout(() => {
+            const q = searchInput.value.trim().toLowerCase();
+            const body = picker.querySelector('.emoji-picker-body');
+            if (!q) {
+                const activeBtn = picker.querySelector('.emoji-category-btn.active');
+                body.innerHTML = renderEmojiCategory(activeBtn ? activeBtn.dataset.category : 'smileys');
+            } else {
+                body.innerHTML = renderEmojiSearch(q);
+            }
+            attachEmojiItemEvents(picker);
+        }, 150);
+    });
+
+    picker.addEventListener('click', (e) => e.stopPropagation());
+    attachEmojiItemEvents(picker);
+    setTimeout(() => {
+        document.addEventListener('click', closeEmojiPickerOnClickOutside);
+    }, 10);
+}
+
+// ---- CRIAR GRUPO (admin) ----
+
+let selectedGroupMembers = {}; // {userId: {id, username, full_name}}
+
+function showCreateGroupModal() {
+    if (typeof isAdmin === 'undefined' || !isAdmin) return;
+    document.getElementById('createGroupModal').style.display = 'flex';
+    document.getElementById('groupNameInput').value = '';
+    document.getElementById('groupMemberSearch').value = '';
+    document.getElementById('groupMemberResults').innerHTML = '';
+    selectedGroupMembers = {};
+    renderSelectedGroupMembers();
+}
+
+function closeCreateGroupModal() {
+    const modal = document.getElementById('createGroupModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function searchGroupMembers(query) {
+    const results = document.getElementById('groupMemberResults');
+    if (!query || query.trim().length < 2) {
+        results.innerHTML = '';
+        return;
+    }
+    results.innerHTML = '<div class="fr-loading"><i class="fas fa-spinner fa-spin"></i></div>';
+
+    fetch(`api/search_chat_users.php?search=${encodeURIComponent(query.trim())}`)
+        .then(r => r.json())
+        .then(data => {
+            const users = data.users || [];
+            if (!users.length) {
+                results.innerHTML = '<div class="no-results">Nenhum utilizador encontrado</div>';
+                return;
+            }
+            results.innerHTML = users.map(u => {
+                const already = !!selectedGroupMembers[u.id];
+                const avatar = getAvatarUrl(u.profile_picture || u.avatar);
+                return `
+                    <div class="fr-item">
+                        <img src="${avatar}" class="fr-avatar" onerror="this.src='${DEFAULT_AVATAR}'" alt="${escapeHtml(u.username)}">
+                        <div class="fr-info">
+                            <span class="fr-name">${escapeHtml(u.full_name || u.username)}</span>
+                        </div>
+                        <button class="fr-accept ${already ? 'already-added' : ''}"
+                            onclick="toggleGroupMember(${u.id}, '${escapeHtml(u.username)}', '${escapeHtml(u.full_name || u.username)}', this)">
+                            ${already ? '<i class="fas fa-check"></i> Adicionado' : '<i class="fas fa-plus"></i> Adicionar'}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        })
+        .catch(() => { results.innerHTML = '<div class="no-results">Erro ao pesquisar</div>'; });
+}
+
+function toggleGroupMember(userId, username, fullName, btn) {
+    if (selectedGroupMembers[userId]) {
+        delete selectedGroupMembers[userId];
+        btn.innerHTML = '<i class="fas fa-plus"></i> Adicionar';
+        btn.classList.remove('already-added');
+    } else {
+        selectedGroupMembers[userId] = { id: userId, username, fullName };
+        btn.innerHTML = '<i class="fas fa-check"></i> Adicionado';
+        btn.classList.add('already-added');
+    }
+    renderSelectedGroupMembers();
+}
+
+function renderSelectedGroupMembers() {
+    const container = document.getElementById('groupSelectedMembers');
+    if (!container) return;
+    const members = Object.values(selectedGroupMembers);
+    if (!members.length) {
+        container.innerHTML = '';
+        return;
+    }
+    container.innerHTML = members.map(m => `
+        <span class="member-chip">
+            ${escapeHtml(m.fullName || m.username)}
+            <button onclick="removeGroupMemberChip(${m.id})">&times;</button>
+        </span>
+    `).join('');
+}
+
+function removeGroupMemberChip(userId) {
+    delete selectedGroupMembers[userId];
+    renderSelectedGroupMembers();
+    // Actualizar botão na lista de resultados
+    const btn = document.querySelector(`#groupMemberResults button[onclick*="${userId}"]`);
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-plus"></i> Adicionar';
+        btn.classList.remove('already-added');
+    }
+}
+
+async function submitCreateGroup() {
+    const name = document.getElementById('groupNameInput').value.trim();
+    if (!name) {
+        showToast('Insere um nome para o grupo.', 'error');
+        return;
+    }
+
+    const memberIds = Object.keys(selectedGroupMembers).map(Number);
+    const btn = document.getElementById('createGroupSubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A criar...';
+
+    try {
+        const res = await fetch('api/create_group.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
+            body: JSON.stringify({ name, member_ids: memberIds }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`Grupo "${escapeHtml(name)}" criado!`, 'success');
+            closeCreateGroupModal();
+            // Pedir lista de grupos actualizada
+            socket.emit('get_groups', {});
+        } else {
+            showToast(data.error || 'Erro ao criar grupo.', 'error');
+        }
+    } catch (e) {
+        showToast('Erro de ligação.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-plus"></i> Criar Grupo';
+    }
+}
+
+// ---- INFO DO GRUPO / ADICIONAR MEMBRO (admin) ----
+
+function showGroupInfoModal() {
+    if (!currentGroupId) return;
+    const group = cachedGroups.find(g => g.group_id === currentGroupId);
+    if (group) document.getElementById('groupInfoTitle').textContent = group.name;
+
+    document.getElementById('groupInfoModal').style.display = 'flex';
+    document.getElementById('addMemberSearch').value = '';
+    document.getElementById('addMemberResults').innerHTML = '';
+    loadGroupMembers(currentGroupId);
+}
+
+function closeGroupInfoModal() {
+    const modal = document.getElementById('groupInfoModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function loadGroupMembers(groupId) {
+    const body = document.getElementById('groupInfoBody');
+    body.innerHTML = '<div class="fr-loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
+
+    fetch(`api/get_group_members.php?group_id=${groupId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) { body.innerHTML = '<p>Erro ao carregar membros.</p>'; return; }
+            const members = data.members || [];
+            body.innerHTML = members.map(m => {
+                const avatar = getAvatarUrl(m.profile_picture);
+                return `
+                    <div class="fr-item">
+                        <img src="${avatar}" class="fr-avatar" onerror="this.src='${DEFAULT_AVATAR}'" alt="${escapeHtml(m.username)}">
+                        <div class="fr-info">
+                            <span class="fr-name">${escapeHtml(m.full_name || m.username)}</span>
+                            <span class="fr-time">Desde ${formatFRTime(m.joined_at)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('') || '<p class="fr-empty">Nenhum membro</p>';
+        })
+        .catch(() => { body.innerHTML = '<p>Erro ao carregar.</p>'; });
+}
+
+function searchAddMember(query) {
+    const results = document.getElementById('addMemberResults');
+    if (!query || query.trim().length < 2) { results.innerHTML = ''; return; }
+
+    fetch(`api/search_chat_users.php?search=${encodeURIComponent(query.trim())}`)
+        .then(r => r.json())
+        .then(data => {
+            const users = data.users || [];
+            if (!users.length) { results.innerHTML = '<div class="no-results">Nenhum utilizador</div>'; return; }
+            results.innerHTML = users.map(u => {
+                const avatar = getAvatarUrl(u.profile_picture || u.avatar);
+                return `
+                    <div class="fr-item">
+                        <img src="${avatar}" class="fr-avatar" onerror="this.src='${DEFAULT_AVATAR}'" alt="${escapeHtml(u.username)}">
+                        <div class="fr-info"><span class="fr-name">${escapeHtml(u.full_name || u.username)}</span></div>
+                        <button class="fr-accept" onclick="addMemberToGroup(${u.id}, this)">
+                            <i class="fas fa-plus"></i> Adicionar
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        });
+}
+
+async function addMemberToGroup(userId, btn) {
+    if (!currentGroupId) return;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    try {
+        const res = await fetch('api/add_group_member.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
+            body: JSON.stringify({ group_id: currentGroupId, user_id: userId }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Adicionado';
+            btn.classList.add('already-added');
+            loadGroupMembers(currentGroupId);
+            socket.emit('get_groups', {});
+        } else {
+            showToast(data.error || 'Erro ao adicionar membro.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-plus"></i> Adicionar';
+        }
+    } catch (e) {
+        showToast('Erro de ligação.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-plus"></i> Adicionar';
+    }
+}
+
+// Helper: get CSRF headers for fetch
+function getCsrfHeaders() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? { 'X-CSRF-Token': meta.content } : {};
+}

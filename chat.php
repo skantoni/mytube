@@ -8,6 +8,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $current_user_id = $_SESSION['user_id'];
+$is_admin = isAdminUser();
 
 // Página de origem (para voltar corretamente)
 $from_page = isset($_GET['from']) ? $_GET['from'] : 'index';
@@ -80,6 +81,11 @@ $current_user = $stmt->fetch();
                     <i class="fas fa-user-friends"></i>
                     <span class="friend-requests-badge" id="friendRequestsBadge" style="display:none;">0</span>
                 </button>
+                <?php if ($is_admin): ?>
+                <button class="new-group-btn" onclick="showCreateGroupModal()" title="Criar grupo">
+                    <i class="fas fa-users"></i>
+                </button>
+                <?php endif; ?>
                 <button class="new-chat-btn" onclick="showNewChatModal()">
                     <i class="fas fa-edit"></i>
                 </button>
@@ -103,6 +109,15 @@ $current_user = $stmt->fetch();
                     <i class="fas fa-spinner fa-spin"></i>
                     <p>Carregando conversas...</p>
                 </div>
+            </div>
+
+            <!-- Secção de Grupos -->
+            <div class="groups-section" id="groupsSection" style="display:none;">
+                <div class="groups-section-header">
+                    <i class="fas fa-users"></i>
+                    <span>Grupos</span>
+                </div>
+                <div class="groups-list" id="groupsList"></div>
             </div>
         </div>
         
@@ -240,6 +255,66 @@ $current_user = $stmt->fetch();
                 </div>
             <?php endif; ?>
         </div>
+
+        <!-- Área de chat de grupo (oculta por defeito, ativada via JS) -->
+        <div class="group-chat-main" id="groupChatMain" style="display:none;">
+            <div class="chat-header" id="groupChatHeader">
+                <button class="back-btn" onclick="closeGroupChat()">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div class="chat-header-user" id="groupChatHeaderInfo">
+                    <div class="group-avatar-placeholder"><i class="fas fa-users"></i></div>
+                    <div class="chat-header-info">
+                        <h3 id="groupChatName">Grupo</h3>
+                        <span id="groupMemberCount" class="group-member-count"></span>
+                    </div>
+                </div>
+                <div class="chat-header-actions">
+                    <?php if ($is_admin): ?>
+                    <button onclick="showGroupInfoModal()" title="Info do grupo">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="groupChatMessages">
+                <div class="loading-messages">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Carregando mensagens...</p>
+                </div>
+            </div>
+
+            <div class="reply-preview" id="groupReplyPreview" style="display:none;">
+                <div class="reply-content">
+                    <i class="fas fa-reply"></i>
+                    <div class="reply-info">
+                        <strong class="reply-user"></strong>
+                        <p class="reply-message"></p>
+                    </div>
+                </div>
+                <button class="cancel-reply" onclick="cancelGroupReply()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="chat-input">
+                <div class="input-wrapper">
+                    <div class="input-row">
+                        <textarea
+                            id="groupMessageInput"
+                            placeholder="Escreve uma mensagem..."
+                            rows="1"></textarea>
+                        <button class="emoji-btn" onclick="showGroupEmojiPicker()">
+                            <i class="fas fa-smile"></i>
+                        </button>
+                    </div>
+                </div>
+                <button class="send-btn" id="groupSendBtn" style="display:none;">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
     </div>
     
     <!-- Modal para novo chat -->
@@ -274,6 +349,9 @@ $current_user = $stmt->fetch();
             history.replaceState({ userId: chatWithUserId }, '', window.location.href);
         }
         
+        // Variável para indicar se o utilizador atual é admin
+        const isAdmin = <?php echo $is_admin ? 'true' : 'false'; ?>;
+
         // Event delegation é feito no chat-socket.js (setupConversationClickListener)
     </script>
     
@@ -328,6 +406,55 @@ $current_user = $stmt->fetch();
             </div>
         </div>
     </div>
+
+    <!-- Modal: Criar Grupo (apenas admins) -->
+    <?php if ($is_admin): ?>
+    <div class="modal" id="createGroupModal" style="display:none;" onclick="if(event.target===this)closeCreateGroupModal()">
+        <div class="modal-content create-group-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-users"></i> Criar Grupo</h3>
+                <button onclick="closeCreateGroupModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="group-name-input-wrap">
+                    <label>Nome do grupo</label>
+                    <input type="text" id="groupNameInput" placeholder="Nome do grupo..." maxlength="100">
+                </div>
+                <div class="group-members-section">
+                    <label>Adicionar membros</label>
+                    <input type="text" id="groupMemberSearch" placeholder="Pesquisar utilizadores..." oninput="searchGroupMembers(this.value)">
+                    <div class="group-selected-members" id="groupSelectedMembers"></div>
+                    <div id="groupMemberResults" class="users-list"></div>
+                </div>
+            </div>
+            <div class="create-group-footer">
+                <button class="create-group-cancel-btn" onclick="closeCreateGroupModal()">Cancelar</button>
+                <button class="create-group-submit-btn" id="createGroupSubmitBtn" onclick="submitCreateGroup()">
+                    <i class="fas fa-plus"></i> Criar Grupo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Info do Grupo / Adicionar Membro -->
+    <div class="modal" id="groupInfoModal" style="display:none;" onclick="if(event.target===this)closeGroupInfoModal()">
+        <div class="modal-content group-info-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-info-circle"></i> <span id="groupInfoTitle">Grupo</span></h3>
+                <button onclick="closeGroupInfoModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="groupInfoBody">
+                <div class="fr-loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
+            </div>
+            <div class="group-info-footer">
+                <div class="add-member-row">
+                    <input type="text" id="addMemberSearch" placeholder="Adicionar membro..." oninput="searchAddMember(this.value)">
+                    <div id="addMemberResults" class="users-list add-member-results"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <script>
     // ========================================

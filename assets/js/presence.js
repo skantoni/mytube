@@ -202,6 +202,14 @@
                 audio.play().catch(e => console.log('Audio autoplay prevented:', e));
             } catch (e) {}
         });
+
+        // Notificação de mensagem de grupo — só som (badge do ícone vem via unread_messages_count do servidor)
+        presenceSocket.on('group_message_notification', () => {
+            try {
+                const audio = new Audio('assets/sounds/recive.mp3?v=' + Date.now());
+                audio.play().catch(e => console.log('Audio autoplay prevented:', e));
+            } catch (e) {}
+        });
     }
     
     function updatePresenceIndicators(userId, isOnline) {

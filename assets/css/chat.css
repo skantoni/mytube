@@ -3401,3 +3401,297 @@ body {
     color: #94a3b8;
     font-size: 14px;
 }
+
+/* ========================================
+   GRUPOS DE CHAT
+   ======================================== */
+
+/* Botão criar grupo (admin) */
+.new-group-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: #7c3aed;
+    color: #ffffff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 15px;
+}
+.new-group-btn:hover {
+    background: #5b21b6;
+    transform: scale(1.05);
+}
+
+/* Secção de grupos na sidebar */
+.groups-section {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+.groups-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px 6px;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.groups-list {
+    overflow-y: auto;
+    max-height: 240px;
+}
+
+/* Item de grupo */
+.group-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 12px;
+}
+.group-item:hover { background: rgba(255, 255, 255, 0.06); }
+.group-item.active { background: #1e40af; border-left: 3px solid #3b82f6; }
+
+.group-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #7c3aed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+/* Área principal de chat de grupo */
+.group-chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #0f172a;
+    min-width: 0;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Avatar do grupo no header */
+.group-avatar-placeholder {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #7c3aed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.group-member-count {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+/* Mensagem de grupo */
+.group-message .message-content {
+    max-width: 70%;
+}
+.group-sender-name {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #7c3aed;
+    margin-bottom: 2px;
+}
+.group-msg-status {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-left: 4px;
+}
+
+/* Modal Criar Grupo */
+.create-group-modal {
+    max-width: 480px;
+    width: 95%;
+}
+.group-name-input-wrap label,
+.group-members-section label {
+    display: block;
+    color: #94a3b8;
+    font-size: 13px;
+    margin-bottom: 6px;
+    margin-top: 12px;
+}
+.group-name-input-wrap input,
+.group-members-section input {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+}
+.group-name-input-wrap input::placeholder,
+.group-members-section input::placeholder { color: #94a3b8; }
+
+.group-selected-members {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+.member-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: #1e40af;
+    border-radius: 999px;
+    color: #fff;
+    font-size: 13px;
+}
+.member-chip button {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0;
+    line-height: 1;
+}
+
+.create-group-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+.create-group-cancel-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 14px;
+}
+.create-group-submit-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    background: #7c3aed;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.create-group-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.create-group-submit-btn:hover:not(:disabled) { background: #5b21b6; }
+
+/* Modal Info Grupo */
+.group-info-modal {
+    max-width: 420px;
+    width: 95%;
+}
+.group-info-footer {
+    padding: 12px 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+.add-member-row {
+    position: relative;
+}
+.add-member-row input {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+}
+.add-member-row input::placeholder { color: #94a3b8; }
+.add-member-results {
+    max-height: 180px;
+    overflow-y: auto;
+    margin-top: 6px;
+}
+
+.already-added {
+    background: #10b981 !important;
+    cursor: default;
+}
+
+.no-messages-yet {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 100%;
+    color: #64748b;
+}
+.no-messages-yet i { font-size: 40px; }
+
+/* Avatar das mensagens de grupo */
+.message-avatar {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    align-self: flex-end;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+/* Input do grupo (mesmo estilo que #messageInput) */
+#groupMessageInput {
+    flex: 1;
+    border: none;
+    outline: none;
+    resize: none;
+    max-height: 100px;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 20px;
+    background: transparent;
+    color: #e2e8f0;
+    -webkit-text-fill-color: #e2e8f0;
+    caret-color: #e2e8f0;
+    opacity: 1;
+}
+
+#groupMessageInput::placeholder {
+    color: #94a3b8;
+}
+
+/* Mobile group chat */
+@media (max-width: 768px) {
+    .group-chat-main {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 100;
+    }
+}

@@ -471,7 +471,8 @@ async function getTotalUnreadMessages(userId) {
             return 0;
         }
 
-        const [rows] = await pool.execute(`
+        // Contar não lidas 1:1
+        const [rows1] = await pool.execute(`
             SELECT COUNT(*) as unread_count
             FROM messages
             WHERE receiver_id = ?
@@ -480,7 +481,17 @@ async function getTotalUnreadMessages(userId) {
               AND deleted_for_receiver = 0
         `, [normalizedUserId]);
 
-        return Number(rows[0]?.unread_count || 0);
+        // Contar não lidas em grupos
+        const [rows2] = await pool.execute(`
+            SELECT COUNT(*) as unread_count
+            FROM group_messages gm
+            INNER JOIN chat_participants cp ON cp.chat_id = gm.group_id AND cp.user_id = ?
+            WHERE gm.sender_id != ?
+              AND gm.is_deleted = 0
+              AND gm.created_at > COALESCE(cp.last_seen, '2000-01-01')
+        `, [normalizedUserId, normalizedUserId]);
+
+        return Number(rows1[0]?.unread_count || 0) + Number(rows2[0]?.unread_count || 0);
     } catch (error) {
         console.error('Erro ao buscar total de não lidas:', error.message);
         return 0;
@@ -830,6 +841,10 @@ io.on('connection', (socket) => {
         // Enviar lista de conversas
         const conversations = await getUserConversations(normalizedUserId);
         socket.emit('conversations_list', conversations);
+
+        // Enviar lista de grupos
+        const groups = await getGroupsForUser(normalizedUserId);
+        socket.emit('groups_list', groups);
         
         // Enviar status online dos usuários nas conversas
         const otherUserIds = conversations.map(c => c.other_user_id);
@@ -1384,6 +1399,147 @@ io.on('connection', (socket) => {
         const conversations = await getUserConversations(userId);
         socket.emit('conversations_list', conversations);
     });
+
+    /**
+     * Buscar grupos do utilizador
+     */
+    socket.on('get_groups', async (data) => {
+        const user = connectedUsers.get(socket.id);
+        if (!user) return;
+
+        const groups = await getGroupsForUser(user.userId);
+        socket.emit('groups_list', groups);
+    });
+
+    /**
+     * Entrar em sala de grupo e carregar mensagens
+     */
+    socket.on('join_group', async (data) => {
+        const { groupId } = data;
+        const user = connectedUsers.get(socket.id);
+        if (!user || !groupId) return;
+
+        const normalizedGroupId = normalizeUserId(groupId);
+        if (!normalizedGroupId) return;
+
+        // Verificar membership
+        const memberIds = await getGroupMemberIds(normalizedGroupId);
+        if (!memberIds.includes(user.userId)) {
+            socket.emit('error', { message: 'Não és membro deste grupo.' });
+            return;
+        }
+
+        const room = `group_${normalizedGroupId}`;
+        socket.join(room);
+
+        const messages = await getGroupMessages(normalizedGroupId, 50);
+        socket.emit('group_messages_list', { groupId: normalizedGroupId, messages });
+
+        console.log(`👥 Utilizador ${user.userId} entrou no grupo ${normalizedGroupId}`);
+    });
+
+    /**
+     * Sair de sala de grupo
+     */
+    socket.on('leave_group', (data) => {
+        const { groupId } = data;
+        if (groupId) socket.leave(`group_${groupId}`);
+    });
+
+    /**
+     * Marcar mensagens do grupo como lidas (actualiza last_seen)
+     */
+    socket.on('mark_group_as_read', async (data) => {
+        const { groupId } = data;
+        const user = connectedUsers.get(socket.id);
+        if (!user || !groupId) return;
+        const normalizedGroupId = normalizeUserId(groupId);
+        if (!normalizedGroupId) return;
+        try {
+            await pool.execute(
+                'UPDATE chat_participants SET last_seen = NOW() WHERE chat_id = ? AND user_id = ?',
+                [normalizedGroupId, user.userId]
+            );
+            // Actualizar contagem global de não lidas
+            await emitUnreadMessagesCountToUser(user.userId);
+        } catch (e) {
+            console.error('Erro ao marcar grupo como lido:', e.message);
+        }
+    });
+
+    /**
+     * Enviar mensagem para grupo
+     */
+    socket.on('send_group_message', async (data) => {
+        const { groupId, content, replyToId, tempId } = data;
+        const user = connectedUsers.get(socket.id);
+
+        if (!user || !groupId || !content?.trim()) {
+            socket.emit('error', { message: 'Dados inválidos.' });
+            return;
+        }
+
+        const normalizedGroupId = normalizeUserId(groupId);
+        if (!normalizedGroupId) return;
+
+        // Verificar membership
+        const memberIds = await getGroupMemberIds(normalizedGroupId);
+        if (!memberIds.includes(user.userId)) {
+            socket.emit('error', { message: 'Não és membro deste grupo.' });
+            return;
+        }
+
+        const messageId = await saveGroupMessage(normalizedGroupId, user.userId, content.trim(), replyToId || null);
+        if (!messageId) {
+            socket.emit('error', { message: 'Erro ao guardar mensagem.' });
+            return;
+        }
+
+        const message = await getGroupMessageById(messageId);
+
+        // Confirmar ao remetente
+        socket.emit('group_message_sent', { tempId, messageId, groupId: normalizedGroupId, createdAt: message?.created_at });
+
+        // Distribuir para toda a sala (exceto remetente)
+        socket.to(`group_${normalizedGroupId}`).emit('new_group_message', {
+            groupId: normalizedGroupId,
+            message
+        });
+
+        // Notificar membros (que não estão na sala do grupo)
+        for (const memberId of memberIds) {
+            if (memberId !== user.userId) {
+                io.to(`user_${memberId}`).emit('group_message_notification', {
+                    groupId: normalizedGroupId,
+                    senderId: user.userId,
+                    senderUsername: message?.sender_username || user.username,
+                    content: content.trim().substring(0, 100)
+                });
+                // Actualizar badge do ícone de chat (profile.php) via presence socket
+                await emitUnreadMessagesCountToUser(memberId);
+            }
+        }
+
+        // Actualizar lista de grupos para todos os membros
+        for (const memberId of memberIds) {
+            const memberGroups = await getGroupsForUser(memberId);
+            io.to(`user_${memberId}`).emit('groups_list', memberGroups);
+        }
+
+        console.log(`💬 Mensagem de grupo: ${user.userId} → grupo ${normalizedGroupId}`);
+    });
+
+    /**
+     * Carregar mais mensagens de grupo (paginação)
+     */
+    socket.on('load_more_group_messages', async (data) => {
+        const { groupId, beforeId } = data;
+        const user = connectedUsers.get(socket.id);
+        if (!user || !groupId) return;
+
+        const messages = await getGroupMessages(normalizeUserId(groupId), 50, beforeId);
+        socket.emit('more_group_messages', { groupId: normalizeUserId(groupId), messages });
+    });
     
     /**
      * Carregar mais mensagens (paginação)
@@ -1665,6 +1821,152 @@ app.post('/api/notify-forward', async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
+
+// ==========================================
+// GROUP CHAT FUNCTIONS
+// ==========================================
+
+/**
+ * Buscar grupos do utilizador
+ */
+async function getGroupsForUser(userId) {
+    try {
+        const [rows] = await pool.execute(`
+            SELECT
+                c.id AS group_id,
+                c.name,
+                c.group_picture,
+                c.created_by,
+                c.updated_at,
+                (SELECT COUNT(*) FROM chat_participants cp2 WHERE cp2.chat_id = c.id) AS member_count,
+                (SELECT gm.message FROM group_messages gm
+                  WHERE gm.group_id = c.id AND gm.is_deleted = 0
+                  ORDER BY gm.created_at DESC LIMIT 1) AS last_message,
+                (SELECT gm2.created_at FROM group_messages gm2
+                  WHERE gm2.group_id = c.id AND gm2.is_deleted = 0
+                  ORDER BY gm2.created_at DESC LIMIT 1) AS last_message_time,
+                (SELECT u2.username FROM group_messages gm3
+                  JOIN users u2 ON gm3.sender_id = u2.id
+                  WHERE gm3.group_id = c.id AND gm3.is_deleted = 0
+                  ORDER BY gm3.created_at DESC LIMIT 1) AS last_sender_username,
+                (SELECT COUNT(*) FROM group_messages gm4
+                  WHERE gm4.group_id = c.id
+                    AND gm4.sender_id != ?
+                    AND gm4.is_deleted = 0
+                    AND gm4.created_at > COALESCE(cp.last_seen, '2000-01-01')
+                ) AS unread_count
+            FROM chats c
+            INNER JOIN chat_participants cp ON cp.chat_id = c.id AND cp.user_id = ?
+            WHERE c.is_group = 1
+            ORDER BY c.updated_at DESC
+        `, [userId, userId]);
+        return rows;
+    } catch (error) {
+        console.error('Erro ao buscar grupos:', error.message);
+        return [];
+    }
+}
+
+/**
+ * Buscar membros de um grupo (IDs apenas)
+ */
+async function getGroupMemberIds(groupId) {
+    try {
+        const [rows] = await pool.execute(
+            'SELECT user_id FROM chat_participants WHERE chat_id = ?',
+            [groupId]
+        );
+        return rows.map(r => r.user_id);
+    } catch (error) {
+        console.error('Erro ao buscar membros do grupo:', error.message);
+        return [];
+    }
+}
+
+/**
+ * Guardar mensagem de grupo
+ */
+async function saveGroupMessage(groupId, senderId, content, replyToId = null) {
+    try {
+        const [result] = await pool.execute(`
+            INSERT INTO group_messages (group_id, sender_id, message, type, reply_to_message_id, created_at, updated_at)
+            VALUES (?, ?, ?, 'text', ?, NOW(), NOW())
+        `, [groupId, senderId, content, replyToId]);
+
+        await pool.execute('UPDATE chats SET updated_at = NOW() WHERE id = ?', [groupId]);
+
+        return result.insertId;
+    } catch (error) {
+        console.error('Erro ao guardar mensagem de grupo:', error.message);
+        return null;
+    }
+}
+
+/**
+ * Buscar mensagem de grupo completa
+ */
+async function getGroupMessageById(messageId) {
+    try {
+        const [rows] = await pool.execute(`
+            SELECT
+                gm.id, gm.group_id, gm.sender_id, gm.message, gm.type, gm.file_url,
+                gm.reply_to_message_id, gm.is_deleted, gm.is_edited, gm.created_at,
+                u.username AS sender_username,
+                u.full_name AS sender_full_name,
+                u.profile_picture AS sender_avatar,
+                u.is_verified AS sender_is_verified,
+                rm.message AS reply_content,
+                ru.username AS reply_username
+            FROM group_messages gm
+            JOIN users u ON gm.sender_id = u.id
+            LEFT JOIN group_messages rm ON gm.reply_to_message_id = rm.id
+            LEFT JOIN users ru ON rm.sender_id = ru.id
+            WHERE gm.id = ?
+        `, [messageId]);
+        return rows[0] || null;
+    } catch (error) {
+        console.error('Erro ao buscar mensagem de grupo:', error.message);
+        return null;
+    }
+}
+
+/**
+ * Buscar mensagens de um grupo (paginadas)
+ */
+async function getGroupMessages(groupId, limit = 50, beforeId = null) {
+    try {
+        let query = `
+            SELECT
+                gm.id, gm.group_id, gm.sender_id, gm.message, gm.type, gm.file_url,
+                gm.reply_to_message_id, gm.is_deleted, gm.is_edited, gm.created_at,
+                u.username AS sender_username,
+                u.full_name AS sender_full_name,
+                u.profile_picture AS sender_avatar,
+                u.is_verified AS sender_is_verified,
+                rm.message AS reply_content,
+                ru.username AS reply_username
+            FROM group_messages gm
+            JOIN users u ON gm.sender_id = u.id
+            LEFT JOIN group_messages rm ON gm.reply_to_message_id = rm.id
+            LEFT JOIN users ru ON rm.sender_id = ru.id
+            WHERE gm.group_id = ? AND gm.is_deleted = 0
+        `;
+        const params = [groupId];
+
+        if (beforeId) {
+            query += ' AND gm.id < ?';
+            params.push(beforeId);
+        }
+
+        query += ` ORDER BY gm.id DESC LIMIT ${parseInt(limit) || 50}`;
+
+        const [rows] = await pool.execute(query, params);
+        return rows.reverse();
+    } catch (error) {
+        console.error('Erro ao buscar mensagens de grupo:', error.message);
+        return [];
+    }
+}
 
 // ==========================================
 // WEB PUSH NOTIFICATIONS
