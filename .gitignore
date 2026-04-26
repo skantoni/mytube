@@ -6,7 +6,7 @@
 # Estes ficheiros contêm passwords, API keys, etc.
 # Use os ficheiros .example como template
 .env
-includes/config.php
+# includes/config.php -- removido do gitignore: info sensível migrada para .env
 includes/r2_config.php
 includes/mail_config.php
 
