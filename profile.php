@@ -1140,10 +1140,10 @@ $has_more_videos = $total_user_videos > count($user_videos);
             if (data.success) {
                 btn.classList.toggle('following', data.is_following);
                 btn.textContent = data.is_following ? 'Seguindo' : 'Seguir';
-                // Atualizar contadores na página se for o próprio perfil
-                if (data.followers_count !== undefined) {
-                    const fc = document.getElementById('followersCount');
-                    if (fc) fc.textContent = _formatNum(data.followers_count);
+                // Atualizar contador de Seguindo (meu próprio contador)
+                if (data.my_following_count !== undefined) {
+                    const fwc = document.getElementById('followingCount');
+                    if (fwc) fwc.textContent = _formatNum(data.my_following_count);
                 }
             }
         } catch (e) { console.error(e); }

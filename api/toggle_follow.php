@@ -129,6 +129,10 @@ try {
     $followers_stmt = $pdo->prepare("SELECT followers_count FROM users WHERE id = ?");
     $followers_stmt->execute([$following_id]);
     $followers_count = $followers_stmt->fetchColumn();
+
+    $my_following_stmt = $pdo->prepare("SELECT following_count FROM users WHERE id = ?");
+    $my_following_stmt->execute([$follower_id]);
+    $my_following_count = $my_following_stmt->fetchColumn();
     
     // Verificar se o outro usuário segue de volta (follows_you)
     $follows_you_stmt = $pdo->prepare("SELECT id FROM follows WHERE follower_id = ? AND following_id = ?");
@@ -142,6 +146,7 @@ try {
         'action' => $action,
         'is_following' => $is_following,
         'followers_count' => (int)$followers_count,
+        'my_following_count' => (int)$my_following_count,
         'follows_you' => $follows_you
     ]);
     
