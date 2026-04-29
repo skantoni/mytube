@@ -237,6 +237,31 @@ function isAdminUser(): bool {
     return $isAdmin;
 }
 
+/**
+ * Verifica se o utilizador atual pode enviar mensagens a qualquer utilizador
+ * sem necessidade de amizade (roles: admin, vip).
+ */
+function canMessageAnyone(): bool {
+    static $result = null;
+    if ($result !== null) return $result;
+
+    if (!isLoggedIn()) {
+        $result = false;
+        return $result;
+    }
+
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$_SESSION['user_id']]);
+        $user = $stmt->fetch();
+        $result = $user && in_array($user['role'] ?? '', ['admin', 'vip'], true);
+    } catch (Exception $e) {
+        $result = false;
+    }
+    return $result;
+}
+
 // Função para redirecionar
 function redirect($url) {
     if (!headers_sent()) {

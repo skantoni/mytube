@@ -279,6 +279,19 @@ async function areFriends(userId1, userId2) {
 }
 
 /**
+ * Verificar se o utilizador pode enviar mensagens a qualquer pessoa (role admin ou vip)
+ */
+async function canMessageAnyone(userId) {
+    try {
+        const [rows] = await pool.execute('SELECT role FROM users WHERE id = ? LIMIT 1', [userId]);
+        const role = rows[0]?.role || null;
+        return role === 'admin' || role === 'vip';
+    } catch (error) {
+        return false;
+    }
+}
+
+/**
  * Salvar mensagem no banco de dados
  */
 async function saveMessage(conversationId, senderId, receiverId, content, replyToId = null) {
@@ -1013,14 +1026,17 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Verificar se são amigos
-        const friends = await areFriends(senderId, receiverId);
-        if (!friends) {
-            socket.emit('message_blocked', { 
-                tempId,
-                message: 'Precisas ser amigo deste utilizador para enviar mensagens. Envia um pedido de amizade primeiro!' 
-            });
-            return;
+        // Verificar se são amigos (admin e vip podem enviar a qualquer utilizador)
+        const senderCanMessageAnyone = await canMessageAnyone(senderId);
+        if (!senderCanMessageAnyone) {
+            const friends = await areFriends(senderId, receiverId);
+            if (!friends) {
+                socket.emit('message_blocked', { 
+                    tempId,
+                    message: 'Precisas ser amigo deste utilizador para enviar mensagens. Envia um pedido de amizade primeiro!' 
+                });
+                return;
+            }
         }
         
         // Buscar ou criar conversa
