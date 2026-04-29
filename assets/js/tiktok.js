@@ -337,6 +337,11 @@ class TikTokPlayer {
                 this.toggleCaptionText(toggleBtn);
                 return;
             }
+
+            // 9.57. ÁREA DE DESCRIÇÃO / HASHTAGS (texto e links) - não pausar vídeo
+            if (target.closest('.video-caption-block') || target.closest('.video-hashtags')) {
+                return;
+            }
             
             // 9.6. MODAL DE COMENTÁRIOS ABERTO - não pausar vídeo
             const commentsModal = document.getElementById('commentsModal');
@@ -383,7 +388,16 @@ class TikTokPlayer {
         const collapsedText = captionEl.dataset.captionCollapsed || fullText;
         const isExpanded = captionBlock.classList.toggle('is-expanded');
 
-        captionEl.textContent = isExpanded ? fullText : collapsedText;
+        // Helper para escapar HTML e linkificar URLs
+        const _esc = (s) => String(s || '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const _linkify = (escaped) => escaped.replace(
+            /(https?:\/\/(?:[^\s<>"'&]|&amp;)*)/gi,
+            '<a href="$1" target="_blank" rel="noopener noreferrer" class="description-link" onclick="event.stopPropagation()">$1</a>'
+        );
+
+        captionEl.innerHTML = isExpanded ? _linkify(_esc(fullText)) : _linkify(_esc(collapsedText));
         toggleBtn.textContent = isExpanded ? 'Ver menos' : '...Ver mais';
         toggleBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
     }

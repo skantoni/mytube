@@ -342,6 +342,12 @@ class FeedManager {
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
 
+        // Converte URLs em texto HTML-escapado para links clicáveis
+        const linkifyHtml = (escapedHtml) => escapedHtml.replace(
+            /(https?:\/\/(?:[^\s<>"'&]|&amp;)*)/gi,
+            '<a href="$1" target="_blank" rel="noopener noreferrer" class="description-link" onclick="event.stopPropagation()">$1</a>'
+        );
+
         const decodeHtml = (value) => {
             const textarea = document.createElement('textarea');
             textarea.innerHTML = String(value || '');
@@ -383,7 +389,7 @@ class FeedManager {
                 <div class="video-caption-block ${captionData.isCollapsible ? 'is-collapsed' : ''}">
                     <p class="video-caption"
                        data-caption-full="${escapeHtml(captionData.full)}"
-                       data-caption-collapsed="${escapeHtml(captionData.collapsed)}">${escapeHtml(captionData.isCollapsible ? captionData.collapsed : captionData.full)}</p>
+                       data-caption-collapsed="${escapeHtml(captionData.collapsed)}">${linkifyHtml(escapeHtml(captionData.isCollapsible ? captionData.collapsed : captionData.full))}</p>
                     ${captionData.isCollapsible ? '<button type="button" class="caption-toggle-btn" aria-expanded="false">...Ver mais</button>' : ''}
                 </div>
             `

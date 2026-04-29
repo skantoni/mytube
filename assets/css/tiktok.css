@@ -271,6 +271,17 @@ body * {
     word-break: break-word;
 }
 
+.video-caption .description-link {
+    color: #93c5fd;
+    text-decoration: underline;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.video-caption .description-link:hover {
+    color: #bfdbfe;
+}
+
 .caption-toggle-btn {
     align-self: flex-start;
     padding: 0;
