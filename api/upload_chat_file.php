@@ -90,7 +90,11 @@ try {
     // Atualizar conversa
     $stmt = $pdo->prepare("UPDATE conversations SET updated_at = NOW() WHERE id = ?");
     $stmt->execute([$conversation_id]);
-    
+
+    // Remover conversa da lista de escondidas para ambos (nova mensagem = conversa volta à superfície)
+    $stmt = $pdo->prepare("DELETE FROM hidden_conversations WHERE conversation_id = ?");
+    $stmt->execute([$conversation_id]);
+
     // Buscar mensagem completa
     $stmt = $pdo->prepare("
         SELECT 

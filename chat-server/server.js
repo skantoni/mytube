@@ -485,14 +485,20 @@ async function getTotalUnreadMessages(userId) {
         }
 
         // Contar não lidas 1:1
+        // Excluir mensagens de conversas escondidas pelo receptor e de remetentes entretanto eliminados
         const [rows1] = await pool.execute(`
             SELECT COUNT(*) as unread_count
-            FROM messages
-            WHERE receiver_id = ?
-              AND status != 'read'
-              AND deleted_for_all = 0
-              AND deleted_for_receiver = 0
-        `, [normalizedUserId]);
+            FROM messages m
+            INNER JOIN conversations c ON m.conversation_id = c.id
+            INNER JOIN users u ON m.sender_id = u.id
+            WHERE m.receiver_id = ?
+              AND m.status != 'read'
+              AND m.deleted_for_all = 0
+              AND m.deleted_for_receiver = 0
+              AND c.id NOT IN (
+                  SELECT conversation_id FROM hidden_conversations WHERE user_id = ?
+              )
+        `, [normalizedUserId, normalizedUserId]);
 
         // Contar não lidas em grupos
         const [rows2] = await pool.execute(`

@@ -196,7 +196,9 @@
         });
 
         presenceSocket.on('message_notification', () => {
-            updateChatUnreadUI(chatUnreadCount + 1);
+            // Pedir contagem real ao servidor em vez de incrementar localmente
+            // (evita derivação quando mensagens chegam de conversas escondidas ou de remetentes eliminados)
+            requestUnreadCount();
             try {
                 const audio = new Audio('assets/sounds/recive.mp3?v=' + Date.now());
                 audio.play().catch(e => console.log('Audio autoplay prevented:', e));
