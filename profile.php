@@ -78,6 +78,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $new_filename = 'user_' . $user_id . '_' . time() . '.' . $file_extension;
                     
                     if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $upload_dir . $new_filename)) {
+                        // ✅ SANITIZAR IMAGEM: Remover EXIF/metadados (GPS, câmera, data, etc)
+                        require_once 'includes/image_sanitizer.php';
+                        $sanitize_result = sanitize_image_exif($upload_dir . $new_filename, 90);
+                        
+                        if (!$sanitize_result['success']) {
+                            error_log("EXIF sanitization failed for user $user_id: " . $sanitize_result['message']);
+                            // Continua mesmo se falhar (melhor ter imagem com EXIF do que sem avatar)
+                        }
+                        
                         $profile_picture = $new_filename;
                     } else {
                         $error = 'Erro ao fazer upload da foto.';
@@ -115,6 +124,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $file_extension = $icon_validation['extension'];
                             $new_filename = 'icon_' . $user_id . '_' . time() . '.' . $file_extension;
                             if (move_uploaded_file($_FILES['name_icon']['tmp_name'], $upload_dir . $new_filename)) {
+                                // ✅ SANITIZAR ÍCONE: Remover EXIF/metadados
+                                require_once 'includes/image_sanitizer.php';
+                                $sanitize_result = sanitize_image_exif($upload_dir . $new_filename, 90);
+                                
+                                if (!$sanitize_result['success']) {
+                                    error_log("EXIF sanitization failed for icon user $user_id: " . $sanitize_result['message']);
+                                }
+                                
                                 $name_icon = $new_filename;
                             } else {
                                 $error = 'Erro ao mover o ficheiro do ícone.';

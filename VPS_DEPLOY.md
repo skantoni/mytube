@@ -248,6 +248,150 @@ chown -R www-data:www-data assets/images/avatars/
 
 ---
 
+## 📋 DEPLOY: Sanitização EXIF (Remoção GPS/Metadados) (30/04/2026)
+
+### O que mudou:
+- ✅ Remoção automática de EXIF/metadados de imagens
+- ✅ Previne vazamento de GPS, câmera, data, software
+- ✅ Arquivo criado: `includes/image_sanitizer.php`
+- ✅ Arquivos modificados: `profile.php`, `includes/chat_upload_config.php`
+
+### Passo 1: Conectar na VPS
+```bash
+ssh skeny@mytube.social
+cd /var/www/mytube.social
+```
+
+### Passo 2: Backup
+```bash
+sudo cp profile.php profile.php.backup-$(date +%Y%m%d)
+sudo cp includes/chat_upload_config.php includes/chat_upload_config.php.backup-$(date +%Y%m%d)
+```
+
+### Passo 3: Puxar as alterações
+```bash
+git pull origin main
+```
+
+### Passo 4: Verificar extensões PHP necessárias
+```bash
+# Verificar se GD (processamento de imagens) está instalado
+php -m | grep -i gd
+
+# Se não aparecer, instalar:
+sudo apt-get install php8.3-gd
+sudo systemctl restart php8.3-fpm
+
+# EXIF (opcional, apenas para verificação)
+php -m | grep -i exif
+
+# Se não tiver (não é crítico):
+sudo apt-get install php8.3-exif
+sudo systemctl restart php8.3-fpm
+```
+
+### Passo 5: Verificar sintaxe
+```bash
+php -l includes/image_sanitizer.php
+php -l profile.php
+php -l includes/chat_upload_config.php
+```
+
+### Passo 6: Reiniciar PHP-FPM
+```bash
+sudo systemctl restart php8.3-fpm
+sudo systemctl status php8.3-fpm
+```
+
+### Passo 7: Testar sanitização
+
+**Teste 1 - Upload de avatar com EXIF:**
+1. Baixar imagem com GPS: https://github.com/ianare/exif-samples/raw/master/jpg/gps/DSCN0010.jpg
+2. Ir para https://mytube.social/profile.php
+3. Fazer upload dessa imagem como avatar
+4. Salvar perfil
+5. Botão direito na imagem do perfil → "Abrir imagem em nova aba"
+6. Copiar URL da imagem
+7. Verificar EXIF removido em: https://www.metadata2go.com/
+8. ✅ Deve mostrar: **"No EXIF data found"** ou metadados mínimos
+
+**Teste 2 - Upload de foto no chat:**
+1. Tirar foto com celular (terá GPS automaticamente)
+2. Enviar no chat
+3. Baixar a foto enviada
+4. Verificar EXIF em: https://exifinfo.org/
+5. ✅ GPS/localização deve estar vazio
+
+**Teste 3 - Verificar logs:**
+```bash
+# Se houver tentativa de upload com GPS, será logado
+cat logs/exif_gps_$(date +%Y-%m-%d).log
+
+# Se nada aparecer, está tudo certo (ou ninguém tentou upload com GPS ainda)
+```
+
+### Passo 8: Testar diferentes formatos
+Testar upload de:
+- ✅ JPEG (mais comum com EXIF)
+- ✅ PNG (pode ter metadados)
+- ✅ WebP (suporta EXIF)
+- ✅ GIF (raramente tem EXIF)
+
+### ⚠️ Problemas comuns:
+
+**Erro: "Call to undefined function imagecreatefromjpeg()"**
+- Causa: Biblioteca GD não instalada
+- Solução:
+```bash
+sudo apt-get install php8.3-gd
+sudo systemctl restart php8.3-fpm
+```
+
+**Erro: "Falha ao carregar imagem" nos logs**
+- Causa: Imagem corrompida ou formato não suportado
+- Solução: Arquivo continua sendo salvo (failsafe), mas sem sanitização
+- Não impede upload normal
+
+**Imagem perdeu qualidade após upload**
+- Causa: Compressão JPEG na sanitização (padrão 90)
+- Solução: Ajustar qualidade no código se necessário:
+```php
+sanitize_image_exif($filepath, 95); // Aumentar de 90 para 95
+```
+
+**PNG ficou maior após sanitização**
+- Normal: PNG sem EXIF pode ser maior que com EXIF (paradoxal)
+- Causa: Recompressão remove otimizações específicas
+- Não é problema de segurança
+
+### 🔍 Como verificar EXIF manualmente:
+
+**Ferramentas Online:**
+- https://www.metadata2go.com/ - Visualizador completo
+- https://exifinfo.org/ - Análise detalhada
+- https://jimpl.com/ - Jeffrey's EXIF Viewer
+
+**Linha de comando (Linux/Mac):**
+```bash
+# Instalar exiftool
+sudo apt-get install libimage-exiftool-perl
+
+# Verificar EXIF
+exiftool imagem.jpg
+
+# Verificar apenas GPS
+exiftool -GPS* imagem.jpg
+
+# Se sanitizado corretamente, deve retornar vazio ou "No GPS data"
+```
+
+**Windows:**
+1. Botão direito na imagem → Propriedades
+2. Aba "Detalhes"
+3. Verificar se GPS/Localização está vazio
+
+---
+
 ## 📋 DEPLOY: Fix Redirect Loop HTTPS (20/04/2026)
 
 ### O que mudou:

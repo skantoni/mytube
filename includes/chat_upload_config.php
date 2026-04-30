@@ -136,6 +136,17 @@ function uploadChatFile($file, $type) {
         return ['success' => false, 'error' => 'Erro ao salvar arquivo'];
     }
     
+    // ✅ SANITIZAR IMAGENS: Remover EXIF/metadados (GPS, câmera, etc)
+    if (in_array($type, ['image', 'sticker'])) {
+        require_once __DIR__ . '/image_sanitizer.php';
+        $sanitize_result = sanitize_image_exif($filepath, 90);
+        
+        if (!$sanitize_result['success']) {
+            error_log("EXIF sanitization failed for chat $type: " . $sanitize_result['message']);
+            // Continua mesmo se falhar (melhor ter imagem com EXIF do que falhar upload)
+        }
+    }
+    
     // Retornar URL relativa
     $relative_path = 'uploads/chat/' . basename($upload_dir) . '/' . $filename;
     

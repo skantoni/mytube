@@ -10,10 +10,10 @@
 | Severidade | Total | Resolvidas | Pendentes |
 |------------|-------|------------|-----------|
 | CRÍTICO    | 14    | 14         | 0         |
-| ALTO       | 13    | 5          | 8         |
-| MÉDIO      | 8     | 3          | 5         |
+| ALTO       | 13    | 6          | 7         |
+| MÉDIO      | 8     | 1          | 7         |
 | BAIXO      | 7     | 0          | 7         |
-| **TOTAL**  | **42**| **22**     | **20**    |
+| **TOTAL**  | **42**| **21**     | **21**    |
 
 ---
 
@@ -274,10 +274,24 @@
 **Arquivo:** `profile.php` linha 66  
 **Problema:** `user_{id}_{timestamp}.jpg` previsível
 
-### ❌ 8. Imagens não sanitizadas (EXIF com GPS)
-**Status:** ❌ **PENDENTE**  
-**Arquivo:** `profile.php` linha 70  
-**Problema:** EXIF não removido
+### ✅ 8. Imagens não sanitizadas (EXIF com GPS)
+**Status:** ✅ **RESOLVIDO**  
+**Arquivo:** `profile.php`, `includes/chat_upload_config.php`  
+**Problema:** EXIF não removido (GPS, câmera, data, software)
+**Solução Implementada:**
+- Criado `includes/image_sanitizer.php` com sistema completo de sanitização:
+  - `sanitize_image_exif()` - Remove todos metadados EXIF/GPS
+  - `check_image_exif()` - Verifica se imagem tem EXIF
+  - `log_exif_gps_attempt()` - Log de tentativas com GPS
+- Suporte para: JPEG, PNG, GIF, WebP
+- Aplicado em:
+  - profile.php (avatar + ícone premium)
+  - chat_upload_config.php (imagens e stickers)
+- Processo: Recarrega imagem → cria nova sem metadados → sobrescreve original
+- Preserva transparência (PNG/GIF)
+- Qualidade configurável (padrão 90)
+- Previne vazamento de: GPS (localização exata), data/hora real, modelo câmera, software usado
+**Data:** 30/04/2026
 
 ### ❌ 9. Avatares antigos não deletados
 **Status:** ❌ **PENDENTE**  
