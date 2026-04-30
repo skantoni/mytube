@@ -83,8 +83,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $sanitize_result = sanitize_image_exif($upload_dir . $new_filename, 90);
                         
                         if (!$sanitize_result['success']) {
-                            error_log("EXIF sanitization failed for user $user_id: " . $sanitize_result['message']);
-                            // Continua mesmo se falhar (melhor ter imagem com EXIF do que sem avatar)
+                            // Log apenas como aviso se GD não disponível, erro se outro problema
+                            if (isset($sanitize_result['warning']) && $sanitize_result['warning']) {
+                                error_log("AVISO: EXIF não removido (GD não disponível) - user $user_id");
+                            } else {
+                                error_log("ERRO: EXIF sanitization failed for user $user_id: " . $sanitize_result['message']);
+                            }
+                            // Continua upload normalmente (melhor ter imagem com EXIF do que sem avatar)
                         }
                         
                         $profile_picture = $new_filename;
@@ -129,7 +134,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $sanitize_result = sanitize_image_exif($upload_dir . $new_filename, 90);
                                 
                                 if (!$sanitize_result['success']) {
-                                    error_log("EXIF sanitization failed for icon user $user_id: " . $sanitize_result['message']);
+                                    if (isset($sanitize_result['warning']) && $sanitize_result['warning']) {
+                                        error_log("AVISO: EXIF não removido do ícone (GD não disponível) - user $user_id");
+                                    } else {
+                                        error_log("ERRO: EXIF sanitization failed for icon user $user_id: " . $sanitize_result['message']);
+                                    }
                                 }
                                 
                                 $name_icon = $new_filename;

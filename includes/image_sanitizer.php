@@ -18,6 +18,15 @@
  * @return array ['success' => bool, 'message' => string]
  */
 function sanitize_image_exif(string $file_path, int $quality = 90): array {
+    // ✅ VERIFICAR SE GD ESTÁ DISPONÍVEL
+    if (!extension_loaded('gd')) {
+        return [
+            'success' => false, 
+            'message' => 'Extensão GD não disponível (imagem salva sem sanitização)',
+            'warning' => true // Flag para não logar como erro crítico
+        ];
+    }
+    
     if (!file_exists($file_path)) {
         return ['success' => false, 'message' => 'Arquivo não encontrado'];
     }

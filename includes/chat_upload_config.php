@@ -142,8 +142,13 @@ function uploadChatFile($file, $type) {
         $sanitize_result = sanitize_image_exif($filepath, 90);
         
         if (!$sanitize_result['success']) {
-            error_log("EXIF sanitization failed for chat $type: " . $sanitize_result['message']);
-            // Continua mesmo se falhar (melhor ter imagem com EXIF do que falhar upload)
+            // Log apenas como aviso se GD não disponível
+            if (isset($sanitize_result['warning']) && $sanitize_result['warning']) {
+                error_log("AVISO: EXIF não removido do chat (GD não disponível)");
+            } else {
+                error_log("ERRO: EXIF sanitization failed for chat $type: " . $sanitize_result['message']);
+            }
+            // Continua upload normalmente (melhor ter imagem com EXIF do que falhar upload)
         }
     }
     
