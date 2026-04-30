@@ -28,22 +28,39 @@ if (empty($_SESSION['_boost_cleanup_done']) && mt_rand(1, 100) === 1) {
     }
 }
 
+// Limpeza periódica de user_feed_seen > 30 dias (~0.5 % dos requests, 1× por sessão)
+if (empty($_SESSION['_seen_cleanup_done']) && mt_rand(1, 200) === 1) {
+    $_SESSION['_seen_cleanup_done'] = true;
+    try {
+        $pdo->exec("DELETE FROM user_feed_seen WHERE seen_at < DATE_SUB(NOW(), INTERVAL 30 DAY)");
+    } catch (Exception $e) {
+        // Silenciar — tabela pode não existir
+    }
+}
+
 function feedBaseWeightSql(): string
 {
+    // Decay multiplicativo exponencial: EXP(-λ × horas), λ=0.0005
+    // → A 6 meses (4 380 h) o engagement vale ~11 % do original:
+    //   um viral antigo NUNCA bate um vídeo novo com meia dúzia de likes.
+    // Pontuações de referência:
+    //   Novo 0h, 6 likes          → ~41 pts
+    //   Popular 6 meses, 10k views→ ~11 pts   ← nunca ganha
+    //   1 semana, engagement médio → ~47 pts  ← saudável
     return "
-        CASE
-            WHEN TIMESTAMPDIFF(HOUR, v.created_at, NOW()) <= 6 THEN 30
-            WHEN TIMESTAMPDIFF(HOUR, v.created_at, NOW()) <= 24 THEN 25
-            WHEN TIMESTAMPDIFF(HOUR, v.created_at, NOW()) <= 72 THEN 15
-            WHEN TIMESTAMPDIFF(HOUR, v.created_at, NOW()) <= 168 THEN 8
-            WHEN TIMESTAMPDIFF(HOUR, v.created_at, NOW()) <= 720 THEN 3
+        (
+            LEAST(25, LOG10(v.likes_count + 1) * 10)
+            + LEAST(15, LOG10(v.views_count + 1) * 5)
+            + LEAST(15, LOG10(v.comments_count + 1) * 8)
+        ) * EXP(-0.0005 * TIMESTAMPDIFF(HOUR, v.created_at, NOW()))
+        + CASE
+            WHEN TIMESTAMPDIFF(HOUR, v.created_at, NOW()) <= 24  THEN 20
+            WHEN TIMESTAMPDIFF(HOUR, v.created_at, NOW()) <= 72  THEN 12
+            WHEN TIMESTAMPDIFF(HOUR, v.created_at, NOW()) <= 168 THEN 5
             ELSE 0
-        END
-        + LEAST(25, LOG10(v.likes_count + 1) * 10)
-        + LEAST(15, LOG10(v.views_count + 1) * 5)
-        + LEAST(15, LOG10(v.comments_count + 1) * 8)
-        + CASE WHEN v.views_count < 20 AND TIMESTAMPDIFF(HOUR, v.created_at, NOW()) <= 72 THEN 10 ELSE 0 END
-        + 10
+          END
+        + CASE WHEN v.views_count < 15 AND TIMESTAMPDIFF(HOUR, v.created_at, NOW()) <= 48 THEN 8 ELSE 0 END
+        + 5
     ";
 }
 
@@ -89,6 +106,43 @@ function getBoostPolicy(): array
         'daily_cap_per_user' => 8,
         'now' => time(),
     ];
+}
+
+// ---- Histórico persistente de vídeos vistos (deduplicação cross-sessão) ----
+
+function loadSeenVideoIds($pdo, int $user_id, int $days = 21): array
+{
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT video_id FROM user_feed_seen
+             WHERE user_id = ? AND seen_at > DATE_SUB(NOW(), INTERVAL ? DAY)"
+        );
+        $stmt->execute([$user_id, $days]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    } catch (Exception $e) {
+        return []; // tabela pode não existir ainda
+    }
+}
+
+function saveSeenVideoIds($pdo, int $user_id, array $video_ids): void
+{
+    if ($user_id <= 0 || empty($video_ids)) {
+        return;
+    }
+    try {
+        $ph     = implode(',', array_fill(0, count($video_ids), '(?, ?)'));
+        $params = [];
+        foreach ($video_ids as $vid) {
+            $params[] = $user_id;
+            $params[] = (int)$vid;
+        }
+        $pdo->prepare(
+            "INSERT INTO user_feed_seen (user_id, video_id) VALUES $ph
+             ON DUPLICATE KEY UPDATE seen_at = NOW()"
+        )->execute($params);
+    } catch (Exception $e) {
+        // tabela pode não existir ainda — silenciar
+    }
 }
 
 function loadBoostState(string $state_key, ?array $policy = null): array
@@ -225,19 +279,38 @@ function getDistanceSinceLastBoost($pdo, array $exclude_ids): int
     return 9999;
 }
 
-function fetchCandidateRows($pdo, string $where_sql, array $params, int $candidate_limit): array
+function fetchCandidateRows($pdo, string $where_sql, array $params, int $candidate_limit, int $seen_user_id = 0, int $seen_days = 21): array
 {
     $weight_sql = feedBaseWeightSql();
+
+    $seen_join  = '';
+    $seen_where = '';
+    $all_params = $params;
+
+    if ($seen_user_id > 0) {
+        // LEFT JOIN exclui vídeos vistos nos últimos $seen_days dias.
+        // Mais eficiente que NOT IN em catálogos com muitos IDs de histórico.
+        $seen_join  = "LEFT JOIN user_feed_seen ufs
+                          ON ufs.video_id = v.id
+                         AND ufs.user_id = ?
+                         AND ufs.seen_at > DATE_SUB(NOW(), INTERVAL ? DAY)";
+        $seen_where = "AND ufs.video_id IS NULL";
+        $all_params = array_merge([$seen_user_id, $seen_days], $params);
+    }
+
     $sql = "
         SELECT v.id, v.is_boosted, ($weight_sql) AS base_weight
         FROM videos v
-        WHERE v.is_public = 1 AND v.moderation_status = 'approved' $where_sql
+        $seen_join
+        WHERE v.is_public = 1 AND v.moderation_status = 'approved'
+        $seen_where
+        $where_sql
         ORDER BY base_weight DESC
         LIMIT $candidate_limit
     ";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    $stmt->execute($all_params);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -494,8 +567,13 @@ function fetchBatch(
             $pdo,
             "AND v.user_id != ? AND v.id != ?",
             [$user_id, $start_video_id],
-            $candidate_limit
+            $candidate_limit,
+            $user_id
         );
+        // Fallback: catálogo pequeno e tudo já visto — reapresentar sem filtro
+        if (empty($rows)) {
+            $rows = fetchCandidateRows($pdo, "AND v.user_id != ? AND v.id != ?", [$user_id, $start_video_id], $candidate_limit);
+        }
 
         $rest_ids = buildBoostAwareOrder(
             $rows,
@@ -522,8 +600,13 @@ function fetchBatch(
         $pdo,
         "AND v.user_id != ? $exclude_clause",
         $params,
-        $candidate_limit
+        $candidate_limit,
+        $user_id
     );
+    // Fallback: catálogo pequeno e todos os vídeos foram vistos recentemente
+    if (empty($rows)) {
+        $rows = fetchCandidateRows($pdo, "AND v.user_id != ? $exclude_clause", $params, $candidate_limit);
+    }
 
     return buildBoostAwareOrder(
         $rows,
@@ -867,6 +950,11 @@ try {
             } catch (Exception $e) {
                 // Tabela pode não existir ainda — silenciar
             }
+        }
+
+        // Guardar histórico persistente de vídeos vistos (deduplicação cross-sessão)
+        if (!empty($videos)) {
+            saveSeenVideoIds($pdo, $user_id, array_column($videos, 'id'));
         }
     }
 
