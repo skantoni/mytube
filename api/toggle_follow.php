@@ -127,10 +127,6 @@ try {
             UPDATE users 
             SET following_count = GREATEST(0, following_count + ?)
             WHERE id = ?
-        $pdo->prepare("
-            UPDATE users 
-            SET following_count = GREATEST(0, following_count + ?)
-            WHERE id = ?
         ")->execute([$delta, $follower_id]);
         
         // ✅ COMMIT DA TRANSAÇÃO: Confirma todas as mudanças atomicamente
