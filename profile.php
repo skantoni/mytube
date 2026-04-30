@@ -639,11 +639,6 @@ $has_more_videos = $total_user_videos > count($user_videos);
                             </div>
                         </div>
                         <input type="hidden" name="remove_icon" id="removeIconInput" value="0">
-                    <?php else: ?>
-                        <div class="premium-locked-notice">
-                            <i class="fas fa-star"></i>
-                            Esta funcionalidade está disponível para utilizadores <strong>Premium</strong>.
-                        </div>
                     <?php endif; ?>
                 </div>
                 
@@ -2126,10 +2121,9 @@ $has_more_videos = $total_user_videos > count($user_videos);
         if (!editModal.classList.contains('active')) {
             toggleEditModal();
         }
-        setTimeout(() => {
-            const fileInput = document.getElementById('profilePicture');
-            if (fileInput) fileInput.click();
-        }, 350);
+        // Nota: fileInput.click() via setTimeout perde o contexto de gesto no iOS/Safari PWA,
+        // fazendo com que o seletor de ficheiros seja bloqueado silenciosamente.
+        // O utilizador usa o botão "Alterar Foto" na modal, que funciona nativamente.
     }
     function showProfileInfoModal() {
         closeAvatarActionSheet();
