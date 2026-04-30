@@ -1593,7 +1593,8 @@ function sendMessage() {
         cancelReply();
         stopTypingStatus();
 
-        uploadAndSendFile(fileToSend, 'image', caption);
+        const pendingFileType = fileToSend.type.startsWith('video/') ? 'video' : 'image';
+        uploadAndSendFile(fileToSend, pendingFileType, caption);
         return;
     }
 
@@ -1665,7 +1666,13 @@ function startEditMessage(messageId) {
     const msgEl = document.querySelector(`[data-message-id="${messageId}"]`);
     if (!msgEl) return;
     
-    const messageText = msgEl.querySelector('.message-text')?.textContent?.trim() || '';
+    // Para imagens, o texto editável está em .message-caption (pode estar vazio)
+    // Para texto, está em .message-text
+    const isImageMsg = !!msgEl.querySelector('.chat-image-container');
+    const isVideoMsg = !isImageMsg && !!msgEl.querySelector('.chat-video-container');
+    const messageText = (isImageMsg || isVideoMsg)
+        ? (msgEl.querySelector('.message-caption')?.textContent?.trim() || '')
+        : (msgEl.querySelector('.message-text')?.textContent?.trim() || '');
     
     // Verificar se é áudio ou arquivo (não permite editar)
     if (msgEl.querySelector('.audio-message')) {
@@ -1723,10 +1730,22 @@ function handleMessageEdited(data) {
     const msgEl = document.querySelector(`[data-message-id="${messageId}"]`);
     if (!msgEl) return;
     
-    // Atualizar texto
-    const textEl = msgEl.querySelector('.message-text');
-    if (textEl) {
-        textEl.innerHTML = escapeHtml(content);
+    // Atualizar texto — preservar imagem/vídeo se existir
+    const isImageMsg = !!msgEl.querySelector('.chat-image-container');
+    const isVideoMsg = !isImageMsg && !!msgEl.querySelector('.chat-video-container');
+    if (isImageMsg || isVideoMsg) {
+        // Nunca tocar na .message-text (contém a imagem) — só atualizar/criar .message-caption
+        let captionEl = msgEl.querySelector('.message-caption');
+        if (!captionEl) {
+            captionEl = document.createElement('div');
+            captionEl.className = 'message-caption';
+            const textWrapper = msgEl.querySelector('.message-text');
+            if (textWrapper) textWrapper.appendChild(captionEl);
+        }
+        captionEl.textContent = content;
+    } else {
+        const textEl = msgEl.querySelector('.message-text');
+        if (textEl) textEl.innerHTML = escapeHtml(content);
     }
     
     // Adicionar indicador de editada
@@ -3070,11 +3089,23 @@ function showInlineImagePreview(file) {
     previewEl.id = 'inputImagePreview';
     previewEl.className = 'input-image-preview';
 
-    // Criar img via createElement para evitar sanitização de blob URLs no innerHTML
-    const thumb = document.createElement('img');
-    thumb.src = pendingPasteObjectUrl;
-    thumb.className = 'input-image-thumb';
-    thumb.alt = 'Preview';
+    // Criar thumbnail — vídeo usa <video>, imagem usa <img>
+    let thumb;
+    if (file.type.startsWith('video/')) {
+        thumb = document.createElement('video');
+        thumb.src = pendingPasteObjectUrl;
+        thumb.className = 'input-image-thumb';
+        thumb.muted = true;
+        thumb.playsInline = true;
+        thumb.preload = 'metadata';
+        // Mostrar primeiro frame
+        thumb.addEventListener('loadedmetadata', () => { thumb.currentTime = 0.1; });
+    } else {
+        thumb = document.createElement('img');
+        thumb.src = pendingPasteObjectUrl;
+        thumb.className = 'input-image-thumb';
+        thumb.alt = 'Preview';
+    }
 
     const removeBtn = document.createElement('button');
     removeBtn.className = 'input-image-remove';
@@ -3565,8 +3596,12 @@ function handleFileSelect(event) {
         return;
     }
 
-    // Mostrar preview antes de enviar
-    showFilePreview(file, fileType);
+    // Imagem e vídeo entram no modo inline (como Ctrl+V); documentos ficam no modal
+    if (fileType === 'image' || fileType === 'video') {
+        showInlineImagePreview(file);
+    } else {
+        showFilePreview(file, fileType);
+    }
     event.target.value = '';
 }
 

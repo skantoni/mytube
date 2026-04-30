@@ -1323,7 +1323,7 @@ io.on('connection', (socket) => {
             
             const msg = rows[0];
             
-            if (msg.type !== 'text') {
+            if (msg.type !== 'text' && msg.type !== 'image' && msg.type !== 'video') {
                 socket.emit('error', { message: 'Apenas mensagens de texto podem ser editadas' });
                 return;
             }

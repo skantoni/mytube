@@ -38,8 +38,8 @@ try {
         exit;
     }
 
-    // Só permite editar mensagens de texto
-    if ($message['type'] !== 'text') {
+    // Permite editar texto e legenda de imagens e vídeos
+    if (!in_array($message['type'], ['text', 'image', 'video'])) {
         echo json_encode(['success' => false, 'error' => 'Apenas mensagens de texto podem ser editadas']);
         exit;
     }
