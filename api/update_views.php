@@ -45,48 +45,64 @@ $video_id   = (int)$input['video_id'];
 $user_id    = isLoggedIn() ? $_SESSION['user_id'] : null;
 
 try {
-    // Dedup: mesmo user + mesmo vídeo nos últimos 30 min?
-    // Fallback para IP se não estiver logado
-    if ($user_id) {
-        $stmt = $pdo->prepare("
-            SELECT 1 FROM video_views 
-            WHERE video_id = ? AND user_id = ? AND viewed_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
-            LIMIT 1
-        ");
-        $stmt->execute([$video_id, $user_id]);
-    } else {
-        $ip_address = $_SERVER['REMOTE_ADDR'];
-        $stmt = $pdo->prepare("
-            SELECT 1 FROM video_views 
-            WHERE video_id = ? AND ip_address = ? AND viewed_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
-            LIMIT 1
-        ");
-        $stmt->execute([$video_id, $ip_address]);
-    }
+    // ✅ INICIAR TRANSAÇÃO: Garante atomicidade INSERT + UPDATE
+    $pdo->beginTransaction();
     
-    if (!$stmt->fetchColumn()) {
-        // Registrar visualização
-        $stmt = $pdo->prepare("
-            INSERT INTO video_views (video_id, user_id, ip_address) 
-            VALUES (?, ?, ?)
-        ");
-        $stmt->execute([$video_id, $user_id, $_SERVER['REMOTE_ADDR']]);
-        
-        // +1 no contador desnormalizado + trend_score
-        $pdo->prepare("UPDATE videos SET views_count = views_count + 1, trend_score = (likes_count * 2) + (views_count + 1) + (comments_count * 3) WHERE id = ?")
-            ->execute([$video_id]);
-
-        // +1 ranking_points para o dono do vídeo
-        $ownerStmt = $pdo->prepare("SELECT user_id FROM videos WHERE id = ?");
-        $ownerStmt->execute([$video_id]);
-        $vid_owner = $ownerStmt->fetchColumn();
-        if ($vid_owner) {
-            ranking_points_increment($pdo, (int)$vid_owner, 1);
+    try {
+        // Dedup: mesmo user + mesmo vídeo nos últimos 30 min?
+        // Fallback para IP se não estiver logado
+        if ($user_id) {
+            $stmt = $pdo->prepare("
+                SELECT 1 FROM video_views 
+                WHERE video_id = ? AND user_id = ? AND viewed_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                LIMIT 1
+            ");
+            $stmt->execute([$video_id, $user_id]);
+        } else {
+            $ip_address = $_SERVER['REMOTE_ADDR'];
+            $stmt = $pdo->prepare("
+                SELECT 1 FROM video_views 
+                WHERE video_id = ? AND ip_address = ? AND viewed_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                LIMIT 1
+            ");
+            $stmt->execute([$video_id, $ip_address]);
         }
         
-        echo json_encode(['success' => true, 'message' => 'Visualização registrada']);
-    } else {
-        echo json_encode(['success' => true, 'message' => 'Visualização já registrada']);
+        if (!$stmt->fetchColumn()) {
+            // Registrar visualização
+            $stmt = $pdo->prepare("
+                INSERT INTO video_views (video_id, user_id, ip_address) 
+                VALUES (?, ?, ?)
+            ");
+            $stmt->execute([$video_id, $user_id, $_SERVER['REMOTE_ADDR']]);
+            
+            // +1 no contador desnormalizado + trend_score
+            $pdo->prepare("UPDATE videos SET views_count = views_count + 1, trend_score = (likes_count * 2) + (views_count + 1) + (comments_count * 3) WHERE id = ?")
+                ->execute([$video_id]);
+
+            // ✅ COMMIT DA TRANSAÇÃO: Confirma INSERT + UPDATE atomicamente
+            $pdo->commit();
+
+            // +1 ranking_points para o dono do vídeo
+            $ownerStmt = $pdo->prepare("SELECT user_id FROM videos WHERE id = ?");
+            $ownerStmt->execute([$video_id]);
+            $vid_owner = $ownerStmt->fetchColumn();
+            if ($vid_owner) {
+                ranking_points_increment($pdo, (int)$vid_owner, 1);
+            }
+            
+            echo json_encode(['success' => true, 'message' => 'Visualização registrada']);
+        } else {
+            // Dedup: já foi contado
+            $pdo->rollBack();
+            echo json_encode(['success' => true, 'message' => 'Visualização já registrada']);
+        }
+        
+    } catch (Exception $e) {
+        // ✅ ROLLBACK EM CASO DE ERRO: Reverte INSERT e UPDATE
+        $pdo->rollBack();
+        error_log("❌ Erro em update_views (rollback executado): " . $e->getMessage());
+        throw $e;
     }
     
     // ============================================
@@ -101,6 +117,7 @@ try {
     ")->execute();
     
 } catch (Exception $e) {
+    error_log("update_views.php error: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['error' => 'Erro interno do servidor']);
 }

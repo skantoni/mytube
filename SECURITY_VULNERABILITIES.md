@@ -10,10 +10,10 @@
 | Severidade | Total | Resolvidas | Pendentes |
 |------------|-------|------------|-----------|
 | CRÍTICO    | 14    | 14         | 0         |
-| ALTO       | 13    | 6          | 7         |
+| ALTO       | 13    | 7          | 6         |
 | MÉDIO      | 8     | 1          | 7         |
 | BAIXO      | 7     | 0          | 7         |
-| **TOTAL**  | **42**| **21**     | **21**    |
+| **TOTAL**  | **42**| **22**     | **20**    |
 
 ---
 
@@ -303,10 +303,41 @@
 **Arquivo:** `api/add_comment.php` linha 52-58  
 **Problema:** Contornável abrindo nova aba/incognito
 
-### ❌ 11. Race conditions em contadores
-**Status:** ❌ **PENDENTE**  
-**Arquivos:** `api/toggle_like.php`, `api/toggle_follow.php`  
-**Problema:** Likes/follows sem transação
+### ✅ 11. Race conditions em contadores
+**Status:** ✅ **RESOLVIDO**  
+**Arquivos:** `api/toggle_like.php`, `api/toggle_follow.php`, `api/toggle_user_follow.php`, `api/update_views.php`, `api/add_comment.php`, `api/delete_comment.php`, `api/toggle_video_like.php`  
+**Problema:** Operações de contador (likes, follows, views, comments) sem transações causam race conditions
+- 2 likes simultâneos podem incrementar apenas 1 vez
+- Inconsistência entre tabelas (ex: follow inserido mas contador não incrementado)
+- Desincronização de dados em alta concorrência
+**Solução Implementada:**
+- **✅ toggle_follow.php:** Adicionado `beginTransaction()` + `commit()` + `rollback()`
+  - INSERT/DELETE follow + 2 UPDATEs contadores atomicamente
+- **✅ toggle_user_follow.php:** Adicionado transações (mesmo padrão)
+- **✅ update_views.php:** Adicionado transações
+  - INSERT video_views + UPDATE views_count atomicamente
+  - Rollback no dedup (visualização já registrada)
+- **✅ toggle_like.php:** JÁ tinha transações (verificado)
+- **✅ add_comment.php:** JÁ tinha transações (verificado)
+- **✅ delete_comment.php:** JÁ tinha transações (verificado)
+- **✅ toggle_video_like.php:** JÁ tinha transações (verificado)
+**Padrão implementado:**
+```php
+$pdo->beginTransaction();
+try {
+    // INSERT/DELETE operação principal
+    // UPDATE contador(es)
+    $pdo->commit(); // Confirma tudo atomicamente
+} catch (Exception $e) {
+    $pdo->rollBack(); // Reverte tudo em caso de erro
+    throw $e;
+}
+```
+**Benefícios:**
+- ✅ Contadores sempre consistentes com dados reais
+- ✅ Previne race conditions em cenários de alta concorrência
+- ✅ Rollback automático em caso de erro (integridade garantida)
+**Data:** 30/04/2026
 
 ### ❌ 12. Logs de debug expondo dados sensíveis
 **Status:** ❌ **PENDENTE**  

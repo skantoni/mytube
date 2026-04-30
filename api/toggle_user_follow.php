@@ -81,48 +81,62 @@ try {
                 exit;
             }
             
-            // Verificar se já está seguindo
-            $stmt = $pdo->prepare("SELECT id FROM follows WHERE follower_id = ? AND following_id = ?");
-            $stmt->execute([$current_user_id, $target_user_id]);
-            $existing_follow = $stmt->fetch();
+            // ✅ INICIAR TRANSAÇÃO: Garante atomicidade (previne race conditions)
+            $pdo->beginTransaction();
             
-            if ($existing_follow) {
-                // Deixar de seguir
-                $stmt = $pdo->prepare("DELETE FROM follows WHERE follower_id = ? AND following_id = ?");
+            try {
+                // Verificar se já está seguindo
+                $stmt = $pdo->prepare("SELECT id FROM follows WHERE follower_id = ? AND following_id = ?");
                 $stmt->execute([$current_user_id, $target_user_id]);
-                $following = false;
-            } else {
-                // Seguir
-                $stmt = $pdo->prepare("INSERT INTO follows (follower_id, following_id) VALUES (?, ?)");
-                $stmt->execute([$current_user_id, $target_user_id]);
-                $following = true;
+                $existing_follow = $stmt->fetch();
+                
+                if ($existing_follow) {
+                    // Deixar de seguir
+                    $stmt = $pdo->prepare("DELETE FROM follows WHERE follower_id = ? AND following_id = ?");
+                    $stmt->execute([$current_user_id, $target_user_id]);
+                    $following = false;
+                } else {
+                    // Seguir
+                    $stmt = $pdo->prepare("INSERT INTO follows (follower_id, following_id) VALUES (?, ?)");
+                    $stmt->execute([$current_user_id, $target_user_id]);
+                    $following = true;
+                }
+                
+                // ✅ ATUALIZAR CONTADORES ATOMICAMENTE (dentro da transação)
+                $delta = $following ? 1 : -1;
+                $pdo->prepare("
+                    UPDATE users 
+                    SET followers_count = GREATEST(0, followers_count + ?)
+                    WHERE id = ?
+                ")->execute([$delta, $target_user_id]);
+                
+                $pdo->prepare("
+                    UPDATE users 
+                    SET following_count = GREATEST(0, following_count + ?)
+                    WHERE id = ?
+                ")->execute([$delta, $current_user_id]);
+                
+                // ✅ COMMIT DA TRANSAÇÃO: Confirma todas as mudanças atomicamente
+                $pdo->commit();
+                
+                // Buscar contagem atualizada
+                $stmt = $pdo->prepare("SELECT followers_count FROM users WHERE id = ?");
+                $stmt->execute([$target_user_id]);
+                $updated_user = $stmt->fetch();
+                
+                echo json_encode([
+                    'success' => true,
+                    'following' => $following,
+                    'followers_count' => (int)$updated_user['followers_count'],
+                    'user_logged_in' => true
+                ]);
+                
+            } catch (Exception $e) {
+                // ✅ ROLLBACK EM CASO DE ERRO: Reverte todas as mudanças
+                $pdo->rollBack();
+                error_log("❌ Erro em toggle_user_follow (rollback executado): " . $e->getMessage());
+                throw $e;
             }
-            
-            // Atualizar contadores na tabela users (+1 ou -1)
-            $delta = $following ? 1 : -1;
-            $pdo->prepare("
-                UPDATE users 
-                SET followers_count = GREATEST(0, followers_count + ?)
-                WHERE id = ?
-            ")->execute([$delta, $target_user_id]);
-            
-            $pdo->prepare("
-                UPDATE users 
-                SET following_count = GREATEST(0, following_count + ?)
-                WHERE id = ?
-            ")->execute([$delta, $current_user_id]);
-            
-            // Buscar contagem atualizada
-            $stmt = $pdo->prepare("SELECT followers_count FROM users WHERE id = ?");
-            $stmt->execute([$target_user_id]);
-            $updated_user = $stmt->fetch();
-            
-            echo json_encode([
-                'success' => true,
-                'following' => $following,
-                'followers_count' => (int)$updated_user['followers_count'],
-                'user_logged_in' => true
-            ]);
             
         } else {
             // Usuario não logado - retornar status para localStorage

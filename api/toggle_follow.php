@@ -60,97 +60,116 @@ try {
         exit;
     }
     
-    // Verificar se já está seguindo
-    $stmt = $pdo->prepare("SELECT id FROM follows WHERE follower_id = ? AND following_id = ?");
-    $stmt->execute([$follower_id, $following_id]);
-    $existing_follow = $stmt->fetch();
+    // ✅ INICIAR TRANSAÇÃO: Garante atomicidade (previne race conditions)
+    $pdo->beginTransaction();
     
-    if ($existing_follow) {
-        // Deixar de seguir
-        $stmt = $pdo->prepare("DELETE FROM follows WHERE id = ?");
-        $stmt->execute([$existing_follow['id']]);
-        $action = 'unfollowed';
-        $is_following = false;
+    try {
+        // Verificar se já está seguindo
+        $stmt = $pdo->prepare("SELECT id FROM follows WHERE follower_id = ? AND following_id = ?");
+        $stmt->execute([$follower_id, $following_id]);
+        $existing_follow = $stmt->fetch();
         
-        error_log("✅ Unfollow realizado: follower=$follower_id, following=$following_id");
-        
-        // Criar notificação de unfollow
-        try {
-            $notifStmt = $pdo->prepare("
-                INSERT INTO notifications (user_id, actor_id, type, reference_id, created_at) 
-                VALUES (?, ?, 'unfollow', ?, NOW())
-            ");
-            $notifStmt->execute([$following_id, $follower_id, $follower_id]);
-        } catch (Exception $e) {
-            error_log("⚠️ Erro ao criar notificação unfollow: " . $e->getMessage());
-        }
-    } else {
-        // Seguir
-        $stmt = $pdo->prepare("INSERT INTO follows (follower_id, following_id, created_at) VALUES (?, ?, NOW())");
-        $success = $stmt->execute([$follower_id, $following_id]);
-        $action = 'followed';
-        $is_following = true;
-        
-        error_log("✅ Follow realizado: follower=$follower_id, following=$following_id, success=" . ($success ? 'SIM' : 'NÃO'));
-        
-        // Criar notificação de follow
-        try {
-            $notifStmt = $pdo->prepare("
-                INSERT INTO notifications (user_id, actor_id, type, reference_id, created_at) 
-                VALUES (?, ?, 'follow', ?, NOW())
-            ");
-            $notifStmt->execute([$following_id, $follower_id, $follower_id]);
-            error_log("✅ Notificação criada");
+        if ($existing_follow) {
+            // Deixar de seguir
+            $stmt = $pdo->prepare("DELETE FROM follows WHERE id = ?");
+            $stmt->execute([$existing_follow['id']]);
+            $action = 'unfollowed';
+            $is_following = false;
             
-            // Push notification
-            $actorName = $_SESSION['username'] ?? 'Alguém';
-            sendPushNotification($pdo, (int)$following_id, 'Novo seguidor 👤', "$actorName começou a seguir-te", "/profile.php?user=$actorName");
-        } catch (Exception $e) {
-            error_log("⚠️ Erro ao criar notificação: " . $e->getMessage());
-            // Silently fail - não bloquear o follow se notificação falhar
+            error_log("✅ Unfollow realizado: follower=$follower_id, following=$following_id");
+            
+            // Criar notificação de unfollow
+            try {
+                $notifStmt = $pdo->prepare("
+                    INSERT INTO notifications (user_id, actor_id, type, reference_id, created_at) 
+                    VALUES (?, ?, 'unfollow', ?, NOW())
+                ");
+                $notifStmt->execute([$following_id, $follower_id, $follower_id]);
+            } catch (Exception $e) {
+                error_log("⚠️ Erro ao criar notificação unfollow: " . $e->getMessage());
+            }
+        } else {
+            // Seguir
+            $stmt = $pdo->prepare("INSERT INTO follows (follower_id, following_id, created_at) VALUES (?, ?, NOW())");
+            $success = $stmt->execute([$follower_id, $following_id]);
+            $action = 'followed';
+            $is_following = true;
+            
+            error_log("✅ Follow realizado: follower=$follower_id, following=$following_id, success=" . ($success ? 'SIM' : 'NÃO'));
+            
+            // Criar notificação de follow
+            try {
+                $notifStmt = $pdo->prepare("
+                    INSERT INTO notifications (user_id, actor_id, type, reference_id, created_at) 
+                    VALUES (?, ?, 'follow', ?, NOW())
+                ");
+                $notifStmt->execute([$following_id, $follower_id, $follower_id]);
+                error_log("✅ Notificação criada");
+                
+                // Push notification
+                $actorName = $_SESSION['username'] ?? 'Alguém';
+                sendPushNotification($pdo, (int)$following_id, 'Novo seguidor 👤', "$actorName começou a seguir-te", "/profile.php?user=$actorName");
+            } catch (Exception $e) {
+                error_log("⚠️ Erro ao criar notificação: " . $e->getMessage());
+                // Silently fail - não bloquear o follow se notificação falhar
+            }
         }
+        
+        // ✅ ATUALIZAR CONTADORES ATOMICAMENTE (dentro da transação)
+        $delta = $is_following ? 1 : -1;
+        $pdo->prepare("
+            UPDATE users 
+            SET followers_count = GREATEST(0, followers_count + ?)
+            WHERE id = ?
+        ")->execute([$delta, $following_id]);
+        
+        $pdo->prepare("
+            UPDATE users 
+            SET following_count = GREATEST(0, following_count + ?)
+            WHERE id = ?
+        $pdo->prepare("
+            UPDATE users 
+            SET following_count = GREATEST(0, following_count + ?)
+            WHERE id = ?
+        ")->execute([$delta, $follower_id]);
+        
+        // ✅ COMMIT DA TRANSAÇÃO: Confirma todas as mudanças atomicamente
+        $pdo->commit();
+        
+        // Buscar contadores atualizados
+        $followers_stmt = $pdo->prepare("SELECT followers_count FROM users WHERE id = ?");
+        $followers_stmt->execute([$following_id]);
+        $followers_count = $followers_stmt->fetchColumn();
+
+        $my_following_stmt = $pdo->prepare("SELECT following_count FROM users WHERE id = ?");
+        $my_following_stmt->execute([$follower_id]);
+        $my_following_count = $my_following_stmt->fetchColumn();
+        
+        // Verificar se o outro usuário segue de volta (follows_you)
+        $follows_you_stmt = $pdo->prepare("SELECT id FROM follows WHERE follower_id = ? AND following_id = ?");
+        $follows_you_stmt->execute([$following_id, $follower_id]);
+        $follows_you = $follows_you_stmt->fetch() !== false;
+        
+        error_log("✅ Contador atualizado: $followers_count seguidores, follows_you: " . ($follows_you ? 'SIM' : 'NÃO'));
+        
+        echo json_encode([
+            'success' => true,
+            'action' => $action,
+            'is_following' => $is_following,
+            'followers_count' => (int)$followers_count,
+            'my_following_count' => (int)$my_following_count,
+            'follows_you' => $follows_you
+        ]);
+        
+    } catch (Exception $e) {
+        // ✅ ROLLBACK EM CASO DE ERRO: Reverte todas as mudanças
+        $pdo->rollBack();
+        error_log("❌ Erro em toggle_follow (rollback executado): " . $e->getMessage());
+        throw $e;
     }
     
-    // Atualizar contadores na tabela users (+1 ou -1)
-    $delta = $is_following ? 1 : -1;
-    $pdo->prepare("
-        UPDATE users 
-        SET followers_count = GREATEST(0, followers_count + ?)
-        WHERE id = ?
-    ")->execute([$delta, $following_id]);
-    
-    $pdo->prepare("
-        UPDATE users 
-        SET following_count = GREATEST(0, following_count + ?)
-        WHERE id = ?
-    ")->execute([$delta, $follower_id]);
-    
-    // Buscar contadores atualizados
-    $followers_stmt = $pdo->prepare("SELECT followers_count FROM users WHERE id = ?");
-    $followers_stmt->execute([$following_id]);
-    $followers_count = $followers_stmt->fetchColumn();
-
-    $my_following_stmt = $pdo->prepare("SELECT following_count FROM users WHERE id = ?");
-    $my_following_stmt->execute([$follower_id]);
-    $my_following_count = $my_following_stmt->fetchColumn();
-    
-    // Verificar se o outro usuário segue de volta (follows_you)
-    $follows_you_stmt = $pdo->prepare("SELECT id FROM follows WHERE follower_id = ? AND following_id = ?");
-    $follows_you_stmt->execute([$following_id, $follower_id]);
-    $follows_you = $follows_you_stmt->fetch() !== false;
-    
-    error_log("✅ Contador atualizado: $followers_count seguidores, follows_you: " . ($follows_you ? 'SIM' : 'NÃO'));
-    
-    echo json_encode([
-        'success' => true,
-        'action' => $action,
-        'is_following' => $is_following,
-        'followers_count' => (int)$followers_count,
-        'my_following_count' => (int)$my_following_count,
-        'follows_you' => $follows_you
-    ]);
-    
 } catch (Exception $e) {
+    error_log("toggle_follow.php error: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['error' => 'Erro interno do servidor']);
 }

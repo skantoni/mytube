@@ -392,6 +392,172 @@ exiftool -GPS* imagem.jpg
 
 ---
 
+## 📋 DEPLOY: Race Conditions em Contadores (30/04/2026)
+
+### O que mudou:
+- ✅ Transações MySQL adicionadas em operações de contador
+- ✅ Previne desincronização de likes/follows/views/comments
+- ✅ Rollback automático em caso de erro
+- ✅ Arquivos modificados: 
+  - `api/toggle_follow.php`
+  - `api/toggle_user_follow.php`
+  - `api/update_views.php`
+
+### Passo 1: Conectar na VPS
+```bash
+ssh skeny@mytube.social
+cd /var/www/mytube.social
+```
+
+### Passo 2: Backup
+```bash
+sudo cp api/toggle_follow.php api/toggle_follow.php.backup-$(date +%Y%m%d)
+sudo cp api/toggle_user_follow.php api/toggle_user_follow.php.backup-$(date +%Y%m%d)
+sudo cp api/update_views.php api/update_views.php.backup-$(date +%Y%m%d)
+```
+
+### Passo 3: Puxar as alterações
+```bash
+git pull origin main
+```
+
+### Passo 4: Verificar sintaxe
+```bash
+php -l api/toggle_follow.php
+php -l api/toggle_user_follow.php
+php -l api/update_views.php
+```
+
+### Passo 5: Reiniciar PHP-FPM (opcional, mas recomendado)
+```bash
+sudo systemctl restart php8.3-fpm
+sudo systemctl status php8.3-fpm
+```
+
+### Passo 6: Testar transações
+
+**Teste 1 - Seguir/Deixar de seguir:**
+1. Login em 2 navegadores diferentes (ou anónimo + normal)
+2. Abrir perfil do mesmo usuário nos 2
+3. Clicar "Seguir" rapidamente nos 2 ao mesmo tempo
+4. ✅ Contador deve aumentar corretamente (não duplicar)
+5. Atualizar página: contador deve estar consistente
+
+**Teste 2 - Likes simultâneos:**
+1. Abrir mesmo vídeo em 2 abas/navegadores
+2. Dar like rapidamente nos 2 ao mesmo tempo
+3. ✅ Contador deve aumentar apenas 1 vez (deduplicação)
+4. Dar unlike em um: contador deve decrementar corretamente
+
+**Teste 3 - Views simultâneas:**
+1. Abrir mesmo vídeo em múltiplas abas
+2. ✅ View deve ser contada apenas 1 vez (dedup 30 min)
+3. Verificar: `SELECT views_count FROM videos WHERE id = ?`
+4. Contador deve ser consistente com registros em `video_views`
+
+**Teste 4 - Comentários rápidos:**
+1. Abrir vídeo
+2. Adicionar 3-4 comentários rapidamente (respeitando rate limit)
+3. ✅ `comments_count` deve corresponder à quantidade real de comentários
+
+### Passo 7: Verificar logs de erro
+```bash
+# Verificar se não há erros de transação
+sudo tail -f /var/log/php8.3-fpm.log
+
+# Procurar por:
+# - "rollback executado" (indica erro tratado corretamente)
+# - "PDOException" (indica problema de sintaxe/conexão)
+```
+
+### Passo 8: Monitorar contadores (opcional)
+
+**Criar script de verificação de consistência:**
+```bash
+nano ~/check_counters.sh
+```
+
+```bash
+#!/bin/bash
+# Verifica se contadores estão consistentes com dados reais
+
+mysql -u seu_usuario -p -D mytube_db_prod << EOF
+-- Verificar likes_count
+SELECT v.id, v.title, v.likes_count AS contador, COUNT(vl.id) AS real
+FROM videos v
+LEFT JOIN video_likes vl ON v.id = vl.video_id
+GROUP BY v.id
+HAVING contador != real;
+
+-- Verificar comments_count
+SELECT v.id, v.title, v.comments_count AS contador, COUNT(c.id) AS real
+FROM videos v
+LEFT JOIN comments c ON v.id = c.video_id
+GROUP BY v.id
+HAVING contador != real;
+
+-- Verificar followers_count
+SELECT u.id, u.username, u.followers_count AS contador, COUNT(f.id) AS real
+FROM users u
+LEFT JOIN follows f ON u.id = f.following_id
+GROUP BY u.id
+HAVING contador != real;
+EOF
+```
+
+```bash
+chmod +x ~/check_counters.sh
+```
+
+**Executar verificação:**
+```bash
+./check_counters.sh
+```
+
+Se retornar linhas, significa que há inconsistência (não deveria acontecer com transações).
+
+### ⚠️ Problemas comuns:
+
+**Erro: "SQLSTATE[HY000]: General error: 1205 Lock wait timeout exceeded"**
+- Causa: Transação muito longa ou deadlock
+- Solução: Não deveria acontecer com operações simples
+- Verificar: `SHOW ENGINE INNODB STATUS;` no MySQL
+
+**Contadores ainda inconsistentes após deploy:**
+- Causa: Dados antigos antes das transações
+- Solução: Recalcular contadores manualmente (criar script de migração)
+
+**Performance degradou após transações:**
+- Improvável: Transações são mais rápidas que operações separadas
+- Verificar: Índices nas tabelas (já existem)
+- Monitorar: `SHOW PROCESSLIST;` no MySQL
+
+### 📊 Antes vs Depois:
+
+**Antes (SEM transações):**
+```
+Thread 1: INSERT follow
+Thread 2: INSERT follow (mesmo tempo)
+Thread 1: UPDATE followers_count +1 → 101
+Thread 2: UPDATE followers_count +1 → 101 (SOBRESCREVE!)
+Resultado: 101 (ERRADO, deveria ser 102)
+```
+
+**Depois (COM transações):**
+```
+Thread 1: BEGIN → INSERT follow → UPDATE +1 → COMMIT → 101
+Thread 2: BEGIN → (AGUARDA Thread 1) → INSERT follow → UPDATE +1 → COMMIT → 102
+Resultado: 102 (CORRETO)
+```
+
+### ✅ Benefícios:
+- ✅ Contadores sempre corretos (integridade referencial)
+- ✅ Rollback automático em erros (não fica meio-caminho)
+- ✅ ACID compliance (Atomicidade, Consistência, Isolamento, Durabilidade)
+- ✅ Sem race conditions mesmo com milhares de usuários simultâneos
+
+---
+
 ## 📋 DEPLOY: Fix Redirect Loop HTTPS (20/04/2026)
 
 ### O que mudou:
