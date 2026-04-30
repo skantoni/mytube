@@ -1,2 +1,2 @@
 Local: Tudo migrado
-VPS: NO Tudo Migrado
+VPS:Tudo Migrado
