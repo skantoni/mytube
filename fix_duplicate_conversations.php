@@ -219,8 +219,28 @@ try {
     echo "✅ Triggers criados com sucesso!\n";
     echo "   Agora é IMPOSSÍVEL criar conversas duplicadas.\n";
     
-    // PASSO 5: Verificação final
-    echo "\n✅ PASSO 5: Verificação final...\n";
+    // PASSO 5: Atualizar updated_at das conversas
+    echo "\n🔄 PASSO 5: Atualizando updated_at das conversas...\n";
+    echo str_repeat("=", 60) . "\n";
+    
+    $update_timestamps_sql = "
+        UPDATE conversations c
+        SET c.updated_at = (
+            SELECT MAX(m.created_at)
+            FROM messages m
+            WHERE m.conversation_id = c.id
+        )
+        WHERE EXISTS (
+            SELECT 1 FROM messages m WHERE m.conversation_id = c.id
+        )
+    ";
+    
+    $updated_count = $pdo_conn->exec($update_timestamps_sql);
+    echo "✅ Atualizadas {$updated_count} conversas!\n";
+    echo "   As conversas agora aparecem na ordem correta (mais recentes primeiro).\n";
+    
+    // PASSO 6: Verificação final
+    echo "\n✅ PASSO 6: Verificação final...\n";
     echo str_repeat("=", 60) . "\n";
     
     $verify_sql = "
