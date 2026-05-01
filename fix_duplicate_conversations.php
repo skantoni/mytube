@@ -7,13 +7,23 @@
 
 require_once 'includes/config.php';
 
-// Verificar se é admin
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
-    die('❌ Apenas administradores podem executar este script');
+// Verificar se é admin (via CLI ou browser)
+$is_cli = (php_sapi_name() === 'cli');
+
+if (!$is_cli) {
+    // Executado via browser - verificar sessão
+    if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
+        die('❌ Apenas administradores podem executar este script');
+    }
 }
 
-echo "<h1>🔧 Limpeza de Conversas Duplicadas</h1>";
-echo "<pre>";
+if (!$is_cli) {
+    echo "<h1>🔧 Limpeza de Conversas Duplicadas</h1>";
+    echo "<pre>";
+} else {
+    echo "\n🔧 Limpeza de Conversas Duplicadas\n";
+    echo str_repeat("=", 60) . "\n";
+}
 
 try {
     $conn = getConn();
@@ -212,13 +222,19 @@ try {
     
     echo "\n" . str_repeat("=", 60) . "\n";
     echo "🎉 Processo concluído!\n";
-    echo "</pre>";
+    
+    if (!$is_cli) {
+        echo "</pre>";
+    }
     
 } catch (Exception $e) {
     if (isset($conn)) {
         $conn->rollback();
     }
     echo "❌ ERRO: " . $e->getMessage() . "\n";
-    echo "</pre>";
+    
+    if (!$is_cli) {
+        echo "</pre>";
+    }
 }
 ?>
