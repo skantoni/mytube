@@ -37,20 +37,23 @@ define('ALLOWED_VIDEO_TYPES', ['mp4', 'avi', 'mov', 'wmv']);
 $is_production = (env('APP_ENV', 'development') === 'production');
 $is_cli = (php_sapi_name() === 'cli');
 
+// ✅ DETECTAR HTTPS atrás de proxy/CDN (Cloudflare, Nginx)
+// IMPORTANTE: Fazer ANTES de iniciar sessão para garantir cookie_secure funcione
 if ($is_production && !$is_cli) {
-    // IMPORTANTE: Detectar HTTPS atrás de proxy/CDN (Cloudflare, Nginx, Load Balancer)
-    // Se proxy já terminou SSL, não redirecionar (previne loop infinito)
-    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
-        $_SERVER['HTTPS'] = 'on';
-    }
-    
+    // Cloudflare: HTTP_CF_CONNECTING_IP indica que está atrás do CF
     if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-        // Cloudflare presente - assume HTTPS se CF está configurado
         $_SERVER['HTTPS'] = 'on';
     }
-    
-    // Redirecionar HTTP para HTTPS (apenas se realmente for HTTP)
-    if (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off') {
+    // Proxy/Load Balancer: X-Forwarded-Proto
+    elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+        $_SERVER['HTTPS'] = 'on';
+    }
+    // Nginx direto: pode setar HTTPS via fastcgi_param
+    elseif (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        // Já está setado, não fazer nada
+    }
+    // Se realmente for HTTP puro, redirecionar para HTTPS
+    elseif (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off') {
         $host = $_SERVER['HTTP_HOST'] ?? '';
         $uri  = $_SERVER['REQUEST_URI'] ?? '';
         
