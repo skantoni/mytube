@@ -12,7 +12,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
     // Validar CSRF token
     csrf_verify_or_die('Token de segurança inválido. Recarregue a página e tente novamente.');
     
+    // Destruir sessão completamente
+    session_unset();
     session_destroy();
+    
+    // Deletar cookie de sessão
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(
+            session_name(),
+            '',
+            time() - 42000,
+            $params['path'],
+            $params['domain'],
+            $params['secure'],
+            $params['httponly']
+        );
+    }
+    
     redirect('login.php');
 }
 

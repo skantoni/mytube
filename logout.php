@@ -18,9 +18,24 @@ try {
     // Silenciar erro — o logout deve sempre funcionar
 }
 
-// Destruir sessão
+// Destruir sessão completamente
 session_unset();
 session_destroy();
+
+// ✅ CRÍTICO: Deletar o cookie de sessão do navegador
+// Sem isso, o cookie antigo pode persistir e causar conflitos
+if (ini_get('session.use_cookies')) {
+    $params = session_get_cookie_params();
+    setcookie(
+        session_name(),
+        '',
+        time() - 42000,
+        $params['path'],
+        $params['domain'],
+        $params['secure'],
+        $params['httponly']
+    );
+}
 
 // Redirecionar para login
 redirect('login.php');

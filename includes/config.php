@@ -74,6 +74,13 @@ if (!$is_cli && session_status() === PHP_SESSION_NONE) {
     // Strict bloqueava sessão quando usuário clicava em links de vídeos compartilhados
     ini_set('session.cookie_samesite', 'Lax'); // Previne CSRF mantendo compatibilidade PWA
     
+    // ✅ COOKIE PATH: garante que o cookie funciona em todo o site (inclusive subdiretórios)
+    // CRÍTICO: sem isso, cookies podem conflitar entre /my e /
+    ini_set('session.cookie_path', BASE_PATH ? BASE_PATH . '/' : '/');
+    
+    // ✅ COOKIE DOMAIN: vazio para funcionar apenas no domínio atual (sem subdomínios)
+    ini_set('session.cookie_domain', '');
+    
     // ✅ COOKIE SECURE: só envia cookie via HTTPS (produção)
     if ($is_production) {
         ini_set('session.cookie_secure', 1);

@@ -55,9 +55,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Silenciar — login deve sempre funcionar
                 }
                 
-                // Limpar sessão antiga e recarregar dados atualizados
+                // ✅ CRÍTICO: Destruir sessão anterior completamente antes de criar nova
+                // Isso garante que não haja conflito entre contas diferentes
+                session_unset();
+                session_destroy();
+                
+                // Deletar cookie antigo
+                if (ini_get('session.use_cookies')) {
+                    $params = session_get_cookie_params();
+                    setcookie(
+                        session_name(),
+                        '',
+                        time() - 42000,
+                        $params['path'],
+                        $params['domain'],
+                        $params['secure'],
+                        $params['httponly']
+                    );
+                }
+                
+                // Iniciar nova sessão limpa
+                session_start();
                 session_regenerate_id(true);
-                $_SESSION = [];
                 
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
