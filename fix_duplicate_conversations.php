@@ -100,11 +100,11 @@ try {
         echo "\n✅ Conversas consolidadas com sucesso!\n";
     }
     
-    // PASSO 4: Adicionar constraint UNIQUE
-    echo "\n🔒 PASSO 4: Adicionando colunas geradas e constraint UNIQUE...\n";
+    // PASSO 4: Adicionar colunas e triggers
+    echo "\n🔒 PASSO 4: Adicionando colunas user_min/user_max e triggers...\n";
     echo str_repeat("=", 60) . "\n";
     
-    // Verificar se já existem as colunas geradas
+    // Verificar se já existem as colunas
     $check_cols_sql = "
         SELECT COUNT(*) as count 
         FROM INFORMATION_SCHEMA.COLUMNS 
@@ -116,16 +116,22 @@ try {
     $cols_exist = $result->fetch_assoc()['count'] == 2;
     
     if (!$cols_exist) {
-        echo "📝 Adicionando colunas geradas (user_min, user_max)...\n";
-        $alter_cols_sql = "
-            ALTER TABLE conversations 
-            ADD COLUMN user_min INT AS (LEAST(user1_id, user2_id)) STORED,
-            ADD COLUMN user_max INT AS (GREATEST(user1_id, user2_id)) STORED
-        ";
-        $conn->query($alter_cols_sql);
-        echo "✅ Colunas geradas adicionadas.\n";
+        echo "📝 Adicionando colunas user_min e user_max...\n";
+        
+        // Adicionar colunas
+        $conn->query("ALTER TABLE conversations ADD COLUMN user_min INT DEFAULT NULL");
+        $conn->query("ALTER TABLE conversations ADD COLUMN user_max INT DEFAULT NULL");
+        
+        // Popular colunas
+        $conn->query("UPDATE conversations SET user_min = LEAST(user1_id, user2_id), user_max = GREATEST(user1_id, user2_id)");
+        
+        // Tornar NOT NULL
+        $conn->query("ALTER TABLE conversations MODIFY COLUMN user_min INT NOT NULL");
+        $conn->query("ALTER TABLE conversations MODIFY COLUMN user_max INT NOT NULL");
+        
+        echo "✅ Colunas adicionadas e populadas.\n";
     } else {
-        echo "ℹ️  Colunas geradas já existem.\n";
+        echo "ℹ️  Colunas já existem.\n";
     }
     
     // Verificar se já existe a constraint
@@ -141,13 +147,45 @@ try {
     
     if (!$idx_exists) {
         echo "🔐 Adicionando constraint UNIQUE...\n";
-        $alter_idx_sql = "
-            ALTER TABLE conversations 
-            ADD UNIQUE KEY unique_conversation (user_min, user_max)
-        ";
-        $conn->query($alter_idx_sql);
-        echo "✅ Constraint UNIQUE adicionada com sucesso!\n";
-        echo "   Agora é IMPOSSÍVEL criar conversas duplicadas.\n";
+        $conn->query("ALTER TABLE conversations ADD UNIQUE KEY unique_conversation (user_min, user_max)");
+        echo "✅ Constraint UNIQUE adicionada!\n";
+    } else {
+        echo "ℹ️  Constraint UNIQUE já existe.\n";
+    }
+    
+    // Criar triggers
+    echo "🔧 Criando triggers...\n";
+    
+    // Dropar triggers se já existirem
+    $conn->query("DROP TRIGGER IF EXISTS conversations_before_insert");
+    $conn->query("DROP TRIGGER IF EXISTS conversations_before_update");
+    
+    // Criar trigger INSERT
+    $trigger_insert = "
+    CREATE TRIGGER conversations_before_insert 
+    BEFORE INSERT ON conversations
+    FOR EACH ROW
+    BEGIN
+        SET NEW.user_min = LEAST(NEW.user1_id, NEW.user2_id);
+        SET NEW.user_max = GREATEST(NEW.user1_id, NEW.user2_id);
+    END
+    ";
+    $conn->query($trigger_insert);
+    
+    // Criar trigger UPDATE
+    $trigger_update = "
+    CREATE TRIGGER conversations_before_update 
+    BEFORE UPDATE ON conversations
+    FOR EACH ROW
+    BEGIN
+        SET NEW.user_min = LEAST(NEW.user1_id, NEW.user2_id);
+        SET NEW.user_max = GREATEST(NEW.user1_id, NEW.user2_id);
+    END
+    ";
+    $conn->query($trigger_update);
+    
+    echo "✅ Triggers criados com sucesso!\n";
+    echo "   Agora é IMPOSSÍVEL criar conversas duplicadas.\n";
     } else {
         echo "ℹ️  Constraint UNIQUE já existe.\n";
     }

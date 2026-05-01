@@ -37,8 +37,8 @@ if (isset($_POST['install'])) {
         id INT PRIMARY KEY AUTO_INCREMENT,
         user1_id INT NOT NULL,
         user2_id INT NOT NULL,
-        user_min INT AS (LEAST(user1_id, user2_id)) STORED,
-        user_max INT AS (GREATEST(user1_id, user2_id)) STORED,
+        user_min INT NOT NULL,
+        user_max INT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (user1_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -47,6 +47,29 @@ if (isset($_POST['install'])) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
     
     executeSql($conn, $sql_conversations, "Tabela 'conversations' criada");
+    
+    // Criar triggers para manter user_min/user_max atualizados
+    $sql_trigger_insert = "
+    CREATE TRIGGER IF NOT EXISTS conversations_before_insert 
+    BEFORE INSERT ON conversations
+    FOR EACH ROW
+    BEGIN
+        SET NEW.user_min = LEAST(NEW.user1_id, NEW.user2_id);
+        SET NEW.user_max = GREATEST(NEW.user1_id, NEW.user2_id);
+    END";
+    
+    executeSql($conn, $sql_trigger_insert, "Trigger INSERT criado");
+    
+    $sql_trigger_update = "
+    CREATE TRIGGER IF NOT EXISTS conversations_before_update 
+    BEFORE UPDATE ON conversations
+    FOR EACH ROW
+    BEGIN
+        SET NEW.user_min = LEAST(NEW.user1_id, NEW.user2_id);
+        SET NEW.user_max = GREATEST(NEW.user1_id, NEW.user2_id);
+    END";
+    
+    executeSql($conn, $sql_trigger_update, "Trigger UPDATE criado");
     
     // 2. Criar tabela de mensagens
     $sql_messages = "

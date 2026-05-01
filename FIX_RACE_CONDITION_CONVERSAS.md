@@ -34,22 +34,44 @@ T3: User B → A: INSERT conversa #124 ❌ DUPLICADA!
 
 ### 1. Constraint UNIQUE no MySQL
 
-Adiciona proteção a nível de banco de dados usando **generated columns**:
+Adiciona proteção a nível de banco de dados usando **colunas + triggers**:
 
 ```sql
--- Adicionar colunas geradas (calculadas automaticamente)
+-- Adicionar colunas user_min e user_max
 ALTER TABLE conversations 
-ADD COLUMN user_min INT AS (LEAST(user1_id, user2_id)) STORED,
-ADD COLUMN user_max INT AS (GREATEST(user1_id, user2_id)) STORED;
+ADD COLUMN user_min INT NOT NULL,
+ADD COLUMN user_max INT NOT NULL;
 
--- Adicionar constraint UNIQUE nas colunas geradas
+-- Popular colunas existentes
+UPDATE conversations 
+SET user_min = LEAST(user1_id, user2_id),
+    user_max = GREATEST(user1_id, user2_id);
+
+-- Adicionar constraint UNIQUE
 ALTER TABLE conversations 
 ADD UNIQUE KEY unique_conversation (user_min, user_max);
+
+-- Criar triggers para manter as colunas atualizadas automaticamente
+CREATE TRIGGER conversations_before_insert 
+BEFORE INSERT ON conversations
+FOR EACH ROW
+BEGIN
+    SET NEW.user_min = LEAST(NEW.user1_id, NEW.user2_id);
+    SET NEW.user_max = GREATEST(NEW.user1_id, NEW.user2_id);
+END;
+
+CREATE TRIGGER conversations_before_update 
+BEFORE UPDATE ON conversations
+FOR EACH ROW
+BEGIN
+    SET NEW.user_min = LEAST(NEW.user1_id, NEW.user2_id);
+    SET NEW.user_max = GREATEST(NEW.user1_id, NEW.user2_id);
+END;
 ```
 
-**Por que colunas geradas?**  
-- MySQL não permite funções diretamente em UNIQUE constraints
-- Generated columns são calculadas automaticamente em cada INSERT/UPDATE
+**Por que triggers?**  
+- Compatível com todas as versões MySQL/MariaDB
+- Colunas populadas automaticamente em cada INSERT/UPDATE
 - Garante que `user1_id=5, user2_id=10` é igual a `user1_id=10, user2_id=5`
 
 ### 2. Código PHP com Transação
