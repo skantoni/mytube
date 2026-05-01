@@ -40,20 +40,27 @@ $is_cli = (php_sapi_name() === 'cli');
 // ✅ DETECTAR HTTPS atrás de proxy/CDN (Cloudflare, Nginx)
 // IMPORTANTE: Fazer ANTES de iniciar sessão para garantir cookie_secure funcione
 if ($is_production && !$is_cli) {
-    // Cloudflare: HTTP_CF_CONNECTING_IP indica que está atrás do CF
+    $is_https = false;
+    
+    // 1. Cloudflare: HTTP_CF_CONNECTING_IP indica que está atrás do CF
     if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
         $_SERVER['HTTPS'] = 'on';
+        $is_https = true;
     }
-    // Proxy/Load Balancer: X-Forwarded-Proto
+    // 2. Proxy/Load Balancer: X-Forwarded-Proto
     elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
         $_SERVER['HTTPS'] = 'on';
+        $is_https = true;
     }
-    // Nginx direto: pode setar HTTPS via fastcgi_param
+    // 3. Nginx direto: HTTPS setado via fastcgi_param
     elseif (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
-        // Já está setado, não fazer nada
+        $is_https = true;
     }
-    // Se realmente for HTTP puro, redirecionar para HTTPS
-    elseif (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off') {
+    
+    // ⚠️ DESABILITADO: Redirecionamento HTTP→HTTPS feito no Nginx (mais eficiente)
+    // O Nginx já redireciona na porta 80, não precisamos fazer aqui
+    /*
+    if (!$is_https) {
         $host = $_SERVER['HTTP_HOST'] ?? '';
         $uri  = $_SERVER['REQUEST_URI'] ?? '';
         
@@ -64,6 +71,7 @@ if ($is_production && !$is_cli) {
             exit();
         }
     }
+    */
 }
 
 // Iniciar sessão com configuração segura (apenas se não for CLI)
