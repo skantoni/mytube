@@ -19,9 +19,12 @@ AND (
 -- IMPORTANTE: Cria colunas virtuais que calculam o menor/maior user_id
 -- Isso permite criar um índice UNIQUE sem duplicatas independente da ordem
 
--- Adicionar colunas geradas (virtual columns)
+-- Adicionar primeira coluna gerada
 ALTER TABLE conversations 
-ADD COLUMN user_min INT AS (LEAST(user1_id, user2_id)) STORED,
+ADD COLUMN user_min INT AS (LEAST(user1_id, user2_id)) STORED;
+
+-- Adicionar segunda coluna gerada
+ALTER TABLE conversations 
 ADD COLUMN user_max INT AS (GREATEST(user1_id, user2_id)) STORED;
 
 -- Adicionar constraint UNIQUE nas colunas geradas
