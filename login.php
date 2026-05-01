@@ -55,6 +55,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Silenciar — login deve sempre funcionar
                 }
                 
+                // ✅ LIMPAR COOKIES PHPSESSID ANTIGOS (múltiplos cookies causam problemas de CSRF)
+                // Deletar cookie de sessão atual para forçar criação de um novo limpo
+                $session_params = session_get_cookie_params();
+                setcookie(
+                    session_name(),
+                    '',
+                    time() - 42000,
+                    $session_params['path'],
+                    $session_params['domain'],
+                    $session_params['secure'],
+                    $session_params['httponly']
+                );
+                
                 // ✅ Limpar todas as variáveis de sessão antigas
                 $_SESSION = [];
                 
