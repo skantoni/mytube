@@ -102,7 +102,7 @@ try {
             }
         }
         
-        // Buscar ou criar conversa
+        // Buscar ou criar conversa (com proteção contra race condition)
         $stmt = $pdo->prepare("
             SELECT id FROM conversations 
             WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
@@ -113,12 +113,32 @@ try {
         if ($conversation) {
             $conversation_id = $conversation['id'];
         } else {
-            $stmt = $pdo->prepare("
-                INSERT INTO conversations (user1_id, user2_id, created_at, updated_at) 
-                VALUES (?, ?, NOW(), NOW())
-            ");
-            $stmt->execute([$sender_id, $receiver_id]);
-            $conversation_id = $pdo->lastInsertId();
+            // Tenta criar conversa - se já existir (race condition), busca a existente
+            try {
+                // Normalizar ordem dos user_ids
+                $user1 = min($sender_id, $receiver_id);
+                $user2 = max($sender_id, $receiver_id);
+                
+                $stmt = $pdo->prepare("
+                    INSERT INTO conversations (user1_id, user2_id, created_at, updated_at) 
+                    VALUES (?, ?, NOW(), NOW())
+                ");
+                $stmt->execute([$user1, $user2]);
+                $conversation_id = $pdo->lastInsertId();
+            } catch (PDOException $e) {
+                // Se duplicate key, buscar a conversa existente
+                if ($e->getCode() == 23000) {
+                    $stmt = $pdo->prepare("
+                        SELECT id FROM conversations 
+                        WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
+                    ");
+                    $stmt->execute([$sender_id, $receiver_id, $receiver_id, $sender_id]);
+                    $conversation = $stmt->fetch();
+                    $conversation_id = $conversation['id'];
+                } else {
+                    throw $e;
+                }
+            }
         }
         
         // Inserir mensagem reencaminhada

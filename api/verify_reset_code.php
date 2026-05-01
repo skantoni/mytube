@@ -96,9 +96,6 @@ rate_limit_record($pdo, 'reset_code_email', strtolower($email), true);
 $resetToken = bin2hex(random_bytes(32));
 
 // Guardar token na sessão para validar na etapa de reset
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 $_SESSION['reset_token'] = $resetToken;
 $_SESSION['reset_user_id'] = $reset['user_id'];
 $_SESSION['reset_code_id'] = $reset['id'];

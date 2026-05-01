@@ -641,10 +641,6 @@ if ($guest_mode) {
     $seed = crc32($feed_session_id);
 
     try {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
         if ($offset === 0
             && (!isset($_SESSION[$guest_cache_key])
                 || ($_SESSION[$guest_cache_key]['session_id'] ?? '') !== $feed_session_id)

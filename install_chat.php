@@ -1,5 +1,4 @@
 <?php
-session_start();
 require_once 'includes/config.php';
 
 // Verificar se é admin (você pode adicionar verificação de admin aqui)

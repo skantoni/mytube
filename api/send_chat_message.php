@@ -63,77 +63,112 @@ try {
         }
     }
 
-    // Buscar ou criar conversa
-    $stmt = $pdo->prepare("
-        SELECT id FROM conversations 
-        WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
-    ");
-    $stmt->execute([$sender_id, $receiver_id, $receiver_id, $sender_id]);
-    $conversation = $stmt->fetch();
-
-    if ($conversation) {
-        $conversation_id = $conversation['id'];
-    } else {
+    // TRANSAÇÃO: Previne race condition quando ambos enviam primeira mensagem simultaneamente
+    $pdo->beginTransaction();
+    try {
+        // Buscar ou criar conversa (com proteção contra duplicate key)
         $stmt = $pdo->prepare("
-            INSERT INTO conversations (user1_id, user2_id, created_at, updated_at) 
-            VALUES (?, ?, NOW(), NOW())
+            SELECT id FROM conversations 
+            WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
+            FOR UPDATE
         ");
-        $stmt->execute([$sender_id, $receiver_id]);
-        $conversation_id = $pdo->lastInsertId();
+        $stmt->execute([$sender_id, $receiver_id, $receiver_id, $sender_id]);
+        $conversation = $stmt->fetch();
+
+        if ($conversation) {
+            $conversation_id = $conversation['id'];
+        } else {
+            // Tenta criar conversa - se já existir (race condition), vai falhar no UNIQUE constraint
+            try {
+                // Normalizar ordem dos user_ids (menor primeiro) para garantir consistência
+                $user1 = min($sender_id, $receiver_id);
+                $user2 = max($sender_id, $receiver_id);
+                
+                $stmt = $pdo->prepare("
+                    INSERT INTO conversations (user1_id, user2_id, created_at, updated_at) 
+                    VALUES (?, ?, NOW(), NOW())
+                ");
+                $stmt->execute([$user1, $user2]);
+                $conversation_id = $pdo->lastInsertId();
+            } catch (PDOException $e) {
+                // Se deu erro de duplicate (código 1062), buscar a conversa que já existe
+                if ($e->getCode() == 23000) {
+                    $stmt = $pdo->prepare("
+                        SELECT id FROM conversations 
+                        WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
+                    ");
+                    $stmt->execute([$sender_id, $receiver_id, $receiver_id, $sender_id]);
+                    $conversation = $stmt->fetch();
+                    $conversation_id = $conversation['id'];
+                } else {
+                    throw $e; // Outro erro, propagar
+                }
+            }
+        }
+
+        // Inserir mensagem
+        $stmt = $pdo->prepare("
+            INSERT INTO messages (conversation_id, sender_id, receiver_id, message, type, status, created_at) 
+            VALUES (?, ?, ?, ?, 'text', 'sent', NOW())
+        ");
+        $stmt->execute([$conversation_id, $sender_id, $receiver_id, $message]);
+        $message_id = $pdo->lastInsertId();
+
+        // Atualizar timestamp da conversa
+        $stmt = $pdo->prepare("UPDATE conversations SET updated_at = NOW() WHERE id = ?");
+        $stmt->execute([$conversation_id]);
+
+        // Remover conversa da lista de escondidas para ambos (nova mensagem = conversa volta à superfície)
+        $stmt = $pdo->prepare("DELETE FROM hidden_conversations WHERE conversation_id = ?");
+        $stmt->execute([$conversation_id]);
+
+        // Confirmar transação
+        $pdo->commit();
+
+        // Notificar Node.js para entrega em tempo real
+        $node_url = 'http://localhost:3001/api/notify-message';
+        $payload = json_encode([
+            'message_id' => $message_id,
+            'conversation_id' => $conversation_id,
+            'sender_id' => $sender_id,
+            'receiver_id' => $receiver_id,
+            'message' => $message,
+            'sender_username' => $sender['username'] ?? '',
+            'sender_avatar' => $sender['profile_picture'] ?? ''
+        ]);
+        
+        $ch = curl_init($node_url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 2,
+            CURLOPT_CONNECTTIMEOUT => 1
+        ]);
+        curl_exec($ch);
+        curl_close($ch);
+
+        // Push notification para o destinatário
+        $senderName = $sender['username'] ?? 'Alguém';
+        $msgPreview = mb_substr($message, 0, 80);
+        sendPushNotification($pdo, $receiver_id, "💬 $senderName", $msgPreview, "/chat.php");
+
+        echo json_encode([
+            'success' => true,
+            'message_id' => $message_id,
+            'conversation_id' => $conversation_id
+        ]);
+
+    } catch (Exception $e) {
+        // Reverter transação em caso de erro
+        $pdo->rollBack();
+        error_log("Erro ao enviar mensagem: " . $e->getMessage());
+        echo json_encode(['success' => false, 'error' => 'Erro ao enviar mensagem']);
     }
 
-    // Inserir mensagem
-    $stmt = $pdo->prepare("
-        INSERT INTO messages (conversation_id, sender_id, receiver_id, message, type, status, created_at) 
-        VALUES (?, ?, ?, ?, 'text', 'sent', NOW())
-    ");
-    $stmt->execute([$conversation_id, $sender_id, $receiver_id, $message]);
-    $message_id = $pdo->lastInsertId();
-
-    // Atualizar timestamp da conversa
-    $stmt = $pdo->prepare("UPDATE conversations SET updated_at = NOW() WHERE id = ?");
-    $stmt->execute([$conversation_id]);
-
-    // Remover conversa da lista de escondidas para ambos (nova mensagem = conversa volta à superfície)
-    $stmt = $pdo->prepare("DELETE FROM hidden_conversations WHERE conversation_id = ?");
-    $stmt->execute([$conversation_id]);
-
-    // Notificar Node.js para entrega em tempo real
-    $node_url = 'http://localhost:3001/api/notify-message';
-    $payload = json_encode([
-        'message_id' => $message_id,
-        'conversation_id' => $conversation_id,
-        'sender_id' => $sender_id,
-        'receiver_id' => $receiver_id,
-        'message' => $message,
-        'sender_username' => $sender['username'] ?? '',
-        'sender_avatar' => $sender['profile_picture'] ?? ''
-    ]);
-    
-    $ch = curl_init($node_url);
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $payload,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 2,
-        CURLOPT_CONNECTTIMEOUT => 1
-    ]);
-    curl_exec($ch);
-    curl_close($ch);
-
-    // Push notification para o destinatário
-    $senderName = $sender['username'] ?? 'Alguém';
-    $msgPreview = mb_substr($message, 0, 80);
-    sendPushNotification($pdo, $receiver_id, "💬 $senderName", $msgPreview, "/chat.php");
-
-    echo json_encode([
-        'success' => true,
-        'message_id' => $message_id,
-        'conversation_id' => $conversation_id
-    ]);
-
 } catch (Exception $e) {
+    error_log("Erro geral ao enviar mensagem: " . $e->getMessage());
     echo json_encode(['success' => false, 'error' => 'Erro ao enviar mensagem']);
 }
 ?>
