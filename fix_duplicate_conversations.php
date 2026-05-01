@@ -180,6 +180,14 @@ try {
     // Criar triggers
     echo "🔧 Criando triggers...\n";
     
+    // Configurar variável para permitir criação de triggers sem SUPER privilege
+    try {
+        $pdo_conn->exec("SET GLOBAL log_bin_trust_function_creators = 1");
+        echo "   ✅ Configuração log_bin_trust_function_creators ativada.\n";
+    } catch (Exception $e) {
+        echo "   ⚠️  Aviso: não foi possível setar log_bin_trust_function_creators (pode precisar de SUPER privilege).\n";
+    }
+    
     // Dropar triggers se já existirem
     $pdo_conn->exec("DROP TRIGGER IF EXISTS conversations_before_insert");
     $pdo_conn->exec("DROP TRIGGER IF EXISTS conversations_before_update");
