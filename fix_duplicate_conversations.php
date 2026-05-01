@@ -101,33 +101,55 @@ try {
     }
     
     // PASSO 4: Adicionar constraint UNIQUE
-    echo "\n🔒 PASSO 4: Adicionando constraint UNIQUE para prevenir duplicatas...\n";
+    echo "\n🔒 PASSO 4: Adicionando colunas geradas e constraint UNIQUE...\n";
     echo str_repeat("=", 60) . "\n";
     
-    // Verificar se já existe
-    $check_sql = "
+    // Verificar se já existem as colunas geradas
+    $check_cols_sql = "
+        SELECT COUNT(*) as count 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE table_schema = DATABASE() 
+        AND table_name = 'conversations' 
+        AND column_name IN ('user_min', 'user_max')
+    ";
+    $result = $conn->query($check_cols_sql);
+    $cols_exist = $result->fetch_assoc()['count'] == 2;
+    
+    if (!$cols_exist) {
+        echo "📝 Adicionando colunas geradas (user_min, user_max)...\n";
+        $alter_cols_sql = "
+            ALTER TABLE conversations 
+            ADD COLUMN user_min INT AS (LEAST(user1_id, user2_id)) STORED,
+            ADD COLUMN user_max INT AS (GREATEST(user1_id, user2_id)) STORED
+        ";
+        $conn->query($alter_cols_sql);
+        echo "✅ Colunas geradas adicionadas.\n";
+    } else {
+        echo "ℹ️  Colunas geradas já existem.\n";
+    }
+    
+    // Verificar se já existe a constraint
+    $check_idx_sql = "
         SELECT COUNT(*) as count 
         FROM INFORMATION_SCHEMA.STATISTICS 
         WHERE table_schema = DATABASE() 
         AND table_name = 'conversations' 
         AND index_name = 'unique_conversation'
     ";
-    $result = $conn->query($check_sql);
-    $exists = $result->fetch_assoc()['count'] > 0;
+    $result = $conn->query($check_idx_sql);
+    $idx_exists = $result->fetch_assoc()['count'] > 0;
     
-    if ($exists) {
-        echo "ℹ️  Constraint UNIQUE já existe.\n";
-    } else {
-        $alter_sql = "
+    if (!$idx_exists) {
+        echo "🔐 Adicionando constraint UNIQUE...\n";
+        $alter_idx_sql = "
             ALTER TABLE conversations 
-            ADD UNIQUE KEY unique_conversation (
-                LEAST(user1_id, user2_id), 
-                GREATEST(user1_id, user2_id)
-            )
+            ADD UNIQUE KEY unique_conversation (user_min, user_max)
         ";
-        $conn->query($alter_sql);
+        $conn->query($alter_idx_sql);
         echo "✅ Constraint UNIQUE adicionada com sucesso!\n";
         echo "   Agora é IMPOSSÍVEL criar conversas duplicadas.\n";
+    } else {
+        echo "ℹ️  Constraint UNIQUE já existe.\n";
     }
     
     // PASSO 5: Verificação final
@@ -137,7 +159,7 @@ try {
     $verify_sql = "
         SELECT 
             COUNT(*) as total_conversations,
-            COUNT(DISTINCT CONCAT(LEAST(user1_id, user2_id), '-', GREATEST(user1_id, user2_id))) as unique_pairs
+            COUNT(DISTINCT CONCAT(user_min, '-', user_max)) as unique_pairs
         FROM conversations
     ";
     $result = $conn->query($verify_sql);

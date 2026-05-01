@@ -37,11 +37,13 @@ if (isset($_POST['install'])) {
         id INT PRIMARY KEY AUTO_INCREMENT,
         user1_id INT NOT NULL,
         user2_id INT NOT NULL,
+        user_min INT AS (LEAST(user1_id, user2_id)) STORED,
+        user_max INT AS (GREATEST(user1_id, user2_id)) STORED,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (user1_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (user2_id) REFERENCES users(id) ON DELETE CASCADE,
-        UNIQUE KEY unique_conversation (LEAST(user1_id, user2_id), GREATEST(user1_id, user2_id))
+        UNIQUE KEY unique_conversation (user_min, user_max)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
     
     executeSql($conn, $sql_conversations, "Tabela 'conversations' criada");

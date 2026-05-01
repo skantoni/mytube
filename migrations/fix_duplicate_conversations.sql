@@ -15,14 +15,18 @@ AND (
     (c1.user1_id = c2.user2_id AND c1.user2_id = c2.user1_id)
 );
 
--- PARTE 2: Adicionar constraint UNIQUE para prevenir duplicatas futuras
--- IMPORTANTE: Esta constraint garante que nunca haverá 2 conversas entre os mesmos usuários
+-- PARTE 2: Adicionar colunas geradas e constraint UNIQUE
+-- IMPORTANTE: Cria colunas virtuais que calculam o menor/maior user_id
+-- Isso permite criar um índice UNIQUE sem duplicatas independente da ordem
 
+-- Adicionar colunas geradas (virtual columns)
 ALTER TABLE conversations 
-ADD UNIQUE KEY unique_conversation (
-    LEAST(user1_id, user2_id), 
-    GREATEST(user1_id, user2_id)
-);
+ADD COLUMN user_min INT AS (LEAST(user1_id, user2_id)) STORED,
+ADD COLUMN user_max INT AS (GREATEST(user1_id, user2_id)) STORED;
+
+-- Adicionar constraint UNIQUE nas colunas geradas
+ALTER TABLE conversations 
+ADD UNIQUE KEY unique_conversation (user_min, user_max);
 
 -- =========================================
 -- VERIFICAÇÃO: Testar se a constraint funciona
@@ -31,7 +35,7 @@ ADD UNIQUE KEY unique_conversation (
 -- Verificar conversas que permaneceram
 SELECT 
     COUNT(*) as total_conversations,
-    COUNT(DISTINCT CONCAT(LEAST(user1_id, user2_id), '-', GREATEST(user1_id, user2_id))) as unique_pairs
+    COUNT(DISTINCT CONCAT(user_min, '-', user_max)) as unique_pairs
 FROM conversations;
 
 -- Os dois números devem ser iguais agora!

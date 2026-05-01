@@ -34,18 +34,23 @@ T3: User B → A: INSERT conversa #124 ❌ DUPLICADA!
 
 ### 1. Constraint UNIQUE no MySQL
 
-Adiciona proteção a nível de banco de dados:
+Adiciona proteção a nível de banco de dados usando **generated columns**:
 
 ```sql
+-- Adicionar colunas geradas (calculadas automaticamente)
 ALTER TABLE conversations 
-ADD UNIQUE KEY unique_conversation (
-    LEAST(user1_id, user2_id), 
-    GREATEST(user1_id, user2_id)
-);
+ADD COLUMN user_min INT AS (LEAST(user1_id, user2_id)) STORED,
+ADD COLUMN user_max INT AS (GREATEST(user1_id, user2_id)) STORED;
+
+-- Adicionar constraint UNIQUE nas colunas geradas
+ALTER TABLE conversations 
+ADD UNIQUE KEY unique_conversation (user_min, user_max);
 ```
 
-**Por que `LEAST/GREATEST`?**  
-Garante que `user1_id=5, user2_id=10` é igual a `user1_id=10, user2_id=5`.
+**Por que colunas geradas?**  
+- MySQL não permite funções diretamente em UNIQUE constraints
+- Generated columns são calculadas automaticamente em cada INSERT/UPDATE
+- Garante que `user1_id=5, user2_id=10` é igual a `user1_id=10, user2_id=5`
 
 ### 2. Código PHP com Transação
 
@@ -136,10 +141,10 @@ SHOW INDEXES FROM conversations WHERE Key_name = 'unique_conversation';
 
 Deve retornar:
 ```
-| Table         | Key_name             | Column_name                           |
-|---------------|----------------------|---------------------------------------|
-| conversations | unique_conversation  | LEAST(user1_id, user2_id)            |
-| conversations | unique_conversation  | GREATEST(user1_id, user2_id)         |
+| Table         | Key_name             | Column_name  |
+|---------------|----------------------|--------------|
+| conversations | unique_conversation  | user_min     |
+| conversations | unique_conversation  | user_max     |
 ```
 
 ### Passo 3: Deploy VPS
@@ -173,16 +178,19 @@ https://meusite.pt/fix_duplicate_conversations.php
 ```sql
 -- Verificar duplicatas (deve retornar 0 linhas)
 SELECT 
-    LEAST(user1_id, user2_id) as user_a,
-    GREATEST(user1_id, user2_id) as user_b,
+    user_min,
+    user_max,
     COUNT(*) as count
 FROM conversations
-GROUP BY user_a, user_b
+GROUP BY user_min, user_max
 HAVING count > 1;
 
 -- Tentar criar duplicata (deve FALHAR com erro)
 INSERT INTO conversations (user1_id, user2_id) VALUES (1, 2);
+-- MySQL calcula automaticamente: user_min=1, user_max=2
+
 INSERT INTO conversations (user1_id, user2_id) VALUES (2, 1); 
+-- MySQL calcula: user_min=1, user_max=2
 -- ❌ Error 1062: Duplicate entry '1-2' for key 'unique_conversation'
 ```
 
@@ -238,7 +246,7 @@ SELECT
     'Total conversas' as metrica, 
     COUNT(*) as valor 
 FROM conversations
-UNION ALL
+UNION ALLuser_min, '-', user_max
 SELECT 
     'Pares únicos', 
     COUNT(DISTINCT CONCAT(LEAST(user1_id, user2_id), '-', GREATEST(user1_id, user2_id)))
