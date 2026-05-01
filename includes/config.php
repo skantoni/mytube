@@ -94,11 +94,6 @@ if (!$is_cli && session_status() === PHP_SESSION_NONE) {
     ini_set('session.cookie_lifetime', $session_lifetime);
 
     session_start();
-    
-    // ✅ Gerar token CSRF automaticamente para todas as sessões
-    // Isso garante que o token sempre existe, mesmo que o usuário
-    // não acesse uma página que gera o meta tag
-    csrf_token();
 }
 
 // ✅ HEADERS DE SEGURANÇA HTTP (apenas se não for CLI)
@@ -135,6 +130,12 @@ if (!$is_cli) {
 
 // Carregar helpers de CSRF (proteção contra Cross-Site Request Forgery)
 require_once __DIR__ . '/csrf_helpers.php';
+
+// ✅ Gerar token CSRF automaticamente para todas as sessões
+// Isso garante que o token sempre existe, mesmo que o usuário não acesse uma página que gera o meta tag
+if (!$is_cli && session_status() === PHP_SESSION_ACTIVE) {
+    csrf_token();
+}
 
 // ============================================
 // CONEXÃO LAZY PDO — só conecta quando usado
