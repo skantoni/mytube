@@ -78,9 +78,6 @@ if (!$is_cli && session_status() === PHP_SESSION_NONE) {
     // CRÍTICO: sem isso, cookies podem conflitar entre /my e /
     ini_set('session.cookie_path', BASE_PATH ? BASE_PATH . '/' : '/');
     
-    // ✅ COOKIE DOMAIN: vazio para funcionar apenas no domínio atual (sem subdomínios)
-    ini_set('session.cookie_domain', '');
-    
     // ✅ COOKIE SECURE: só envia cookie via HTTPS (produção)
     if ($is_production) {
         ini_set('session.cookie_secure', 1);
