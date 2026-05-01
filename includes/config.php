@@ -78,6 +78,19 @@ if (!$is_cli && session_status() === PHP_SESSION_NONE) {
     // CRÍTICO: sem isso, cookies podem conflitar entre /my e /
     ini_set('session.cookie_path', BASE_PATH ? BASE_PATH . '/' : '/');
     
+    // ✅ COOKIE DOMAIN: em produção, usar domínio raiz para funcionar com www e sem www
+    // CRÍTICO: www.mytube.social e mytube.social são domínios diferentes para cookies!
+    // Solução: .mytube.social (com ponto) funciona em ambos
+    if ($is_production) {
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        // Extrair domínio raiz (remover www. se existir)
+        $root_domain = preg_replace('/^www\./', '', $host);
+        // Adicionar ponto no início para incluir todos os subdomínios
+        if ($root_domain && strpos($root_domain, '.') !== false) {
+            ini_set('session.cookie_domain', '.' . $root_domain);
+        }
+    }
+    
     // ✅ COOKIE SECURE: só envia cookie via HTTPS (produção)
     if ($is_production) {
         ini_set('session.cookie_secure', 1);
