@@ -161,7 +161,7 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
         <!-- Sidebar de Comentários (view-only for guest) -->
         <div class="comments-sidebar" id="commentsSidebar">
             <div class="comments-header">
-                <h3>Comentários</h3>
+                <h3></h3>
                 <button class="close-comments" id="closeComments">
                     <i class="fas fa-times"></i>
                 </button>
@@ -181,7 +181,7 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
             <div class="modal-content">
                 <div class="modal-header">
                     <div class="modal-handle"></div>
-                    <h3>Comentários</h3>
+                    <h3></h3>
                     <button class="close-modal" id="closeModal">
                         <i class="fas fa-times"></i>
                     </button>
@@ -393,7 +393,7 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
     <!-- Sidebar de Comentários - Desktop -->
     <div class="comments-sidebar" id="commentsSidebar">
         <div class="comments-header">
-            <h3>Comentários</h3>
+            <h3></h3>
             <button class="close-comments" id="closeComments">
                 <i class="fas fa-times"></i>
             </button>
@@ -433,7 +433,7 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
         <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-handle"></div>
-                <h3>Comentários</h3>
+                <h3></h3>
                 <button class="close-modal" id="closeModal">
                     <i class="fas fa-times"></i>
                 </button>

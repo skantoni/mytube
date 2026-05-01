@@ -605,8 +605,7 @@
 .close-modal {
     position: absolute;
     right: 16px;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 16px;
     background: transparent;
     border: none;
     color: #ffffff;
@@ -624,7 +623,7 @@
 
 .close-modal:hover {
     background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-50%) scale(1.1);
+    transform: scale(1.1);
 }
 
 .modal-body {
