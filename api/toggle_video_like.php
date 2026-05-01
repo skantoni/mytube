@@ -4,7 +4,6 @@
  * Suporta tanto usuários logados quanto visitantes (via localStorage)
  */
 
-session_start();
 require_once '../includes/config.php';
 require_once '../includes/ranking_cache.php';
 require_once '../includes/push_helper.php';

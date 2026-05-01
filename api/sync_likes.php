@@ -4,7 +4,6 @@
  * Retorna contadores atualizados de likes para vídeos visíveis no feed
  */
 
-session_start();
 require_once '../includes/config.php';
 
 header('Content-Type: application/json');

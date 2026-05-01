@@ -4,7 +4,6 @@
  * Retorna novos comentários adicionados após um determinado timestamp
  */
 
-session_start();
 require_once '../includes/config.php';
 
 header('Content-Type: application/json');

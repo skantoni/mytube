@@ -1,6 +1,5 @@
 <?php
 ob_start(); // Capturar output para evitar problemas com headers
-session_start();
 require_once '../includes/config.php';
 require_once '../includes/ranking_cache.php';
 require_once '../includes/push_helper.php';

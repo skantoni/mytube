@@ -6,7 +6,6 @@
  * GET → retorna se o utilizador tem subscrição ativa + chave pública VAPID
  */
 
-session_start();
 require_once '../includes/config.php';
 
 header('Content-Type: application/json');

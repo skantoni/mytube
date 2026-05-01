@@ -4,7 +4,6 @@
  * Incrementa shares_count e insere na tabela shares
  * Previne duplicatas: 1 share por utilizador/vídeo/plataforma por hora
  */
-session_start();
 require_once '../includes/config.php';
 
 header('Content-Type: application/json');

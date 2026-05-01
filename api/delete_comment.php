@@ -1,6 +1,5 @@
 ﻿<?php
 ob_start();
-session_start();
 require_once '../includes/config.php';
 
 // Limpar qualquer output anterior

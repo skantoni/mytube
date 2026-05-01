@@ -4,7 +4,6 @@
  * Retorna contadores atualizados de likes para comentários visíveis
  */
 
-session_start();
 require_once '../includes/config.php';
 
 header('Content-Type: application/json');
