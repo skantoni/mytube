@@ -186,9 +186,6 @@ try {
     
     echo "✅ Triggers criados com sucesso!\n";
     echo "   Agora é IMPOSSÍVEL criar conversas duplicadas.\n";
-    } else {
-        echo "ℹ️  Constraint UNIQUE já existe.\n";
-    }
     
     // PASSO 5: Verificação final
     echo "\n✅ PASSO 5: Verificação final...\n";
