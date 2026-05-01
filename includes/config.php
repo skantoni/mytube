@@ -69,7 +69,10 @@ if (!$is_cli && session_status() === PHP_SESSION_NONE) {
 
     ini_set('session.cookie_httponly', 1); // Previne XSS via JavaScript
     ini_set('session.use_only_cookies', 1); // Previne session fixation via URL
-    ini_set('session.cookie_samesite', 'Strict'); // Previne CSRF
+    
+    // ✅ SameSite=Lax: permite cookies em links externos (necessário para PWA iOS)
+    // Strict bloqueava sessão quando usuário clicava em links de vídeos compartilhados
+    ini_set('session.cookie_samesite', 'Lax'); // Previne CSRF mantendo compatibilidade PWA
     
     // ✅ COOKIE SECURE: só envia cookie via HTTPS (produção)
     if ($is_production) {
