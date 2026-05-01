@@ -12,28 +12,41 @@ cd /etc/nginx/sites-available
 sudo cp mytube.social mytube.social.backup
 ```
 
-### 2️⃣ Editar a configuração
+### 2️⃣ Ver a configuração SSL atual
+```bash
+sudo cat /etc/nginx/sites-available/mytube.social | grep -A 5 "ssl_certificate"
+```
+
+**IMPORTANTE:** Copia TODOS os caminhos SSL que aparecerem (ssl_certificate, ssl_certificate_key, etc.)
+
+### 3️⃣ Editar a configuração
 ```bash
 sudo nano /etc/nginx/sites-available/mytube.social
 ```
 
-### 3️⃣ Substituir TODO o conteúdo pelo arquivo `nginx-config-complete.conf`
+### 4️⃣ Substituir TODO o conteúdo pelo arquivo `nginx-config-complete.conf`
 
-**IMPORTANTE:** Copiar TODO o conteúdo de `nginx-config-complete.conf` e colar no editor.
+**CRÍTICO - ANTES DE SALVAR:**
+1. Copiar TODO o conteúdo de `nginx-config-complete.conf`
+2. Colar no editor
+3. **PROCURAR por `/path/to/your/certificate` (aparece 4 vezes)**
+4. **SUBSTITUIR pelos caminhos SSL reais** que copiaste no passo 2️⃣
+5. Verificar se há outros parâmetros SSL (ssl_protocols, ssl_ciphers, etc.) e copiar também
 
 O que a nova configuração faz:
 - 🔄 HTTP → HTTPS (ambos domínios)
 - 🔄 **www.mytube.social → mytube.social (NOVO)**
 - ✅ Site principal funciona apenas em `mytube.social`
 
-### 4️⃣ Verificar se a sintaxe está correta
+### 5️⃣ Verificar se a sintaxe está correta
 ```bash
 sudo nginx -t
 ```
 
-Se aparecer erros, verificar:
-- Caminhos dos certificados SSL
-- Socket do PHP-FPM (pode ser `php8.1-fpm.sock` ou `php8.2-fpm.sock`)
+**Se aparecer erros:**
+- ❌ `No such file or directory` nos certificados SSL → caminhos errados, voltar ao passo 2️⃣
+- ❌ `duplicate listen` → remover linhas duplicadas
+- ❌ Socket PHP não encontrado → verificar com: `ls /var/run/php/*.sock`
 
 ### 5️⃣ Recarregar Nginx
 ```bash
