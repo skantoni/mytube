@@ -21,11 +21,32 @@ define('DB_USER', env('DB_USER', 'root'));
 define('DB_PASS', env('DB_PASS', ''));
 
 // Configurações gerais
-define('SITE_URL', env('SITE_URL', 'http://localhost/my'));
+$raw_site_url = env('SITE_URL', 'http://localhost/my');
+
+// ✅ SANITIZAR SITE_URL: corrigir erros comuns no .env
+// Exemplo: "http:https://..." → "https://..."
+if (preg_match('#^https?:https?://#', $raw_site_url)) {
+    // URL malformada como "http:https://domain" — extrair a parte correcta
+    if (strpos($raw_site_url, 'https://') !== false) {
+        $raw_site_url = 'https://' . preg_replace('#^https?:https?://#', '', $raw_site_url);
+    } else {
+        $raw_site_url = 'http://' . preg_replace('#^https?:https?://#', '', $raw_site_url);
+    }
+}
+define('SITE_URL', $raw_site_url);
 
 // Extrair base path do SITE_URL para URLs relativas (ex: /my ou vazio)
 $parsed_url = parse_url(SITE_URL);
-define('BASE_PATH', isset($parsed_url['path']) ? rtrim($parsed_url['path'], '/') : '');
+$extracted_path = isset($parsed_url['path']) ? rtrim($parsed_url['path'], '/') : '';
+
+// ✅ VALIDAÇÃO CRÍTICA: BASE_PATH deve ser um path relativo (ex: '/my' ou '')
+// NUNCA deve ser um URL completo (ex: 'https://mytube.social')
+// Se contém '://' ou não começa com '/', é inválido → usar ''
+if (!empty($extracted_path) && (strpos($extracted_path, '://') !== false || $extracted_path[0] !== '/')) {
+    error_log("⚠️ BASE_PATH inválido detectado: '$extracted_path'. SITE_URL no .env pode estar errado. Usando '/' como fallback.");
+    $extracted_path = '';
+}
+define('BASE_PATH', $extracted_path);
 
 // Secret para chamadas internas de cron (NUNCA VERSIONE ISTO!)
 define('CRON_SECRET', env('CRON_SECRET', ''));
