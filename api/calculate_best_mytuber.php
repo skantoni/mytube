@@ -25,7 +25,7 @@
  * POST api/calculate_best_mytuber.php
  * Params: ?force=1 para recalcular mesmo que já exista
  */
-require_once '../includes/config.php';
+require_once __DIR__ . '/../includes/config.php';
 
 $is_cli  = (php_sapi_name() === 'cli');
 $is_cron = $is_cli || (
