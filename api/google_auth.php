@@ -151,13 +151,17 @@ try {
             ->execute([$user['id']]);
     } catch (Exception $ignored) {}
 
-    session_regenerate_id(true);
+    // ✅ CRÍTICO: Limpar ANTES de regenerar (ordem inversa causava perda de sessão)
     $_SESSION = [];
+    session_regenerate_id(true);
 
     $_SESSION['user_id']         = $user['id'];
     $_SESSION['username']        = $user['username'];
     $_SESSION['full_name']       = $user['full_name'];
     $_SESSION['profile_picture'] = $user['profile_picture'];
+
+    // ✅ Regenerar token CSRF para a nova sessão
+    csrf_regenerate();
 
     echo json_encode([
         'success'  => true,

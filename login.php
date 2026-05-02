@@ -68,6 +68,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_SESSION['full_name'] = $user['full_name'];
                 $_SESSION['profile_picture'] = $user['profile_picture'];
                 
+                // ✅ Regenerar token CSRF para a nova sessão
+                csrf_regenerate();
+                
                 // Usar JavaScript para redirecionamento mais confiável
                 echo "<script>window.location.href = 'index.php?splash=1';</script>";
                 exit();
