@@ -41,10 +41,33 @@ window.fetch = function(...args) {
             if (config.body instanceof FormData) {
                 config.body.append('csrf_token', csrfToken);
             }
-            // Para todos os outros casos (JSON, string, etc), usar header
+            // Se o body é JSON string, injetar csrf_token no JSON + header
+            else if (typeof config.body === 'string') {
+                try {
+                    const parsed = JSON.parse(config.body);
+                    if (typeof parsed === 'object' && parsed !== null) {
+                        parsed.csrf_token = csrfToken;
+                        config.body = JSON.stringify(parsed);
+                    }
+                } catch (e) {
+                    // Não é JSON válido, ignorar
+                }
+                // Adicionar header como fallback
+                if (!config.headers) config.headers = {};
+                if (config.headers instanceof Headers) {
+                    config.headers.set('X-CSRF-Token', csrfToken);
+                } else {
+                    config.headers['X-CSRF-Token'] = csrfToken;
+                }
+            }
+            // Para todos os outros casos, usar header
             else {
                 if (!config.headers) config.headers = {};
-                config.headers['X-CSRF-Token'] = csrfToken;
+                if (config.headers instanceof Headers) {
+                    config.headers.set('X-CSRF-Token', csrfToken);
+                } else {
+                    config.headers['X-CSRF-Token'] = csrfToken;
+                }
             }
         }
     }

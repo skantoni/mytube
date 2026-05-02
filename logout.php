@@ -23,18 +23,26 @@ session_unset();
 session_destroy();
 
 // ✅ CRÍTICO: Deletar o cookie de sessão do navegador
-// Sem isso, o cookie antigo pode persistir e causar conflitos
+// Limpar cookies de TODOS os domínios possíveis para eliminar sessões órfãs
+// (users que acederam via www.mytube.social antes do redirect)
 if (ini_get('session.use_cookies')) {
     $params = session_get_cookie_params();
-    setcookie(
-        session_name(),
-        '',
-        time() - 42000,
-        $params['path'],
-        $params['domain'],
-        $params['secure'],
-        $params['httponly']
-    );
+    $cookieName = session_name();
+    
+    // 1. Cookie com os parâmetros actuais (domain do PHP default)
+    setcookie($cookieName, '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
+    
+    // 2. Cookie sem domain (cobre o caso default do PHP)
+    setcookie($cookieName, '', time() - 42000, $params['path'], '', $params['secure'], $params['httponly']);
+    
+    // 3. Cookie para mytube.social (sem www)
+    setcookie($cookieName, '', time() - 42000, '/', 'mytube.social', $params['secure'], $params['httponly']);
+    
+    // 4. Cookie para www.mytube.social (legado)
+    setcookie($cookieName, '', time() - 42000, '/', 'www.mytube.social', $params['secure'], $params['httponly']);
+    
+    // 5. Cookie para .mytube.social (wildcard — cobre ambos)
+    setcookie($cookieName, '', time() - 42000, '/', '.mytube.social', $params['secure'], $params['httponly']);
 }
 
 // Redirecionar para login

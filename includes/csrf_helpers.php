@@ -56,7 +56,7 @@ function csrf_verify(): bool {
     // Obter token da requisição
     $request_token = null;
     
-    // 1. Tentar obter de POST/GET
+    // 1. Tentar obter de POST/GET (FormData ou form-urlencoded)
     if (isset($_POST['csrf_token'])) {
         $request_token = $_POST['csrf_token'];
     } elseif (isset($_GET['csrf_token'])) {
@@ -78,15 +78,30 @@ function csrf_verify(): bool {
                 $request_token = $headers['X-CSRF-Token'];
             } elseif (isset($headers['X-Csrf-Token'])) {
                 $request_token = $headers['X-Csrf-Token'];
+            } elseif (isset($headers['x-csrf-token'])) {
+                $request_token = $headers['x-csrf-token'];
             } elseif (isset($headers['X-XSRF-TOKEN'])) {
                 $request_token = $headers['X-XSRF-TOKEN'];
             }
         }
     }
     
+    // 3. Tentar obter do body JSON (requests com Content-Type: application/json)
+    // PHP não popula $_POST para JSON — precisamos ler php://input
+    if (!$request_token) {
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
+        if (stripos($contentType, 'application/json') !== false) {
+            $rawBody = file_get_contents('php://input');
+            $jsonData = json_decode($rawBody, true);
+            if (is_array($jsonData) && isset($jsonData['csrf_token'])) {
+                $request_token = $jsonData['csrf_token'];
+            }
+        }
+    }
+    
     // Se não encontrou token na requisição
     if (!$request_token) {
-        error_log('CSRF verify failed: no token in request');
+        error_log('CSRF verify failed: no token in request. Method=' . ($_SERVER['REQUEST_METHOD'] ?? '?') . ' URI=' . ($_SERVER['REQUEST_URI'] ?? '?'));
         return false;
     }
     

@@ -126,6 +126,11 @@ if (!$is_cli) {
     // Permissions-Policy: desabilita features desnecessárias
     header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
 
+    // ✅ COOP: Necessário para Google Identity Services (popup OAuth)
+    // 'same-origin-allow-popups' permite que popups de accounts.google.com
+    // enviem postMessage de volta para a janela que os abriu
+    header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
+
     // Content-Security-Policy: previne XSS e injection attacks
     if ($is_production) {
         header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://cdn.socket.io https://static.cloudflareinsights.com https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://cdnjs.cloudflare.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https: wss: https://oauth2.googleapis.com; frame-src https://accounts.google.com; frame-ancestors 'self';");

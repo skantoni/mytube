@@ -27,18 +27,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         session_unset();
         session_destroy();
         
-        // Deletar cookie de sessão
+        // Deletar cookie de sessão (todos os domínios)
         if (ini_get('session.use_cookies')) {
             $params = session_get_cookie_params();
-            setcookie(
-                session_name(),
-                '',
-                time() - 42000,
-                $params['path'],
-                $params['domain'],
-                $params['secure'],
-                $params['httponly']
-            );
+            $cookieName = session_name();
+            setcookie($cookieName, '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
+            setcookie($cookieName, '', time() - 42000, $params['path'], '', $params['secure'], $params['httponly']);
+            setcookie($cookieName, '', time() - 42000, '/', 'mytube.social', $params['secure'], $params['httponly']);
+            setcookie($cookieName, '', time() - 42000, '/', 'www.mytube.social', $params['secure'], $params['httponly']);
+            setcookie($cookieName, '', time() - 42000, '/', '.mytube.social', $params['secure'], $params['httponly']);
         }
         
         redirect('login.php');
