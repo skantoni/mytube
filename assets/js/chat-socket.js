@@ -1015,10 +1015,14 @@ function handleMessageSent(data) {
         const msgContent = tempMessage.querySelector('.message-content');
         if (msgContent && !msgContent.querySelector('.msg-more-btn')) {
             const messageText = tempMessage.querySelector('.message-text')?.textContent?.trim() || '';
+            // Garantir que o data-content está presente
+            if (!tempMessage.hasAttribute('data-content')) {
+                tempMessage.setAttribute('data-content', messageText);
+            }
             const moreBtn = document.createElement('button');
             moreBtn.className = 'msg-more-btn';
             moreBtn.innerHTML = '<i class="fas fa-ellipsis-v"></i>';
-            moreBtn.onclick = (event) => showMessageOptions(event, data.messageId, messageText, true);
+            moreBtn.onclick = (event) => showMessageOptions(event, data.messageId, true);
             msgContent.insertBefore(moreBtn, msgContent.firstChild);
         }
     } else {
@@ -2099,13 +2103,16 @@ function createMessageElement(msg, isTemp = false) {
     
     // Botão de opções (três pontos)
     const moreOptionsHTML = !isTemp ? `
-        <button class="msg-more-btn" onclick="showMessageOptions(event, ${msg.id}, '${escapeHtml(content).replace(/'/g, "\\'")}', ${isSent})">
+        <button class="msg-more-btn" onclick="showMessageOptions(event, ${msg.id}, ${isSent})">
             <i class="fas fa-ellipsis-v"></i>
         </button>
     ` : '';
     
     // Indicador de mensagem editada
     const editedHTML = (msg.is_edited == 1 || msg.is_edited === true) ? '<span class="edited-indicator">editada</span>' : '';
+    
+    // Armazenar conteúdo original como data attribute para evitar problemas com caracteres especiais em onclick
+    div.setAttribute('data-content', content);
     
     div.innerHTML = `
         <div class="message-content">
@@ -2202,16 +2209,21 @@ function toggleReaction(messageId, emoji) {
     });
 }
 
-function showMessageOptions(event, messageId, content, isSent) {
+function showMessageOptions(event, messageId, isSent) {
     event.stopPropagation();
     
     // Remover menu existente
     const existingMenu = document.querySelector('.message-options-menu');
     if (existingMenu) existingMenu.remove();
     
+    // Obter o conteúdo da mensagem do elemento (data-content) para evitar problemas com caracteres especiais
+    const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+    const content = messageElement ? messageElement.getAttribute('data-content') || '' : '';
+    
     // Criar menu
     const menu = document.createElement('div');
     menu.className = 'message-options-menu';
+    menu.setAttribute('data-message-content', content); // Armazenar para uso nas funções do menu
     
     // Linha de emojis no topo (estilo WhatsApp)
     const reactionsHTML = REACTION_EMOJIS.map(emoji => 
@@ -2222,7 +2234,7 @@ function showMessageOptions(event, messageId, content, isSent) {
         <button onclick="replyToMessageFromMenu(${messageId})">
             <i class="fas fa-reply"></i> Responder
         </button>
-        <button onclick="copyMessageText('${content.replace(/'/g, "\\'")}')">
+        <button onclick="copyMessageTextFromMenu()">
             <i class="fas fa-copy"></i> Copiar
         </button>
         <button onclick="forwardMessage(${messageId})">
@@ -2332,6 +2344,14 @@ function copyMessageText(text) {
         document.body.removeChild(textarea);
         showToast('Texto copiado!');
     });
+}
+
+function copyMessageTextFromMenu() {
+    const menu = document.querySelector('.message-options-menu');
+    const text = menu ? menu.getAttribute('data-message-content') : '';
+    if (text) {
+        copyMessageText(text);
+    }
 }
 
 function forwardMessage(messageId) {
@@ -3862,10 +3882,14 @@ async function uploadAndSendFile(file, fileType, caption = '') {
                     // Adicionar botão de opções
                     const msgContent = tempMsg.querySelector('.message-content');
                     if (msgContent && !msgContent.querySelector('.msg-more-btn')) {
+                        // Garantir que o data-content está presente para arquivos/mídia
+                        if (!tempMsg.hasAttribute('data-content')) {
+                            tempMsg.setAttribute('data-content', savedCaption || '');
+                        }
                         const moreBtn = document.createElement('button');
                         moreBtn.className = 'msg-more-btn';
                         moreBtn.innerHTML = '<i class="fas fa-ellipsis-v"></i>';
-                        moreBtn.onclick = (e) => showMessageOptions(e, result.message.id, savedCaption || '', true);
+                        moreBtn.onclick = (e) => showMessageOptions(e, result.message.id, true);
                         msgContent.insertBefore(moreBtn, msgContent.firstChild);
                     }
                 }
