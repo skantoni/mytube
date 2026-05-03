@@ -98,7 +98,7 @@ for ($i = 0; $i < count($keys); $i++) {
 $action_result = null;
 if (!$is_cli && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // Validar CSRF
-    if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
+    if (!isset($_POST['csrf_token']) || !csrf_verify()) {
         $action_result = ['error' => 'Token CSRF inválido.'];
     } elseif ($_POST['action'] === 'merge') {
         $keep_id = (int)$_POST['keep_id'];
