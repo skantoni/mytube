@@ -530,6 +530,9 @@ body {
     background: #0f172a;
     background-image: 
         repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.01) 10px, rgba(255,255,255,.01) 20px);
+    /* iOS-specific: ensure smooth scrolling and proper touch behavior */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
 }
 
 .loading-messages {
@@ -1326,6 +1329,10 @@ body {
     gap: 8px;
     margin-bottom: var(--chat-keyboard-offset);
     transition: margin-bottom 0.18s ease-out;
+    /* Ensure input stays above keyboard on iOS */
+    position: relative;
+    z-index: 100;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
 }
 
 .attach-btn,
@@ -1474,6 +1481,13 @@ body {
     -webkit-text-fill-color: #e2e8f0;
     caret-color: #e2e8f0;
     opacity: 1;
+    /* iOS-specific fixes for input visibility */
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-appearance: none;
+    appearance: none;
+    /* Prevent iOS zoom on focus */
+    font-size: max(14px, 16px);
 }
 
 #messageInput::placeholder {

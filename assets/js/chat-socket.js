@@ -95,9 +95,27 @@ function updateChatKeyboardOffset() {
         return;
     }
 
+    // iOS detection
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    
+    // Calculate keyboard height including iOS QuickType bar
     const keyboardHeight = Math.max(0, window.innerHeight - visualViewport.height - visualViewport.offsetTop);
-    const offset = keyboardHeight > 40 ? keyboardHeight : 0;
+    
+    // Lower threshold for iOS to catch QuickType bar (usually 40-60px)
+    const threshold = isIOS ? 20 : 40;
+    const offset = keyboardHeight > threshold ? keyboardHeight : 0;
+    
     document.documentElement.style.setProperty('--chat-keyboard-offset', `${Math.round(offset)}px`);
+    
+    // On iOS, ensure input is visible by scrolling it into view
+    if (isIOS && offset > 0) {
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput && document.activeElement === messageInput) {
+            setTimeout(() => {
+                messageInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+    }
 }
 
 function setupMobileViewportFixes() {
@@ -106,6 +124,8 @@ function setupMobileViewportFixes() {
         updateChatKeyboardOffset();
         return;
     }
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
     const applyViewportFixes = () => {
         updateAppHeightVar();
@@ -116,9 +136,19 @@ function setupMobileViewportFixes() {
 
     window.addEventListener('resize', applyViewportFixes);
     window.addEventListener('orientationchange', applyViewportFixes);
-    document.addEventListener('focusin', applyViewportFixes);
+    
+    // iOS-specific: handle input focus with extra delay for keyboard animation
+    document.addEventListener('focusin', (e) => {
+        if (isIOS && e.target && e.target.id === 'messageInput') {
+            setTimeout(applyViewportFixes, 150);
+            setTimeout(applyViewportFixes, 350);
+        } else {
+            applyViewportFixes();
+        }
+    });
+    
     document.addEventListener('focusout', () => {
-        setTimeout(applyViewportFixes, 60);
+        setTimeout(applyViewportFixes, isIOS ? 150 : 60);
     });
 
     if (window.visualViewport) {
