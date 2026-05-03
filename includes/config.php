@@ -322,7 +322,7 @@ function redirect($url) {
         header("Location: " . $url);
         exit();
     } else {
-        echo "<script>window.location.href = '$url';</script>";
+        echo "<script>window.location.href = " .json_encode($url) . ";</script>"; // a variável $url é escapada para evitar js
         exit();
     }
 }

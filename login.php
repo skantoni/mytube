@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $user = $u;
                     break;
                 }
-            }
+            } // Executar password_verify mesmo quando o usuário não existe. 
             
             if ($user) {
                 // Resetar status online stale no banco (pode estar preso de crash anterior)

@@ -11,7 +11,7 @@ error_log("Session debug: " . json_encode([
     'user_id' => $_SESSION['user_id'] ?? 'not set',
     'isLoggedIn' => isLoggedIn(),
     'session_data' => $_SESSION
-]));
+])); // Remover do servidor para evitar vazar as informações do user
 
 if (!isLoggedIn()) {
     http_response_code(401);

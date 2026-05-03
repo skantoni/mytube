@@ -11,7 +11,7 @@ error_log("Follow request: " . json_encode([
     'session' => $_SESSION ?? [],
     'user_id' => $_SESSION['user_id'] ?? null
 ]));
-
+// Remover do servidor para evitar vazar as informações do user
 if (!isLoggedIn()) {
     http_response_code(401);
     echo json_encode(['error' => 'Usuário não autenticado']);
