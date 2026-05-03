@@ -134,7 +134,11 @@ function moderation_analyze_local_file(string $video_path): array
     }
 
     $is_win = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
-    $redirect = $is_win ? ' 2>NUL' : ' 2>/dev/null';
+
+    // Capturar stderr para diagnóstico em vez de descartar silenciosamente
+    $stderr_file = tempnam(sys_get_temp_dir(), 'mytube_mod_err_');
+    $redirect = $is_win ? ' 2>NUL' : ' 2>' . escapeshellarg($stderr_file);
+
     $cmd = sprintf(
         '%s %s %s%s',
         escapeshellarg($python),
@@ -151,6 +155,15 @@ function moderation_analyze_local_file(string $video_path): array
     $output   = [];
     $exit_code = 1;
     exec($cmd, $output, $exit_code);
+
+    // Logar stderr se houver conteúdo (erros do Python, ffmpeg, etc.)
+    if (file_exists($stderr_file)) {
+        $stderr_content = trim(file_get_contents($stderr_file));
+        @unlink($stderr_file);
+        if ($stderr_content !== '') {
+            error_log("moderation stderr (exit=$exit_code): " . mb_substr($stderr_content, 0, 500));
+        }
+    }
 
     $json_str = trim(implode("\n", $output));
 

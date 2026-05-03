@@ -31,10 +31,12 @@ NSFW_CLASSES = {
 }
 
 # Score mínimo para considerar uma deteção como positiva
-NSFW_THRESHOLD = 0.50
+# (0.40 reduz falsos negativos — conteúdo duvidoso vai para revisão manual)
+NSFW_THRESHOLD = 0.40
 
 # Número de frames a extrair para análise
-NUM_FRAMES = 8
+# (12 frames cobre melhor vídeos longos e conteúdo NSFW breve)
+NUM_FRAMES = 12
 
 
 def find_binary(names: list) -> str | None:
@@ -118,7 +120,9 @@ def analyze_frames_with_nudenet(frame_paths: list) -> dict:
                         'score': round(score, 3),
                         'frame': os.path.basename(frame_path),
                     })
-        except Exception:
+        except Exception as frame_err:
+            import sys
+            print(f"WARN: erro ao analisar {os.path.basename(frame_path)}: {frame_err}", file=sys.stderr)
             continue
 
     return {

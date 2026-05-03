@@ -221,10 +221,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 error_log('upload.php moderation: ' . $mod_decision['log']);
 
                 if ($mod_decision['db_status'] === 'rejected') {
-                    // NudeNet flagged — em vez de apagar, colocar em pending para revisão do admin
-                    // (o humano tem a palavra final; a IA pode enganar-se)
-                    $moderation_status = 'pending';
-                    $moderation_score  = $mod_decision['score'];
+                    // NudeNet rejeitou → BLOQUEAR upload (não enviar para R2)
+                    $error = $mod_decision['reject_msg'] ?: 'O vídeo contém conteúdo inapropriado e não pode ser publicado.';
+                    error_log(sprintf(
+                        'upload.php: vídeo REJEITADO pelo NudeNet (score=%.3f, user_id=%d)',
+                        $mod_decision['score'] ?? 0,
+                        $_SESSION['user_id'] ?? 0
+                    ));
+                    // Limpar ficheiro processado
+                    if ($is_transcoded && file_exists($processed_video_path)) {
+                        @unlink($processed_video_path);
+                    }
                 } else {
                     $moderation_status = $mod_decision['db_status'];  // 'approved' ou 'pending'
                     $moderation_score  = $mod_decision['score'];

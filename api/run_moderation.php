@@ -113,8 +113,8 @@ foreach ($pending_videos as $video) {
             $local_path = rtrim(UPLOAD_DIR, '/') . '/' . ltrim($video_path, '/');
         }
         if (!file_exists($local_path)) {
-            error_log("run_moderation: ficheiro não encontrado para vídeo ID=$video_id path=$video_path");
-            moderation_update_video_status($pdo, $video_id, 'approved', null); // aprovação defensiva
+            // Manter como pending — não aprovar o que não foi analisado
+            error_log("run_moderation: ficheiro não encontrado para vídeo ID=$video_id path=$video_path — mantém pending");
             $results['errors']++;
             $results['details'][] = ['id' => $video_id, 'status' => 'file_not_found'];
             continue;
@@ -125,17 +125,16 @@ foreach ($pending_videos as $video) {
     $decision = moderation_decide_status($local_path);
     error_log("run_moderation: vídeo ID=$video_id → {$decision['db_status']} ({$decision['log']})");
 
-    // Atualizar base de dados
+    // Atualizar base de dados — respeitar a decisão do NudeNet
     moderation_update_video_status($pdo, $video_id, $decision['db_status'], $decision['score']);
+    error_log("run_moderation: vídeo ID=$video_id → {$decision['db_status']} (score={$decision['score']})");
 
-    // Se NudeNet rejeitar, colocar em pending para revisão manual do admin
-    // (não apagar automaticamente — o humano decide)
     if ($decision['db_status'] === 'rejected') {
-        moderation_update_video_status($pdo, $video_id, 'pending', $decision['score']);
-        error_log("run_moderation: vídeo ID=$video_id → forçado para pending (NudeNet rejeitou, aguarda revisão humana)");
-        $results['pending'] = ($results['pending'] ?? 0) + 1;
-    } else {
+        $results['rejected']++;
+    } elseif ($decision['db_status'] === 'approved') {
         $results['approved']++;
+    } else {
+        $results['pending'] = ($results['pending'] ?? 0) + 1;
     }
 
     if ($delete_after && $local_path && file_exists($local_path)) {
