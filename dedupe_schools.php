@@ -1,8 +1,4 @@
 <?php
-// DEBUG TEMPORÁRIO — remover depois de resolver o 500
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 
 /**
  * Ferramenta de Deduplicação de Escolas
@@ -16,6 +12,7 @@ error_reporting(E_ALL);
  * USO WEB:   https://mytube.social/dedupe_schools.php (requer admin)
  */
 require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/includes/ranking_cache.php';
 
 $is_cli = (php_sapi_name() === 'cli');
 
@@ -115,6 +112,15 @@ if (!$is_cli && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])
                 $stmt->execute(array_merge([$keep_id], $remove_ids));
                 $users_moved = $stmt->rowCount();
                 
+                // 1b. Sincronizar users.instituicao com o nome da escola sobrevivente
+                $keep_name_stmt = $pdo->prepare("SELECT name FROM schools WHERE id = ?");
+                $keep_name_stmt->execute([$keep_id]);
+                $keep_name = $keep_name_stmt->fetchColumn();
+                if ($keep_name) {
+                    $pdo->prepare("UPDATE users SET instituicao = ? WHERE school_id = ? AND (instituicao IS NULL OR instituicao != ?)")
+                        ->execute([$keep_name, $keep_id, $keep_name]);
+                }
+                
                 // 2. Migrar school_weekly_stats (somar pontos se mesmo week_start)
                 foreach ($remove_ids as $rid) {
                     // Verificar se já existe stats para a semana na escola sobrevivente
@@ -173,6 +179,9 @@ if (!$is_cli && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])
                 $schools_removed = $stmt->rowCount();
                 
                 $pdo->commit();
+                
+                // Limpar cache do ranking
+                ranking_cache_clear_all();
                 
                 $action_result = [
                     'success' => "✅ Merge concluído! $users_moved alunos migrados, $schools_removed escolas desactivadas."
