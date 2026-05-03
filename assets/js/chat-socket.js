@@ -98,23 +98,23 @@ function updateChatKeyboardOffset() {
     // iOS detection
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
-    // Calculate keyboard height including iOS QuickType bar
+    // Calculate keyboard height - on iOS, don't use margin-bottom, let the viewport resize handle it
     const keyboardHeight = Math.max(0, window.innerHeight - visualViewport.height - visualViewport.offsetTop);
     
-    // Lower threshold for iOS to catch QuickType bar (usually 40-60px)
-    const threshold = isIOS ? 20 : 40;
-    const offset = keyboardHeight > threshold ? keyboardHeight : 0;
-    
-    document.documentElement.style.setProperty('--chat-keyboard-offset', `${Math.round(offset)}px`);
-    
-    // On iOS, ensure input is visible by scrolling it into view
-    if (isIOS && offset > 0) {
-        const messageInput = document.getElementById('messageInput');
-        if (messageInput && document.activeElement === messageInput) {
-            setTimeout(() => {
-                messageInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
+    // On iOS with keyboard visible, don't push the input up with margin - it causes double offset
+    if (isIOS && keyboardHeight > 50) {
+        document.documentElement.style.setProperty('--chat-keyboard-offset', '0px');
+        
+        // Instead, ensure messages container can scroll properly
+        const messagesContainer = document.getElementById('chatMessages');
+        if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
+    } else {
+        // For non-iOS or when keyboard is hidden
+        const threshold = isIOS ? 20 : 40;
+        const offset = keyboardHeight > threshold ? keyboardHeight : 0;
+        document.documentElement.style.setProperty('--chat-keyboard-offset', `${Math.round(offset)}px`);
     }
 }
 

@@ -209,7 +209,11 @@ $current_user = $stmt->fetch();
                             <textarea 
                                 id="messageInput" 
                                 placeholder="Mete dica..." 
-                                rows="1"></textarea>
+                                rows="1"
+                                autocomplete="off"
+                                autocorrect="off"
+                                autocapitalize="sentences"
+                                spellcheck="false"></textarea>
                             <button class="emoji-btn" onclick="showEmojiPicker()">
                                 <i class="fas fa-smile"></i>
                             </button>

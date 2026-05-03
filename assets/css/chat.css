@@ -342,6 +342,8 @@ body {
     background: #0f172a;
     position: relative;
     overflow: hidden;
+    /* iOS: ensure proper height calculation with viewport resize */
+    min-height: 0;
 }
 
 .no-chat-selected {
@@ -1327,9 +1329,9 @@ body {
     display: flex;
     align-items: flex-end;
     gap: 8px;
+    /* On iOS, viewport resizes automatically, no need for margin offset */
     margin-bottom: var(--chat-keyboard-offset);
     transition: margin-bottom 0.18s ease-out;
-    /* Ensure input stays above keyboard on iOS */
     position: relative;
     z-index: 100;
     padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
@@ -1488,6 +1490,10 @@ body {
     appearance: none;
     /* Prevent iOS zoom on focus */
     font-size: max(14px, 16px);
+    /* Disable iOS form accessory bar (prev/next/done buttons) */
+    -webkit-rtl-ordering: logical;
+    /* Prevent iOS from showing toolbar */
+    position: relative;
 }
 
 #messageInput::placeholder {
