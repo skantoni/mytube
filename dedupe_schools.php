@@ -144,15 +144,23 @@ if (!$is_cli && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])
                 }
                 
                 // 3. Recalcular totais da escola sobrevivente
+                // total_students e total_points
                 $pdo->prepare("
                     UPDATE schools SET 
                         total_students = (SELECT COUNT(*) FROM users WHERE school_id = ?),
-                        total_points = (SELECT COALESCE(SUM(ranking_points), 0) FROM users WHERE school_id = ?),
-                        total_videos = (SELECT COALESCE(SUM(
-                            (SELECT COUNT(*) FROM videos v WHERE v.user_id = u.id AND v.is_public = 1)
-                        ), 0) FROM users u WHERE u.school_id = ?)
+                        total_points = (SELECT COALESCE(SUM(ranking_points), 0) FROM users WHERE school_id = ?)
                     WHERE id = ?
-                ")->execute([$keep_id, $keep_id, $keep_id, $keep_id]);
+                ")->execute([$keep_id, $keep_id, $keep_id]);
+                
+                // total_videos (query separada — MySQL não suporta SUM de subquery correlacionada)
+                $vid_stmt = $pdo->prepare("
+                    SELECT COALESCE(COUNT(*), 0) FROM videos v
+                    INNER JOIN users u ON v.user_id = u.id
+                    WHERE u.school_id = ? AND v.is_public = 1
+                ");
+                $vid_stmt->execute([$keep_id]);
+                $total_vids = (int)$vid_stmt->fetchColumn();
+                $pdo->prepare("UPDATE schools SET total_videos = ? WHERE id = ?")->execute([$total_vids, $keep_id]);
                 
                 // 4. Desactivar as escolas removidas (soft delete)
                 $stmt = $pdo->prepare("UPDATE schools SET is_active = 0 WHERE id IN ($placeholders)");
