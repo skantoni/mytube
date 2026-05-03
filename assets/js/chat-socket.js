@@ -5124,6 +5124,12 @@ function renderGroupsList(groups) {
         const lastMsg = g.last_message ? escapeHtml(g.last_message.substring(0, 35)) + (g.last_message.length > 35 ? '…' : '') : 'Nenhuma mensagem';
         const lastSender = g.last_sender_username ? escapeHtml(g.last_sender_username) + ': ' : '';
         const lastTime = g.last_message_time ? formatMessageTime(g.last_message_time) : '';
+        
+        // Adicionar badge de mensagens não lidas (igual às conversas 1:1)
+        const unreadCount = g.unread_count || 0;
+        const unreadBadge = (!isActive && unreadCount > 0) ? 
+            `<span class="unread-badge">${unreadCount > 99 ? '99+' : unreadCount}</span>` : '';
+        
         return `
             <div class="group-item ${isActive ? 'active' : ''}" data-group-id="${g.group_id}" onclick="openGroupChat(${g.group_id})">
                 <div class="group-avatar">
@@ -5136,6 +5142,7 @@ function renderGroupsList(groups) {
                     </div>
                     <div class="conversation-preview">
                         <p>${lastSender}${lastMsg}</p>
+                        ${unreadBadge}
                     </div>
                 </div>
             </div>
