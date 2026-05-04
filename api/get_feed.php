@@ -570,8 +570,8 @@ function fetchBatch(
             $candidate_limit,
             $user_id
         );
-        // Fallback: catálogo pequeno e tudo já visto — reapresentar sem filtro
-        if (empty($rows)) {
+        // Fallback: catálogo pequeno e poucos candidatos novos — incluir já vistos
+        if (count($rows) < $batch_size) {
             $rows = fetchCandidateRows($pdo, "AND v.user_id != ? AND v.id != ?", [$user_id, $start_video_id], $candidate_limit);
         }
 
@@ -603,8 +603,8 @@ function fetchBatch(
         $candidate_limit,
         $user_id
     );
-    // Fallback: catálogo pequeno e todos os vídeos foram vistos recentemente
-    if (empty($rows)) {
+    // Fallback: catálogo pequeno e poucos candidatos novos — incluir já vistos
+    if (count($rows) < $batch_size) {
         $rows = fetchCandidateRows($pdo, "AND v.user_id != ? $exclude_clause", $params, $candidate_limit);
     }
 
