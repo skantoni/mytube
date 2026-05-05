@@ -47,7 +47,8 @@ chat-server/logs/*
 test_r2.php
 check_table.php
 check_users.php
-
+/admin/sync_school_names.php
+/admin/dedup_schools.php
 # === BACKUPS ===
 *.OLD
 *.BAK
