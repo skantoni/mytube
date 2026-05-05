@@ -1,5 +1,25 @@
 # MyTube - Configurações Apache
 
+# ============================================================
+# BLOQUEAR FICHEIROS ADMINISTRATIVOS E DE DIAGNÓSTICO
+# ============================================================
+<FilesMatch "^(test_|check_|fix_|install_|migrate_|update_|import_|create_|dedupe_|sync_)">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Bloquear ficheiros específicos
+<FilesMatch "^(BingSiteAuth\.xml|nginx-config.*\.conf|nginx-mytube.*\.conf)$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Bloquear acesso à pasta logs
+<IfModule mod_rewrite.c>
+    RewriteRule ^logs/ - [F,L]
+    RewriteRule ^cache/rankings/ - [F,L]
+</IfModule>
+
 # Habilitar mod_rewrite
 RewriteEngine On
 
