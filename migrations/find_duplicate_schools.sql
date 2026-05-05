@@ -31,10 +31,11 @@ SELECT
 FROM schools a
 JOIN schools b 
     ON a.id < b.id
-    AND a.city = b.city
+    AND a.province = b.province
+    AND a.city != b.city
     AND (
-        -- nomes com pelo menos 10 caracteres em comum no início
-        LEFT(LOWER(a.name), 10) = LEFT(LOWER(b.name), 10)
+        -- nomes com pelo menos 20 caracteres em comum no início
+        LEFT(LOWER(a.name), 20) = LEFT(LOWER(b.name), 20)
         OR
         -- um nome contém o outro
         LOWER(a.name) LIKE CONCAT('%', LEFT(LOWER(b.name), 8), '%')
@@ -47,8 +48,14 @@ GROUP BY a.id, a.name, a.city, b.id, b.name, b.city
 ORDER BY a.name ASC;
 
 -- ============================================================
+-- PASSO 3: Encontrar escolas com nomes EXATAMENTE iguais
+-- ⚠️ ATENÇÃO: Este script é apenas de LEITURA.
+-- Qualquer merge de escolas deve ser feito manualmente
+-- pelo admin após confirmação visual de cada par.
+-- Nunca automatizar o merge — alunos perdem a escola.
 
--- PASSO 3: Escolas SEM nenhum user (candidatas a deletar direto)
+-- Apenas para consulta: escolas ainda sem alunos registados
+-- NÃO deletar — alunos podem encontrar e associar-se a estas escolas
 SELECT 
     s.id,
     s.name,

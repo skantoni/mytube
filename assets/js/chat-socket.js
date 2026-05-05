@@ -96,19 +96,16 @@ function updateChatKeyboardOffset() {
     }
 
     // iOS detection
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    
-    // Calculate keyboard height - on iOS, don't use margin-bottom, let the viewport resize handle it
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; 
+    // Calcular altura do teclado - no iOS, não usar margin-bottom, deixar o viewport redimensionar automaticamente
     const keyboardHeight = Math.max(0, window.innerHeight - visualViewport.height - visualViewport.offsetTop);
-    
-    // On iOS with keyboard visible, don't push the input up with margin - it causes double offset
+ // No iOS com teclado visível, não empurrar o input com margin - causa deslocamento duplo
     if (isIOS && keyboardHeight > 50) {
         document.documentElement.style.setProperty('--chat-keyboard-offset', '0px');
-        
-        // Instead, ensure messages container can scroll properly
+        // Em vez disso, garantir que o container de mensagens pode fazer scroll correctamente
         const messagesContainer = document.getElementById('chatMessages');
         if (messagesContainer) {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
     } else {
         // For non-iOS or when keyboard is hidden
@@ -124,8 +121,7 @@ function setupMobileViewportFixes() {
         updateChatKeyboardOffset();
         return;
     }
-
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
     const applyViewportFixes = () => {
         updateAppHeightVar();
@@ -136,8 +132,7 @@ function setupMobileViewportFixes() {
 
     window.addEventListener('resize', applyViewportFixes);
     window.addEventListener('orientationchange', applyViewportFixes);
-    
-    // iOS-specific: handle input focus with extra delay for keyboard animation
+ // iOS: tratar foco do input com delay extra para animação do teclado
     document.addEventListener('focusin', (e) => {
         if (isIOS && e.target && e.target.id === 'messageInput') {
             setTimeout(applyViewportFixes, 150);
@@ -4983,14 +4978,14 @@ function closeLongPressMenu() {
     });
 }
 
-// Re-init gestures when chat area is shown
+// Re-inicializar gestos quando a área do chat é exibida
 const _origShowChatArea = showChatArea;
 showChatArea = function() {
     _origShowChatArea();
     setTimeout(initMobileGestures, 100);
 };
 
-// Also init on first load
+// Também inicializar no primeiro carregamento
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(initMobileGestures, 500);
 });
@@ -5154,9 +5149,8 @@ function renderGroupsList(groups) {
         const lastMsg = g.last_message ? escapeHtml(g.last_message.substring(0, 35)) + (g.last_message.length > 35 ? '…' : '') : 'Nenhuma mensagem';
         const lastSender = g.last_sender_username ? escapeHtml(g.last_sender_username) + ': ' : '';
         const lastTime = g.last_message_time ? formatMessageTime(g.last_message_time) : '';
-        
         // Adicionar badge de mensagens não lidas (igual às conversas 1:1)
-        const unreadCount = g.unread_count || 0;
+        const unreadCount = g.unread_count || 0; //contagem de mensagens não lidas
         const unreadBadge = (!isActive && unreadCount > 0) ? 
             `<span class="unread-badge">${unreadCount > 99 ? '99+' : unreadCount}</span>` : '';
         

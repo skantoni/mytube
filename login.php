@@ -40,7 +40,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $user = $u;
                     break;
                 }
-            } // Executar password_verify mesmo quando o usuário não existe. 
+            } // Executar password_verify mesmo quando o usuário não existe.
+            
+            // Sempre executar password_verify com um hash dummy quando não houver usuário
+            if (!$user) {
+                // Gerar um hash dummy (executado apenas em tentativas falhadas) e verificar a senha
+                // Isso ajuda a manter o tempo de resposta similar e mitigar timing attacks
+                $dummy_hash = password_hash('dummy', PASSWORD_DEFAULT);
+                password_verify($password, $dummy_hash);
+            }
             
             if ($user) {
                 // Resetar status online stale no banco (pode estar preso de crash anterior)

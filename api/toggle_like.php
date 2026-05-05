@@ -5,14 +5,6 @@ require_once '../includes/push_helper.php';
 
 header('Content-Type: application/json');
 
-// Debug: log da sessão
-error_log("Session debug: " . json_encode([
-    'session_id' => session_id(),
-    'user_id' => $_SESSION['user_id'] ?? 'not set',
-    'isLoggedIn' => isLoggedIn(),
-    'session_data' => $_SESSION
-])); // Remover do servidor para evitar vazar as informações do user
-
 if (!isLoggedIn()) {
     http_response_code(401);
     echo json_encode([
