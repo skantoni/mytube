@@ -112,8 +112,7 @@ foreach ($pending_videos as $video) {
             // Tentar caminho directo
             $local_path = rtrim(UPLOAD_DIR, '/') . '/' . ltrim($video_path, '/');
         }
-        if (!file_exists($local_path)) {
-            // Manter como pending — não aprovar o que não foi analisado
+        if (!file_exists($local_path)) { 
             error_log("run_moderation: ficheiro não encontrado para vídeo ID=$video_id path=$video_path — mantém pending");
             $results['errors']++;
             $results['details'][] = ['id' => $video_id, 'status' => 'file_not_found'];

@@ -39,10 +39,7 @@ function normalize_name(string $name): string {
     return $name;
 }
 
-function levenshtein_normalized(string $a, string $b): int {
-    // Nota: levenshtein() nativa trabalha com bytes, não caracteres UTF-8.
-    // Mas como 'normalize_name()' já remove acentos/transliterar, chegam aqui
-    // strings ASCII normalizadas — levenshtein() funciona correctamente.
+function levenshtein_utf8(string $a, string $b): int {
     return levenshtein($a, $b);
 }
 
@@ -107,7 +104,6 @@ if (!$is_cli && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])
         if ($keep_id && !empty($remove_ids)) {
             try {
                 // ✅ VALIDAÇÃO CRÍTICA: Verificar que todos os IDs pertencem a escolas reais e activas
-                // (Fora da transacção — é apenas leitura)
                 $all_ids = array_merge([$keep_id], $remove_ids);
                 $placeholders = implode(',', array_fill(0, count($all_ids), '?'));
                 $valid_check = $pdo->prepare("SELECT COUNT(*) FROM schools WHERE id IN ($placeholders) AND is_active = 1");
@@ -117,7 +113,6 @@ if (!$is_cli && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])
                     throw new Exception('❌ SEGURANÇA: Um ou mais IDs de escolas não existem ou já foram desactivadas. Possível tentativa de ataque.');
                 }
 
-                // ⚠️ INICIA TRANSACÇÃO — Todos os passos críticos dentro desta transacção
                 $pdo->beginTransaction();
 
                 $placeholders_remove = implode(',', array_fill(0, count($remove_ids), '?'));
@@ -167,7 +162,7 @@ if (!$is_cli && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])
                     }
                     // Limpar stats órfãs
                     $pdo->prepare("DELETE FROM school_weekly_stats WHERE school_id = ?")->execute([$rid]);
-
+               
                     // 2b. Migrar histórico de best_mytuber (rankings passados)
                     $pdo->prepare("UPDATE best_mytuber_candidates SET school_id = ? WHERE school_id = ?")
                         ->execute([$keep_id, $rid]);
@@ -176,24 +171,28 @@ if (!$is_cli && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])
                 }
                 
                 // 3. Recalcular totais da escola sobrevivente
-                // total_students e total_points
-                $pdo->prepare("
-                    UPDATE schools SET 
-                        total_students = (SELECT COUNT(*) FROM users WHERE school_id = ?),
-                        total_points = (SELECT COALESCE(SUM(ranking_points), 0) FROM users WHERE school_id = ?)
-                    WHERE id = ?
-                ")->execute([$keep_id, $keep_id, $keep_id]);
-                
-                // total_videos (query separada — MySQL não suporta SUM de subquery correlacionada)
-                $vid_stmt = $pdo->prepare("
-                    SELECT COALESCE(COUNT(*), 0) FROM videos v
-                    INNER JOIN users u ON v.user_id = u.id
-                    WHERE u.school_id = ? AND v.is_public = 1
-                ");
-                $vid_stmt->execute([$keep_id]);
-                $total_vids = (int)$vid_stmt->fetchColumn();
-                $pdo->prepare("UPDATE schools SET total_videos = ? WHERE id = ?")->execute([$total_vids, $keep_id]);
-                
+                // total_students e total_points           
+                // Combinar tudo numa transação única
+              $pdo->prepare("
+           UPDATE schools s
+            LEFT JOIN (
+             SELECT 
+               u.school_id,
+               COUNT(DISTINCT u.id) AS total_students,
+               COALESCE(SUM(u.ranking_points), 0) AS total_points,
+               COUNT(DISTINCT v.id) AS total_videos
+             FROM users u
+             LEFT JOIN videos v ON u.id = v.user_id AND v.is_public = 1
+             WHERE u.school_id = ?
+             GROUP BY u.school_id
+       ) stats ON s.id = stats.school_id
+        SET 
+             s.total_students = COALESCE(stats.total_students, 0),
+             s.total_points = COALESCE(stats.total_points, 0),
+             s.total_videos = COALESCE(stats.total_videos, 0)
+          WHERE s.id = ?
+     ")->execute([$keep_id, $keep_id]);
+
                 // 4. Desactivar as escolas removidas (soft delete)
                 $stmt = $pdo->prepare("UPDATE schools SET is_active = 0 WHERE id IN ($placeholders)");
                 $stmt->execute($remove_ids);
@@ -221,25 +220,27 @@ if (!$is_cli && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])
         // Apagar permanentemente escolas já desactivadas
         $delete_ids = array_map('intval', $_POST['delete_ids'] ?? []);
         if (!empty($delete_ids)) {
-            try {
-                $placeholders = implode(',', array_fill(0, count($delete_ids), '?'));
-
-                // ✅ VALIDAÇÃO CRÍTICA: Verificar que não há alunos associados
+            try {            
+            $placeholders = implode(',', array_fill(0, count($delete_ids), '?'));
+            
+            // ✅ VALIDAÇÃO CRÍTICA: Verificar que não há alunos associados
                 $check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE school_id IN ($placeholders)");
                 $check->execute($delete_ids);
                 if ((int)$check->fetchColumn() > 0) {
                     throw new Exception('❌ Não é possível eliminar — ainda existem alunos associados a uma ou mais escolas.');
                 }
 
-                // Só agora apaga
+                // Só agora apagarpermanentemente
                 $pdo->prepare("DELETE FROM schools WHERE id IN ($placeholders) AND is_active = 0")->execute($delete_ids);
                 $action_result = ['success' => '✅ ' . count($delete_ids) . ' escolas eliminadas permanentemente.'];
                 header("Location: dedupe_schools.php?deleted=1");
                 exit;
-
-            } catch (Exception $e) {
+            
+            } 
+            catch (Exception $e) {
                 $action_result = ['error' => $e->getMessage()];
             }
+            
         }
     }
 }
