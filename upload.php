@@ -118,6 +118,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $error = 'Por favor, selecione um vídeo válido.';
         }
     } elseif (!$error) {
+        // ── Detecção de upload parcial (tamanho recebido vs declarado pelo cliente) ──
+        // Mesmo mecanismo usado por YouTube/S3: Content-Length integrity check.
+        // $_FILES['video']['size'] = bytes realmente recebidos pelo PHP.
+        // expected_size = tamanho original declarado pelo browser antes do envio.
+        $expected_size = isset($_POST['expected_size']) ? (int)$_POST['expected_size'] : 0;
+        if ($expected_size > 0 && (int)$_FILES['video']['size'] !== $expected_size) {
+            $error = 'Upload incompleto. O ficheiro foi enviado parcialmente — verifique a sua ligação à internet e tente novamente.';
+        }
+
         require_once 'includes/upload_validation.php';
         
         $video = $_FILES['video'];
@@ -127,19 +136,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $videoType = strtolower(pathinfo($videoName, PATHINFO_EXTENSION));
 
         // Validação segura de vídeo com MIME type checking
-        $validation = validate_video_upload(
-            $videoTmp,
-            $videoName,
-            ['mp4', 'avi', 'mov', 'wmv', 'webm'],
-            50 // 50MB máximo
-        );
-        
-        if (!$validation['valid']) {
-            $error = $validation['error'];
-        } else {
-            $processing_result = video_prepare_for_storage($videoTmp, $validation['extension']);
-            if (!$processing_result['success']) {
-                $error = $processing_result['error'] ?: 'Erro ao processar vídeo para formato compatível.';
+        // Guardado por !$error para não executar FFmpeg em ficheiros incompletos.
+        if (!$error) {
+            $validation = validate_video_upload(
+                $videoTmp,
+                $videoName,
+                ['mp4', 'avi', 'mov', 'wmv', 'webm'],
+                50 // 50MB máximo
+            );
+
+            if (!$validation['valid']) {
+                $error = $validation['error'];
+            } else {
+                $processing_result = video_prepare_for_storage($videoTmp, $validation['extension']);
+                if (!$processing_result['success']) {
+                    $error = $processing_result['error'] ?: 'Erro ao processar vídeo para formato compatível.';
+                }
             }
         }
 

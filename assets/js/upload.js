@@ -218,6 +218,10 @@ function startAjaxUpload() {
     
     // Adicionar flag para identificar requisição AJAX
     formData.append('ajax_upload', '1');
+
+    // Declarar tamanho real — permite ao servidor detectar upload parcial (ligação instável)
+    const _vf = document.getElementById('videoInput').files[0];
+    if (_vf) formData.append('expected_size', _vf.size);
     
     // Mostrar barra de progresso
     if (uploadProgress) {
