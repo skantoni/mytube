@@ -2,6 +2,7 @@
 require_once '../includes/config.php';
 require_once '../includes/ranking_cache.php';
 require_once '../includes/r2_storage.php';
+require_once '../includes/hashtag_helper.php';
 
 header('Content-Type: application/json');
 
@@ -58,6 +59,11 @@ try {
         exit;
     }
 
+    // Guardar hashtag IDs antes de apagar (para recalcular contagens depois)
+    $hashtag_ids_stmt = $pdo->prepare("SELECT hashtag_id FROM video_hashtags WHERE video_id = ?");
+    $hashtag_ids_stmt->execute([$video_id]);
+    $affected_hashtag_ids = $hashtag_ids_stmt->fetchAll(PDO::FETCH_COLUMN);
+
     // Iniciar transação
     $pdo->beginTransaction();
 
@@ -75,7 +81,11 @@ try {
     $pdo->prepare("DELETE FROM video_likes WHERE video_id = ?")
         ->execute([$video_id]);
 
-    // 4. Deletar arquivos físicos (R2 ou local)
+    // 4. Apagar hashtags do vídeo
+    $pdo->prepare("DELETE FROM video_hashtags WHERE video_id = ?")
+        ->execute([$video_id]);
+
+    // 5. Deletar arquivos físicos (R2 ou local)
     if (r2_is_r2_path($video['video_path'])) {
         // Vídeo no Cloudflare R2
         r2_delete_video($video['video_path']);
@@ -94,7 +104,7 @@ try {
         }
     }
 
-    // 5. Apagar o vídeo da tabela
+    // 6. Apagar o vídeo da tabela
     $delete_stmt = $pdo->prepare("DELETE FROM videos WHERE id = ?");
     $delete_stmt->execute([$video_id]);
 
@@ -108,6 +118,11 @@ try {
     // Recalcular ranking_points (vídeo apagado, recalcular tudo)
     ranking_points_recalc($pdo, (int)$video['user_id']);
     ranking_cache_clear_all();
+
+    // Recalcular contagem de posts dos hashtags afetados
+    if (!empty($affected_hashtag_ids)) {
+        hashtag_recalculate_counts($pdo, array_map('intval', $affected_hashtag_ids));
+    }
 
     echo json_encode([
         'success' => true, 

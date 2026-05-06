@@ -6,6 +6,7 @@
  */
 require_once '../includes/config.php';
 require_once '../includes/r2_storage.php';
+require_once '../includes/hashtag_helper.php';
 
 header('Content-Type: application/json');
 
@@ -65,6 +66,10 @@ try {
         ->execute([$video_id]);
     $pdo->prepare("DELETE FROM video_likes WHERE video_id = ?")
         ->execute([$video_id]);
+    $hashtag_ids_stmt = $pdo->prepare("SELECT hashtag_id FROM video_hashtags WHERE video_id = ?");
+    $hashtag_ids_stmt->execute([$video_id]);
+    $affected_hashtag_ids = $hashtag_ids_stmt->fetchAll(PDO::FETCH_COLUMN);
+
     $pdo->prepare("DELETE FROM video_hashtags WHERE video_id = ?")
         ->execute([$video_id]);
 
@@ -77,6 +82,11 @@ try {
         ->execute([$video['user_id']]);
 
     $pdo->commit();
+
+    // Recalcular contagem de posts dos hashtags afetados
+    if (!empty($affected_hashtag_ids)) {
+        hashtag_recalculate_counts($pdo, array_map('intval', $affected_hashtag_ids));
+    }
 
     // Apagar ficheiro físico (R2 ou local) — fora da transação para não bloquear
     if (!empty($video['video_path'])) {
