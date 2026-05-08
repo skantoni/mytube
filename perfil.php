@@ -104,6 +104,7 @@ try {
     $is_admin = isAdminUser();
     $can_message_anyone = canMessageAnyone();
     $can_manage_profile_videos = ($is_own_profile || $is_admin);
+    $profile_open_inbox = !empty($user_data['open_inbox']);
 
 } catch (Exception $e) {
     $error = 'Erro ao carregar perfil.';
@@ -259,7 +260,7 @@ try {
                                 <i class="fas <?php echo $is_following ? 'fa-check' : 'fa-plus'; ?>"></i>
                                 <span><?php echo $is_following ? 'Seguindo' : ($follows_you ? 'Seguir de volta' : 'Seguir'); ?></span>
                             </button>
-                            <?php if ($friendship_status === 'friends' || $can_message_anyone): ?>
+                            <?php if ($friendship_status === 'friends' || $can_message_anyone || $profile_open_inbox): ?>
                                 <button class="btn btn-chat" onclick="openChat(<?php echo $profile_user_id; ?>, '<?php echo htmlspecialchars($user_data['username']); ?>')">
                                     <i class="fas fa-envelope"></i>
                                     Mensagem
