@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
 }
 
 // Buscar dados do usuário
-$stmt = $pdo->prepare("SELECT username, full_name, profile_picture FROM users WHERE id = ?");
+$stmt = $pdo->prepare("SELECT username, full_name, profile_picture, email FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 if (!$user) {
@@ -551,6 +551,111 @@ if (!$user) {
             background: rgba(255,255,255,0.12);
         }
 
+        /* Email change modal */
+        .email-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .email-overlay.active {
+            display: flex;
+        }
+        .email-box {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 28px 24px 24px;
+            max-width: 400px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .email-box h3 {
+            margin: 0 0 4px;
+            font-size: 1.15rem;
+            text-align: center;
+        }
+        .email-box .email-subtitle {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            text-align: center;
+            margin: 0 0 20px;
+        }
+        .email-field {
+            margin-bottom: 14px;
+        }
+        .email-field label {
+            display: block;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .email-field input {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        .email-field input:focus {
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+        .email-error {
+            color: #ef4444;
+            font-size: 0.82rem;
+            margin: -6px 0 12px;
+            display: none;
+        }
+        .email-success {
+            color: #10b981;
+            font-size: 0.82rem;
+            margin: -6px 0 12px;
+            display: none;
+        }
+        .email-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .email-actions button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-cancel-email {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        .btn-cancel-email:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        .btn-save-email {
+            background: #10b981;
+            color: #fff;
+        }
+        .btn-save-email:hover {
+            background: #059669;
+        }
+        .btn-save-email:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         /* Password change modal */
 
         .password-overlay {
@@ -722,6 +827,16 @@ if (!$user) {
                     </div>
                     <i class="fas fa-chevron-right"></i>
                 </a>
+                <div class="settings-item" onclick="showChangeEmail()">
+                    <div class="settings-item-icon green">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="settings-item-text">
+                        <span>Editar Email</span>
+                        <small>Alterar o email da conta</small>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                </div>
                 <div class="settings-item" onclick="showChangePassword()">
                     <div class="settings-item-icon orange">
                         <i class="fas fa-lock"></i>
@@ -887,6 +1002,39 @@ if (!$user) {
             <button class="ios-guide-close" onclick="hideIosGuide()">
                 <i class="fas fa-times"></i> Fechar
             </button>
+        </div>
+    </div>
+
+    <!-- Change email modal -->
+    <div class="email-overlay" id="emailOverlay" onclick="if(event.target===this)hideChangeEmail()">
+        <div class="email-box">
+            <h3><i class="fas fa-envelope" style="color:#10b981;margin-right:8px"></i>Editar Email</h3>
+            <p class="email-subtitle">Email atual: <strong><?php echo htmlspecialchars($user['email']); ?></strong></p>
+            <form id="changeEmailForm" onsubmit="return submitChangeEmail(event)">
+                <div class="email-field">
+                    <label>Novo Email</label>
+                    <input type="email" id="newEmail" placeholder="novo@exemplo.com" autocomplete="email" maxlength="255">
+                </div>
+                <div class="email-field">
+                    <label>Confirmar Novo Email</label>
+                    <input type="email" id="confirmEmail" placeholder="Repita o novo email" autocomplete="email" maxlength="255">
+                </div>
+                <div class="email-field">
+                    <label>Senha Atual <small style="color:#64748b">(para confirmar)</small></label>
+                    <div class="pwd-input-wrap">
+                        <input type="password" id="emailPassword" placeholder="Senha da conta" autocomplete="current-password">
+                        <button type="button" class="pwd-toggle" onclick="togglePwdVisibility(this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="email-error" id="emailError"></div>
+                <div class="email-success" id="emailSuccess"></div>
+                <div class="email-actions">
+                    <button type="button" class="btn-cancel-email" onclick="hideChangeEmail()">Cancelar</button>
+                    <button type="submit" class="btn-save-email" id="btnSaveEmail">Salvar</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -1126,10 +1274,93 @@ if (!$user) {
             return false;
         }
 
+        // Change email
+        function showChangeEmail() {
+            document.getElementById('emailOverlay').classList.add('active');
+            document.getElementById('newEmail').focus();
+        }
+        function hideChangeEmail() {
+            document.getElementById('emailOverlay').classList.remove('active');
+            document.getElementById('changeEmailForm').reset();
+            document.getElementById('emailError').style.display = 'none';
+            document.getElementById('emailSuccess').style.display = 'none';
+            document.getElementById('btnSaveEmail').disabled = false;
+            document.getElementById('btnSaveEmail').textContent = 'Salvar';
+        }
+
+        function submitChangeEmail(e) {
+            e.preventDefault();
+            const errorEl   = document.getElementById('emailError');
+            const successEl = document.getElementById('emailSuccess');
+            const btn       = document.getElementById('btnSaveEmail');
+            const newEmail  = document.getElementById('newEmail').value.trim();
+            const confirmEmail = document.getElementById('confirmEmail').value.trim();
+            const password  = document.getElementById('emailPassword').value;
+
+            errorEl.style.display   = 'none';
+            successEl.style.display = 'none';
+
+            // Validação local
+            if (!newEmail || !confirmEmail || !password) {
+                errorEl.textContent = 'Preencha todos os campos.';
+                errorEl.style.display = 'block';
+                return false;
+            }
+
+            // Formato básico de email (regex simples)
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(newEmail)) {
+                errorEl.textContent = 'Formato de email inválido.';
+                errorEl.style.display = 'block';
+                return false;
+            }
+
+            if (newEmail !== confirmEmail) {
+                errorEl.textContent = 'Os emails não coincidem.';
+                errorEl.style.display = 'block';
+                return false;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Salvando...';
+
+            const formData = new FormData();
+            formData.append('new_email', newEmail);
+            formData.append('password', password);
+
+            fetch('api/change_email.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    successEl.textContent = data.message;
+                    successEl.style.display = 'block';
+                    document.getElementById('changeEmailForm').reset();
+                    setTimeout(() => hideChangeEmail(), 1500);
+                } else {
+                    errorEl.textContent = data.message;
+                    errorEl.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Salvar';
+                }
+            })
+            .catch(() => {
+                errorEl.textContent = 'Erro de conexão. Tente novamente.';
+                errorEl.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Salvar';
+            });
+
+            return false;
+        }
+
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') {
                 hideLogoutConfirm();
                 hideChangePassword();
+                hideChangeEmail();
             }
         });
     </script>
