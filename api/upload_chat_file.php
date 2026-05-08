@@ -23,18 +23,23 @@ if ($receiver_id <= 0) {
     exit;
 }
 
-// Verificar se são amigos (admin e vip podem enviar ficheiros a qualquer utilizador)
+// Verificar se são amigos (admin/vip ou destinatário com caixa aberta ignoram restrição)
 if (!canMessageAnyone()) {
-    $fr_check = $pdo->prepare("
-        SELECT id FROM friend_requests 
-        WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
-          AND status = 'accepted'
-        LIMIT 1
-    ");
-    $fr_check->execute([$_SESSION['user_id'], $receiver_id, $receiver_id, $_SESSION['user_id']]);
-    if (!$fr_check->fetch()) {
-        echo json_encode(['success' => false, 'error' => 'Precisas ser amigo deste utilizador para enviar ficheiros.']);
-        exit;
+    $inbox_check = $pdo->prepare("SELECT open_inbox FROM users WHERE id = ? LIMIT 1");
+    $inbox_check->execute([$receiver_id]);
+    $receiver_row = $inbox_check->fetch();
+    if (!$receiver_row || !$receiver_row['open_inbox']) {
+        $fr_check = $pdo->prepare("
+            SELECT id FROM friend_requests 
+            WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
+              AND status = 'accepted'
+            LIMIT 1
+        ");
+        $fr_check->execute([$_SESSION['user_id'], $receiver_id, $receiver_id, $_SESSION['user_id']]);
+        if (!$fr_check->fetch()) {
+            echo json_encode(['success' => false, 'error' => 'Precisas ser amigo deste utilizador para enviar ficheiros.']);
+            exit;
+        }
     }
 }
 

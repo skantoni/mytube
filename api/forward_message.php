@@ -88,17 +88,22 @@ try {
             continue;
         }
 
-        // Verificar se são amigos (admin e vip podem reencaminhar a qualquer utilizador)
+        // Verificar se são amigos (admin/vip ou destinatário com caixa aberta ignoram restrição)
         if (!canMessageAnyone()) {
-            $stmt = $pdo->prepare("
-                SELECT id FROM friend_requests 
-                WHERE status = 'accepted' 
-                AND ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
-            ");
-            $stmt->execute([$sender_id, $receiver_id, $receiver_id, $sender_id]);
-            if (!$stmt->fetch()) {
-                $errors[] = "Não és amigo do utilizador $receiver_id";
-                continue;
+            $inbox_check = $pdo->prepare("SELECT open_inbox FROM users WHERE id = ? LIMIT 1");
+            $inbox_check->execute([$receiver_id]);
+            $inbox_row = $inbox_check->fetch();
+            if (!$inbox_row || !$inbox_row['open_inbox']) {
+                $stmt = $pdo->prepare("
+                    SELECT id FROM friend_requests 
+                    WHERE status = 'accepted' 
+                    AND ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
+                ");
+                $stmt->execute([$sender_id, $receiver_id, $receiver_id, $sender_id]);
+                if (!$stmt->fetch()) {
+                    $errors[] = "Não és amigo do utilizador $receiver_id";
+                    continue;
+                }
             }
         }
         

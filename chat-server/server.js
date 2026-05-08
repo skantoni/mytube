@@ -292,6 +292,18 @@ async function canMessageAnyone(userId) {
 }
 
 /**
+ * Verificar se o destinatário tem caixa de entrada aberta (qualquer um pode enviar)
+ */
+async function hasOpenInbox(userId) {
+    try {
+        const [rows] = await pool.execute('SELECT open_inbox FROM users WHERE id = ? LIMIT 1', [userId]);
+        return rows[0]?.open_inbox === 1;
+    } catch (error) {
+        return false;
+    }
+}
+
+/**
  * Salvar mensagem no banco de dados
  */
 async function saveMessage(conversationId, senderId, receiverId, content, replyToId = null) {
@@ -1032,16 +1044,19 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Verificar se são amigos (admin e vip podem enviar a qualquer utilizador)
+        // Verificar se são amigos (admin/vip ou destinatário com caixa aberta ignoram restrição)
         const senderCanMessageAnyone = await canMessageAnyone(senderId);
         if (!senderCanMessageAnyone) {
-            const friends = await areFriends(senderId, receiverId);
-            if (!friends) {
-                socket.emit('message_blocked', { 
-                    tempId,
-                    message: 'Precisas ser amigo deste utilizador para enviar mensagens. Envia um pedido de amizade primeiro!' 
-                });
-                return;
+            const receiverOpenInbox = await hasOpenInbox(receiverId);
+            if (!receiverOpenInbox) {
+                const friends = await areFriends(senderId, receiverId);
+                if (!friends) {
+                    socket.emit('message_blocked', { 
+                        tempId,
+                        message: 'Precisas ser amigo deste utilizador para enviar mensagens. Envia um pedido de amizade primeiro!' 
+                    });
+                    return;
+                }
             }
         }
         

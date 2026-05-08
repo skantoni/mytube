@@ -41,16 +41,17 @@ try {
     $stmt->execute([$sender_id]);
     $sender = $stmt->fetch();
     
-    // Verificar se o destinatário existe
-    $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ?");
+    // Verificar se o destinatário existe (e buscar open_inbox)
+    $stmt = $pdo->prepare("SELECT id, open_inbox FROM users WHERE id = ?");
     $stmt->execute([$receiver_id]);
-    if (!$stmt->fetch()) {
+    $receiver = $stmt->fetch();
+    if (!$receiver) {
         echo json_encode(['success' => false, 'error' => 'Utilizador não encontrado']);
         exit;
     }
 
-    // Verificar se são amigos (admin e vip podem enviar a qualquer utilizador)
-    if (!canMessageAnyone()) {
+    // Verificar se são amigos (admin/vip ou destinatário com caixa aberta ignoram restrição)
+    if (!canMessageAnyone() && !$receiver['open_inbox']) {
         $stmt = $pdo->prepare("
             SELECT id FROM friend_requests 
             WHERE status = 'accepted' 
