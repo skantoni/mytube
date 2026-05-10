@@ -687,7 +687,10 @@
         max-height: 85vh;
         max-height: calc(var(--vh, 1vh) * 85);
         max-height: 85dvh;
-        min-height: 320px;
+        /* min() garante que min-height nunca ultrapassa o espaço disponível */
+        /* quando o teclado emoji (mais alto) abre no Android */
+        min-height: min(320px, 80dvh);
+        min-height: min(320px, calc(var(--vh, 1vh) * 80));
     }
 
     /* Quando teclado está aberto - ocupa tela toda */
