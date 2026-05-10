@@ -153,12 +153,13 @@ const NotificationSystem = (function() {
                      data-ref-id="${escapeHtml(notif.reference_id ?? '')}"
                      data-comment-id="${escapeHtml(notif.comment_id ?? '')}"
                      data-actor-username="${escapeHtml(notif.actor_username)}"
+                     data-actor-full-name="${escapeHtml(notif.actor_full_name || notif.actor_username)}"
                      data-notif-scope="${escapeHtml(notif.notif_scope || 'personal')}">
                     <img src="assets/images/avatars/${escapeHtml(notif.actor_avatar || 'default.webp')}" 
-                         alt="" class="notification-avatar" loading="lazy">
+                         alt="${escapeHtml(notif.actor_full_name || notif.actor_username)}" class="notification-avatar" loading="lazy">
                     <div class="notification-content">
                         <div class="notification-text">
-                            <strong>@${escapeHtml(notif.actor_username)}</strong> ${escapeHtml(notif.message)}
+                            <strong>${escapeHtml(notif.actor_full_name || notif.actor_username)}</strong> ${escapeHtml(notif.message)}
                         </div>
                         <div class="notification-time">${escapeHtml(notif.time_ago)}</div>
                     </div>

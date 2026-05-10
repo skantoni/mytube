@@ -49,7 +49,7 @@ try {
         FROM (
             SELECT 
                 n.id, n.type, n.reference_id, n.comment_id, n.is_read, n.created_at,
-                u.username as actor_username, u.profile_picture as actor_avatar,
+                u.username as actor_username, u.full_name as actor_full_name, u.profile_picture as actor_avatar,
                 'personal' as notif_scope, NULL as custom_message
             FROM notifications n
             JOIN users u ON n.actor_id = u.id
@@ -60,7 +60,7 @@ try {
             SELECT 
                 gn.id, gn.type, gn.reference_id, NULL as comment_id,
                 IF(ugr.user_id IS NOT NULL, 1, 0) as is_read, gn.created_at,
-                'Sistema' as actor_username, 'default.webp' as actor_avatar,
+                'Sistema' as actor_username, 'Sistema' as actor_full_name, 'default.webp' as actor_avatar,
                 'global' as notif_scope, gn.message as custom_message
             FROM global_notifications gn
             LEFT JOIN user_global_reads ugr ON gn.id = ugr.global_notification_id AND ugr.user_id = ?
@@ -125,6 +125,7 @@ try {
             // htmlspecialchars() em JSON causa duplo-encode quando o JS re-escapa para innerHTML.
             'type'           => $notif['type'] ?? '',
             'actor_username' => $notif['actor_username'] ?? '',
+            'actor_full_name'=> $notif['actor_full_name'] ?? $notif['actor_username'] ?? '',
             'actor_avatar'   => $notif['actor_avatar'] ?? 'default.webp',
             'message'        => $message,
             'reference_id'   => $notif['reference_id'],
