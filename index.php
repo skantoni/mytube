@@ -5,6 +5,21 @@ require_once 'includes/r2_storage.php';
 // Garantir que os dados do usuário estão carregados na sessão
 ensureUserData();
 
+// Auto-criar tabela de histórico de pesquisa (caso não exista)
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS search_history (
+            id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id     INT UNSIGNED NOT NULL,
+            query       VARCHAR(255) NOT NULL,
+            searched_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_searched (user_id, searched_at),
+            INDEX idx_cleanup       (searched_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+} catch (Throwable $e) { /* tabela já existe */ }
+
+
 // AJAX Feed System - Videos will be loaded dynamically via JavaScript
 
 // Verificar modo de feed: normal ou perfil de usuário
