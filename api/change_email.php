@@ -25,8 +25,8 @@ $new_email    = trim($_POST['new_email'] ?? '');
 $password     = $_POST['password'] ?? '';
 
 // Campos obrigatórios
-if (empty($new_email) || empty($password)) {
-    echo json_encode(['success' => false, 'message' => 'Preencha todos os campos.']);
+if (empty($new_email)) {
+    echo json_encode(['success' => false, 'message' => 'Preencha o novo email.']);
     exit;
 }
 
@@ -46,7 +46,7 @@ if (!filter_var($new_email, FILTER_VALIDATE_EMAIL)) {
 $new_email = strtolower($new_email);
 
 // Buscar dados atuais do utilizador
-$stmt = $pdo->prepare("SELECT email, password FROM users WHERE id = ?");
+$stmt = $pdo->prepare("SELECT email, password, google_id FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 
@@ -55,10 +55,18 @@ if (!$user) {
     exit;
 }
 
-// Confirmar senha para autorizar a alteração
-if (!password_verify($password, $user['password'])) {
-    echo json_encode(['success' => false, 'message' => 'Senha incorreta.']);
-    exit;
+$isGoogleUser = !empty($user['google_id']);
+
+// Confirmar senha apenas para utilizadores sem conta Google
+if (!$isGoogleUser) {
+    if (empty($password)) {
+        echo json_encode(['success' => false, 'message' => 'Insira a sua senha para confirmar.']);
+        exit;
+    }
+    if (!password_verify($password, $user['password'])) {
+        echo json_encode(['success' => false, 'message' => 'Senha incorreta.']);
+        exit;
+    }
 }
 
 // Verificar se é o mesmo email
