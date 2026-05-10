@@ -90,71 +90,107 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     
     elseif (isset($_POST['register'])) {
-        // CADASTRO
-        $username = trim($_POST['reg_username']);
-        $email = trim($_POST['reg_email']);
-        $full_name = trim($_POST['reg_full_name']);
+        $username    = trim($_POST['reg_username'] ?? '');
+        $email       = trim(strtolower($_POST['reg_email'] ?? ''));
+        $full_name   = trim($_POST['reg_full_name'] ?? '');
         $instituicao = trim($_POST['reg_instituicao'] ?? '');
-        $password = $_POST['reg_password'];
-        $confirm_password = $_POST['reg_confirm_password'];
-        
-        // Preservar dados para reexibir no formulário
-        $reg_username = $username;
-        $reg_email = $email;
+        $password    = $_POST['reg_password'] ?? '';
+        $confirm_password = $_POST['reg_confirm_password'] ?? '';
+
+        // Preservar dados no formulário
+        $reg_username  = $username;
+        $reg_email     = $email;
         $reg_full_name = $full_name;
         $reg_instituicao = $instituicao;
-        $error_from = 'register';
-        
-        // Validações
+        $error_from    = 'register';
+
+        $errors = [];
+
+        // ── Validações básicas ────────────────────────────────────────────────
         if (empty($username) || empty($email) || empty($full_name) || empty($password)) {
-            $error = 'Por favor, preencha todos os campos.';
-        } elseif (strlen($username) < 3 || strlen($username) > 12) {
-            $error = 'Nome de usuário deve ter entre 3 e 12 caracteres.';
+            $errors[] = 'Por favor, preencha todos os campos.';
+        }
+
+        if (strlen($username) < 3 || strlen($username) > 12) {
+            $errors[] = 'Nome de usuário deve ter entre 3 e 12 caracteres.';
         } elseif (!preg_match('/^[a-zA-Z0-9_\-]+$/', $username)) {
-            $error = 'Nome de usuário pode conter apenas letras, números, - e _';
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/@.+\..+/', $email)) {
-            $error = 'E-mail inválido. Verifique se contém @ e um domínio válido.';
-        } elseif (strlen($password) < 6) {
-            $error = 'Senha deve ter pelo menos 6 caracteres.';
-        } elseif ($password !== $confirm_password) {
-            $error = 'Senhas não conferem.';
+            $errors[] = 'Nome de usuário pode conter apenas letras, números, - e _';
+        }
+
+        // ── Nomes reservados (novo) ───────────────────────────────────────────
+        $reserved = ['admin','root','mytube','suporte','support','moderador','staff','sistema'];
+        if (in_array(strtolower($username), $reserved)) {
+            $errors[] = 'Este nome de usuário não está disponível.';
+        }
+
+        // ── Nome completo (novo) ──────────────────────────────────────────────
+        if (strlen($full_name) < 3) {
+            $errors[] = 'Nome completo muito curto.';
+        }
+
+        // ── Email ─────────────────────────────────────────────────────────────
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors[] = 'E-mail inválido. Verifica o formato.';
         } else {
-            // Verificar se usuário já existe
+            $domain = substr(strrchr($email, "@"), 1);
+            // DNS check com fallback seguro
+            $dns_ok = false;
+            try {
+                $dns_ok = checkdnsrr($domain, "MX") || checkdnsrr($domain, "A");
+            } catch (\Throwable $e) {
+                $dns_ok = true; // Se falhar a verificação, não bloquear — falso positivo é pior
+            }
+            if (!$dns_ok) {
+                $errors[] = 'Domínio do e-mail não existe ou é inválido.';
+            }
+        }
+
+        // ── Senha ─────────────────────────────────────────────────────────────
+        if (strlen($password) < 6) {
+            $errors[] = 'Senha deve ter pelo menos 6 caracteres.';
+        }
+        if ($password !== $confirm_password) {
+            $errors[] = 'Senhas não conferem.';
+        }
+
+        // ── Verificações na base de dados (só se não houver erros) ────────────
+        if (empty($errors)) {
+            // ✅ FIX: $stmt_user corretamente separado de $stmt_email
             $stmt_user = $pdo->prepare("SELECT id FROM users WHERE username = ?");
             $stmt_user->execute([$username]);
-            
             if ($stmt_user->fetch()) {
-                $error = 'Nome de usuário já existe.';
-            } else {
-                // Verificar limite de contas por email (máx 3)
-                $stmt_email = $pdo->prepare("SELECT COUNT(id) FROM users WHERE email = ?");
-                $stmt_email->execute([$email]);
-                $email_count = (int)$stmt_email->fetchColumn();
-                
-                if ($email_count >= 3) {
-                    $error = 'Este e-mail já atingiu o limite de 3 contas.';
+                $errors[] = 'Nome de usuário já existe.';
+            }
+
+            $stmt_email = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+            $stmt_email->execute([$email]);
+            if ($stmt_email->fetch()) {
+                $errors[] = 'Este e-mail já está em uso.';
+            }
+        }
+
+        // ── Criar utilizador ──────────────────────────────────────────────────
+        if (empty($errors)) {
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("
+                INSERT INTO users (username, email, full_name, password, instituicao)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            try {
+                $stmt->execute([$username, $email, $full_name, $hashed_password, $instituicao]);
+                header('Location: login.php?registered=1');
+                exit;
+            } catch (PDOException $e) {
+                if ($e->getCode() == 23000) {
+                    $errors[] = 'Nome de usuário ou e-mail já está em uso.';
                 } else {
-                    // Criar usuário
-                    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("INSERT INTO users (username, email, full_name, password, instituicao) VALUES (?, ?, ?, ?, ?)");
-                    
-                    try {
-                        if ($stmt->execute([$username, $email, $full_name, $hashed_password, $instituicao])) {
-                            header('Location: login.php?registered=1');
-                            exit;
-                        } else {
-                            $error = 'Erro ao criar conta. Tente novamente.';
-                        }
-                    } catch (PDOException $e) {
-                        if ($e->getCode() == 23000) {
-                            $error = 'Este e-mail já está registado.';
-                        } else {
-                            $error = 'Erro ao criar conta. Tente novamente.';
-                        }
-                    }
+                    $errors[] = 'Erro ao criar conta. Tente novamente.';
                 }
             }
         }
+
+        // Compatível com o sistema de exibição de erros actual
+        $error = $errors[0] ?? '';
     }
 }
 ?>
