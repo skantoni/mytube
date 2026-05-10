@@ -35,7 +35,7 @@ Uma rede social moderna e completa para compartilhamento de vídeos, inspirada n
 
 ## 📋 Pré-requisitos
 
-- **XAMPP/WAMP/LAMP** - Servidor local com PHP e MySQL
+- **XAMPP/WAMP/LAMP/Laragon** - Servidor local com PHP e MySQL
 - **PHP 8.0+** com extensões:
   - PDO
   - PDO_MySQL
