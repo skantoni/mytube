@@ -38,7 +38,7 @@ try {
     // Buscar notificações com paginação e colunas específicas
     $stmt = $pdo->prepare("
         SELECT 
-            id, type, reference_id, comment_id, is_read, created_at, actor_username, actor_avatar, notif_scope, custom_message,
+            id, type, reference_id, comment_id, is_read, created_at, actor_username, actor_full_name, actor_avatar, notif_scope, custom_message,
             CASE 
                 WHEN TIMESTAMPDIFF(MINUTE, created_at, NOW()) < 1 THEN 'agora'
                 WHEN TIMESTAMPDIFF(MINUTE, created_at, NOW()) < 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, created_at, NOW()), ' min')
