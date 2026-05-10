@@ -75,6 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['full_name'] = $user['full_name'];
                 $_SESSION['profile_picture'] = $user['profile_picture'];
+                $_SESSION['auth_method'] = 'password';
                 
                 // ✅ Regenerar token CSRF para a nova sessão
                 csrf_regenerate();

@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
 }
 
 // Buscar dados do usuário
-$stmt = $pdo->prepare("SELECT username, full_name, profile_picture, email, google_id FROM users WHERE id = ?");
+$stmt = $pdo->prepare("SELECT username, full_name, profile_picture, email FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 if (!$user) {
@@ -1019,7 +1019,7 @@ if (!$user) {
                     <label>Confirmar Novo Email</label>
                     <input type="email" id="confirmEmail" placeholder="Repita o novo email" autocomplete="email" maxlength="255">
                 </div>
-                <?php if (empty($user['google_id'])): ?>
+                <?php if (($_SESSION['auth_method'] ?? 'password') !== 'google'): ?>
                 <div class="email-field" id="emailPwdField">
                     <label>Senha Atual <small style="color:#64748b">(para confirmar)</small></label>
                     <div class="pwd-input-wrap">
@@ -1302,7 +1302,7 @@ if (!$user) {
             const btn         = document.getElementById('btnSaveEmail');
             const newEmail    = document.getElementById('newEmail').value.trim();
             const confirmEmail = document.getElementById('confirmEmail').value.trim();
-            const isGoogleUser = <?php echo !empty($user['google_id']) ? 'true' : 'false'; ?>;
+            const isGoogleUser = <?php echo (($_SESSION['auth_method'] ?? 'password') === 'google') ? 'true' : 'false'; ?>;
             const pwdInput    = document.getElementById('emailPassword');
             const password    = pwdInput ? pwdInput.value : '';
 

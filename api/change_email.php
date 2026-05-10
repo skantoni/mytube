@@ -46,7 +46,7 @@ if (!filter_var($new_email, FILTER_VALIDATE_EMAIL)) {
 $new_email = strtolower($new_email);
 
 // Buscar dados atuais do utilizador
-$stmt = $pdo->prepare("SELECT email, password, google_id FROM users WHERE id = ?");
+$stmt = $pdo->prepare("SELECT email, password FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 
@@ -55,10 +55,11 @@ if (!$user) {
     exit;
 }
 
-$isGoogleUser = !empty($user['google_id']);
+// Verifica se autenticou nesta sessão via Google
+$isGoogleSession = (($_SESSION['auth_method'] ?? 'password') === 'google');
 
-// Confirmar senha apenas para utilizadores sem conta Google
-if (!$isGoogleUser) {
+// Confirmar senha apenas para utilizadores que não autenticaram via Google
+if (!$isGoogleSession) {
     if (empty($password)) {
         echo json_encode(['success' => false, 'message' => 'Insira a sua senha para confirmar.']);
         exit;
