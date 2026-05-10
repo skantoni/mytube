@@ -362,6 +362,7 @@ $current_user = $stmt->fetch();
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     
     <!-- Chat Socket.IO Client -->
+    <script src="<?php echo asset('assets/js/image-compressor.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/chat-socket.js'); ?>"></script>
 
     <!-- Modal de Pedidos de Amizade -->
