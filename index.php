@@ -5,6 +5,7 @@ require_once 'includes/r2_storage.php';
 // Garantir que os dados do usuário estão carregados na sessão
 ensureUserData();
 
+
 // AJAX Feed System - Videos will be loaded dynamically via JavaScript
 
 // Verificar modo de feed: normal ou perfil de usuário

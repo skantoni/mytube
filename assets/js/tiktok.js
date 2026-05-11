@@ -1932,15 +1932,200 @@ const escapeHtml = (value) => String(value || '')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+// ========== HISTÓRICO DE PESQUISA (persistente via API) ==========
+// Cache em memória para evitar requests desnecessários durante a sessão
+let _searchHistoryCache = null;
+let _searchHistoryLoaded = false;
+
+function formatHistoryTime(timestamp) {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const min = Math.floor(diff / 60000);
+    const hr  = Math.floor(diff / 3600000);
+    const day = Math.floor(diff / 86400000);
+    if (min < 1)  return 'Agora mesmo';
+    if (min < 60) return `${min}min atrás`;
+    if (hr < 24)  return `${hr}h atrás`;
+    if (day < 7)  return `${day}d atrás`;
+    return new Date(timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+}
+
+/** Carrega histórico da API (com cache) */
+function loadSearchHistory() {
+    return fetch('api/search_history.php?action=get', { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                _searchHistoryCache = data.history || [];
+                _searchHistoryLoaded = true;
+            }
+            return _searchHistoryCache || [];
+        })
+        .catch(() => _searchHistoryCache || []);
+}
+
+/** Guarda pesquisa na API e actualiza o cache */
+function addToSearchHistory(query) {
+    if (!query || query.trim().length < 2) return;
+    const q = query.trim();
+
+    // Actualizar cache imediatamente (optimistic)
+    if (_searchHistoryCache) {
+        _searchHistoryCache = _searchHistoryCache.filter(
+            h => h.query.toLowerCase() !== q.toLowerCase()
+        );
+        _searchHistoryCache.unshift({ query: q, timestamp: Date.now() });
+        _searchHistoryCache = _searchHistoryCache.slice(0, 10);
+    }
+
+    // Persistir no servidor
+    const fd = new FormData();
+    fd.append('action', 'save');
+    fd.append('query', q);
+    fd.append('csrf_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+    fetch('api/search_history.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+        .catch(() => {/* silenciar */});
+}
+
+/** Remove entrada individual */
+function removeFromSearchHistory(query) {
+    if (_searchHistoryCache) {
+        _searchHistoryCache = _searchHistoryCache.filter(h => h.query !== query);
+    }
+    const fd = new FormData();
+    fd.append('action', 'delete');
+    fd.append('query', query);
+    fd.append('csrf_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+    fetch('api/search_history.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+        .catch(() => {/* silenciar */});
+    renderSearchHomeWithData(_searchHistoryCache || []);
+}
+
+/** Limpa todo o histórico */
+function clearSearchHistory() {
+    _searchHistoryCache = [];
+    const fd = new FormData();
+    fd.append('action', 'clear');
+    fd.append('csrf_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+    fetch('api/search_history.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+        .catch(() => {/* silenciar */});
+    renderSearchHomeWithData([]);
+}
+
+/** Renderiza o painel de histórico com dados já carregados */
+function renderSearchHomeWithData(history) {
+    const results = document.getElementById('searchResults');
+    if (!results) return;
+
+    let html = '';
+    if (history.length > 0) {
+        html = `
+            <div class="search-history-container">
+                <div class="search-history-header">
+                    <span class="search-history-label">Pesquisas recentes</span>
+                    <button class="search-history-clear-all" id="searchHistoryClearAll">Limpar tudo</button>
+                </div>
+                <div class="search-history-list">
+                    ${history.map(item => `
+                        <div class="search-history-item" data-query="${escapeHtml(item.query)}">
+                            <div class="search-history-icon">
+                                <i class="fas fa-history"></i>
+                            </div>
+                            <div class="search-history-text">
+                                <div class="search-history-query">${escapeHtml(item.query)}</div>
+                                <div class="search-history-time">${formatHistoryTime(item.timestamp)}</div>
+                            </div>
+                            <button class="search-history-remove" data-remove-query="${escapeHtml(item.query)}" title="Remover">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+    } else {
+        html = `
+            <div class="search-history-empty">
+                <i class="fas fa-search"></i>
+                <p>As suas pesquisas recentes aparecem aqui</p>
+            </div>`;
+    }
+
+    results.innerHTML = html;
+
+    // Clicar num item → pesquisar
+    results.querySelectorAll('.search-history-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            if (e.target.closest('.search-history-remove')) return;
+            const q = item.dataset.query;
+            const input = document.getElementById('searchInput');
+            const clearBtn = document.getElementById('searchClear');
+            if (input) { input.value = q; input.focus(); }
+            if (clearBtn) clearBtn.style.display = 'flex';
+            performSearch(q);
+        });
+    });
+
+    // Remover item individual
+    results.querySelectorAll('.search-history-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const q = btn.dataset.removeQuery;
+            const item = btn.closest('.search-history-item');
+            if (item) {
+                item.style.transition = 'opacity 0.15s, transform 0.15s';
+                item.style.opacity = '0';
+                item.style.transform = 'translateX(-12px)';
+                setTimeout(() => removeFromSearchHistory(q), 150);
+            } else {
+                removeFromSearchHistory(q);
+            }
+        });
+    });
+
+    // Limpar tudo
+    document.getElementById('searchHistoryClearAll')
+        ?.addEventListener('click', clearSearchHistory);
+}
+
+/** Ponto de entrada: carrega (ou usa cache) e renderiza */
+function renderSearchHome() {
+    const results = document.getElementById('searchResults');
+    if (!results) return;
+
+    // Skeleton enquanto carrega
+    if (!_searchHistoryLoaded) {
+        results.innerHTML = `
+            <div class="search-history-empty" style="padding:32px 0;">
+                <i class="fas fa-circle-notch fa-spin" style="font-size:24px;opacity:.4;"></i>
+            </div>`;
+    }
+
+    // Se já temos cache, renderizar imediatamente
+    if (_searchHistoryCache !== null) {
+        renderSearchHomeWithData(_searchHistoryCache);
+        return;
+    }
+
+    // Caso contrário, buscar na API
+    loadSearchHistory().then(history => renderSearchHomeWithData(history));
+}
+
+
+
 function openSearchModal() {
     const modal = document.getElementById('searchModal');
     if (modal) {
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
-        
+
+        // Mostrar histórico de pesquisa
+        const input = document.getElementById('searchInput');
+        if (input && input.value.trim() === '') {
+            renderSearchHome();
+        }
+
         // Focar no input
         setTimeout(() => {
-            const input = document.getElementById('searchInput');
             if (input) input.focus();
         }, 100);
     }
@@ -1951,21 +2136,14 @@ function closeSearchModal() {
     if (modal) {
         modal.classList.remove('active');
         document.body.style.overflow = '';
-        
-        // Limpar pesquisa
+
+        // Limpar input
         const input = document.getElementById('searchInput');
         if (input) input.value = '';
-        
-        const results = document.getElementById('searchResults');
-        if (results) {
-            results.innerHTML = `
-                <div class="search-placeholder">
-                    <i class="fas fa-search"></i>
-                    <p>Pesquise por usuários, vídeos ou hashtags</p>
-                </div>
-            `;
-        }
-        
+
+        // Restaurar histórico no painel
+        renderSearchHome();
+
         const clearBtn = document.getElementById('searchClear');
         if (clearBtn) clearBtn.style.display = 'none';
     }
@@ -1973,24 +2151,19 @@ function closeSearchModal() {
 
 function performSearch(query) {
     const results = document.getElementById('searchResults');
-    
+
     if (query.length < 2) {
-        results.innerHTML = `
-            <div class="search-placeholder">
-                <i class="fas fa-search"></i>
-                <p>Digite pelo menos 2 caracteres</p>
-            </div>
-        `;
+        renderSearchHome();
         return;
     }
-    
+
     // Mostrar loading
     results.innerHTML = `
         <div class="search-loading">
             <div class="spinner"></div>
         </div>
     `;
-    
+
     fetch(`api/search.php?q=${encodeURIComponent(query)}`)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -2000,6 +2173,11 @@ function performSearch(query) {
         })
         .then(data => {
             if (data.success) {
+                // Salvar no histórico apenas se houver resultados
+                const hasResults = (data.users || []).length > 0 ||
+                                   (data.videos || []).length > 0 ||
+                                   (data.hashtags || []).length > 0;
+                if (hasResults) addToSearchHistory(query);
                 renderSearchResults(data.users || [], data.videos || [], data.hashtags || []);
             } else {
                 results.innerHTML = `
@@ -2145,16 +2323,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchInput.value = '';
                 searchInput.focus();
                 searchClear.style.display = 'none';
-                
-                const results = document.getElementById('searchResults');
-                if (results) {
-                    results.innerHTML = `
-                        <div class="search-placeholder">
-                            <i class="fas fa-search"></i>
-                            <p>Pesquise por usuários, vídeos ou hashtags</p>
-                        </div>
-                    `;
-                }
+                // Voltar ao histórico ao limpar
+                renderSearchHome();
             }
         });
     }

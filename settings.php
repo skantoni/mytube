@@ -1019,7 +1019,8 @@ if (!$user) {
                     <label>Confirmar Novo Email</label>
                     <input type="email" id="confirmEmail" placeholder="Repita o novo email" autocomplete="email" maxlength="255">
                 </div>
-                <div class="email-field">
+                <?php if (($_SESSION['auth_method'] ?? 'password') !== 'google'): ?>
+                <div class="email-field" id="emailPwdField">
                     <label>Senha Atual <small style="color:#64748b">(para confirmar)</small></label>
                     <div class="pwd-input-wrap">
                         <input type="password" id="emailPassword" placeholder="Senha da conta" autocomplete="current-password">
@@ -1028,6 +1029,12 @@ if (!$user) {
                         </button>
                     </div>
                 </div>
+                <?php else: ?>
+                <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:10px;margin-bottom:14px;font-size:0.85rem;color:#93c5fd;">
+                    <i class="fab fa-google" style="font-size:1.1rem;"></i>
+                    <span>Conta Google — a tua identidade já está verificada pela sessão.</span>
+                </div>
+                <?php endif; ?>
                 <div class="email-error" id="emailError"></div>
                 <div class="email-success" id="emailSuccess"></div>
                 <div class="email-actions">
@@ -1290,19 +1297,26 @@ if (!$user) {
 
         function submitChangeEmail(e) {
             e.preventDefault();
-            const errorEl   = document.getElementById('emailError');
-            const successEl = document.getElementById('emailSuccess');
-            const btn       = document.getElementById('btnSaveEmail');
-            const newEmail  = document.getElementById('newEmail').value.trim();
+            const errorEl     = document.getElementById('emailError');
+            const successEl   = document.getElementById('emailSuccess');
+            const btn         = document.getElementById('btnSaveEmail');
+            const newEmail    = document.getElementById('newEmail').value.trim();
             const confirmEmail = document.getElementById('confirmEmail').value.trim();
-            const password  = document.getElementById('emailPassword').value;
+            const isGoogleUser = <?php echo (($_SESSION['auth_method'] ?? 'password') === 'google') ? 'true' : 'false'; ?>;
+            const pwdInput    = document.getElementById('emailPassword');
+            const password    = pwdInput ? pwdInput.value : '';
 
             errorEl.style.display   = 'none';
             successEl.style.display = 'none';
 
             // Validação local
-            if (!newEmail || !confirmEmail || !password) {
+            if (!newEmail || !confirmEmail) {
                 errorEl.textContent = 'Preencha todos os campos.';
+                errorEl.style.display = 'block';
+                return false;
+            }
+            if (!isGoogleUser && !password) {
+                errorEl.textContent = 'Insira a sua senha para confirmar.';
                 errorEl.style.display = 'block';
                 return false;
             }
@@ -1326,7 +1340,9 @@ if (!$user) {
 
             const formData = new FormData();
             formData.append('new_email', newEmail);
-            formData.append('password', password);
+            if (!isGoogleUser) {
+                formData.append('password', password);
+            }
 
             fetch('api/change_email.php', {
                 method: 'POST',

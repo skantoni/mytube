@@ -2188,8 +2188,18 @@ $has_more_videos = $total_user_videos > count($user_videos);
     });
     </script>
 
+    <script src="<?php echo asset('assets/js/image-compressor.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/profile.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/video-delete.js'); ?>"></script>
+    <script>
+    // ── Compressão de imagens no formulário de perfil (estilo WhatsApp) ───────
+    document.addEventListener('DOMContentLoaded', function () {
+        const editForm = document.querySelector('form[enctype="multipart/form-data"]');
+        if (editForm && window.ImageCompressor) {
+            ImageCompressor.attachToForm(editForm, ['profile_picture', 'name_icon']);
+        }
+    });
+    </script>
     <?php include 'includes/presence_bootstrap.php'; ?>
 </body>
 </html>

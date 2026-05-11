@@ -1,14 +1,19 @@
 <?php
 /**
- * Image Sanitizer - Remove EXIF/metadata de imagens
- * 
+ * Image Sanitizer - Remove EXIF/metadata e redimensiona imagens
+ *
  * Previne vazamento de informações sensíveis:
  * - GPS (localização exata)
  * - Data/hora real
  * - Modelo da câmera/dispositivo
  * - Software usado
  * - Outros metadados privados
+ *
+ * Também redimensiona imagens grandes (fallback server-side para o compressor JS).
  */
+
+// Dimensão máxima server-side (lado maior, em px)
+define('IMG_SANITIZER_MAX_DIM', 1280);
 
 /**
  * Remove EXIF e outros metadados de uma imagem
@@ -70,12 +75,27 @@ function sanitize_image_exif(string $file_path, int $quality = 90): array {
         }
         
         // Obter dimensões originais
-        $width = imagesx($image);
-        $height = imagesy($image);
-        
-        // Criar nova imagem limpa (sem EXIF)
+        $orig_width  = imagesx($image);
+        $orig_height = imagesy($image);
+
+        // ── Calcular dimensões finais (redimensionar se necessário) ──────────
+        $max_dim = defined('IMG_SANITIZER_MAX_DIM') ? IMG_SANITIZER_MAX_DIM : 1280;
+        $width   = $orig_width;
+        $height  = $orig_height;
+
+        if ($orig_width > $max_dim || $orig_height > $max_dim) {
+            if ($orig_width >= $orig_height) {
+                $width  = $max_dim;
+                $height = (int) round($orig_height * $max_dim / $orig_width);
+            } else {
+                $height = $max_dim;
+                $width  = (int) round($orig_width * $max_dim / $orig_height);
+            }
+        }
+
+        // Criar nova imagem limpa (sem EXIF, com novo tamanho)
         $clean_image = imagecreatetruecolor($width, $height);
-        
+
         // Preservar transparência para PNG/GIF/WebP
         if (in_array($mime_type, ['image/png', 'image/gif', 'image/webp'])) {
             imagealphablending($clean_image, false);
@@ -83,12 +103,12 @@ function sanitize_image_exif(string $file_path, int $quality = 90): array {
             $transparent = imagecolorallocatealpha($clean_image, 0, 0, 0, 127);
             imagefill($clean_image, 0, 0, $transparent);
         }
-        
-        // Copiar imagem (remove EXIF automaticamente)
+
+        // Copiar + redimensionar (remove EXIF automaticamente)
         imagecopyresampled(
             $clean_image, $image,
             0, 0, 0, 0,
-            $width, $height, $width, $height
+            $width, $height, $orig_width, $orig_height
         );
         
         // Salvar imagem limpa no mesmo arquivo (sobrescrever)
@@ -124,10 +144,11 @@ function sanitize_image_exif(string $file_path, int $quality = 90): array {
         }
         
         return [
-            'success' => true,
-            'message' => 'EXIF removido com sucesso',
-            'mime_type' => $mime_type,
-            'dimensions' => ['width' => $width, 'height' => $height]
+            'success'    => true,
+            'message'    => 'EXIF removido com sucesso',
+            'mime_type'  => $mime_type,
+            'dimensions' => ['width' => $width, 'height' => $height],
+            'resized'    => ($width !== $orig_width || $height !== $orig_height)
         ];
         
     } catch (Exception $e) {

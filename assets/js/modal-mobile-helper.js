@@ -53,12 +53,14 @@
             const windowHeight = window.innerHeight;
             const diff = windowHeight - viewportHeight;
             
-            // Se diferença > 150px, teclado está aberto
+            // Se diferença > 150px, teclado está aberto (comportamento antigo do Chrome)
             if (diff > 150) {
                 modalContent.style.maxHeight = `${viewportHeight}px`;
+                modalContent.style.minHeight = '0'; // evitar que min-height ultrapasse o viewport
                 modalContent.classList.add('keyboard-open');
             } else {
                 modalContent.style.maxHeight = '';
+                modalContent.style.minHeight = '';
                 modalContent.classList.remove('keyboard-open');
             }
         });

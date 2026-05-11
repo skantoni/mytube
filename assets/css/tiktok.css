@@ -1671,6 +1671,238 @@ body * {
     display: block;
 }
 
+/* ========== HISTÓRICO DE PESQUISA ========== */
+.search-history-container {
+    animation: fadeInHistory 0.2s ease-out;
+}
+
+@keyframes fadeInHistory {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.search-history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding: 0 4px;
+}
+
+.search-history-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+.search-history-clear-all {
+    background: transparent;
+    border: none;
+    color: #60a5fa;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.18s, color 0.18s;
+}
+
+.search-history-clear-all:hover {
+    background: rgba(96, 165, 250, 0.12);
+    color: #93c5fd;
+}
+
+.search-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 24px;
+}
+
+.search-history-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.18s;
+    position: relative;
+    animation: slideInHistoryItem 0.18s ease-out both;
+}
+
+@keyframes slideInHistoryItem {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+.search-history-item:nth-child(1) { animation-delay: 0ms; }
+.search-history-item:nth-child(2) { animation-delay: 30ms; }
+.search-history-item:nth-child(3) { animation-delay: 60ms; }
+.search-history-item:nth-child(4) { animation-delay: 90ms; }
+.search-history-item:nth-child(5) { animation-delay: 120ms; }
+.search-history-item:nth-child(6) { animation-delay: 150ms; }
+.search-history-item:nth-child(7) { animation-delay: 180ms; }
+.search-history-item:nth-child(8) { animation-delay: 210ms; }
+
+.search-history-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.search-history-item:active {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.search-history-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.07);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 14px;
+    transition: background 0.18s, color 0.18s;
+}
+
+.search-history-item:hover .search-history-icon {
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+}
+
+.search-history-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.search-history-query {
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-history-time {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.search-history-remove {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.18s, color 0.18s;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.18s, color 0.18s;
+}
+
+.search-history-item:hover .search-history-remove {
+    opacity: 1;
+}
+
+.search-history-remove:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+.search-history-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 20px;
+    color: rgba(255, 255, 255, 0.3);
+    gap: 10px;
+    text-align: center;
+}
+
+.search-history-empty i {
+    font-size: 40px;
+    opacity: 0.4;
+}
+
+.search-history-empty p {
+    font-size: 13px;
+    margin: 0;
+}
+
+/* Trending / Sugestões rápidas */
+.search-trending {
+    margin-top: 8px;
+}
+
+.search-trending-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 10px;
+    padding: 0 4px;
+}
+
+.search-trending-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 4px;
+}
+
+.search-trending-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+    transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.15s;
+    user-select: none;
+}
+
+.search-trending-chip:hover {
+    background: rgba(96, 165, 250, 0.15);
+    border-color: rgba(96, 165, 250, 0.4);
+    color: #93c5fd;
+    transform: translateY(-1px);
+}
+
+.search-trending-chip i {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.search-trending-chip:hover i {
+    color: #60a5fa;
+}
+
+/* Divisor entre histórico e trending */
+.search-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 16px 0;
+}
+
 @media (max-width: 768px) {
     .search-modal-content {
         max-width: 100%;
@@ -1678,6 +1910,10 @@ body * {
 
     .search-header {
         padding: 10px 12px;
+    }
+
+    .search-history-remove {
+        opacity: 1;
     }
 }
 

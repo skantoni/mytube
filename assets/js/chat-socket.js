@@ -3843,9 +3843,20 @@ async function uploadAndSendFile(file, fileType, caption = '') {
         playSentSound();
     }
     
+    // ── Compressão client-side (estilo WhatsApp) para imagens ────────────────
+    // Reduz fotos de iPhone de 10 MB para ~100 KB antes do upload.
+    let fileToUpload = file;
+    if (fileType === 'image' && window.ImageCompressor) {
+        try {
+            fileToUpload = await ImageCompressor.compress(file);
+        } catch (_) {
+            fileToUpload = file; // fallback silencioso
+        }
+    }
+
     // Fazer upload via fetch
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', fileToUpload);
     formData.append('type', fileType);
     formData.append('receiver_id', chatWithUserId);
     formData.append('message', fileType === 'file' ? `[file:${fileName}:${file.size}]` : captionText);

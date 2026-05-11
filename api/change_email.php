@@ -25,8 +25,8 @@ $new_email    = trim($_POST['new_email'] ?? '');
 $password     = $_POST['password'] ?? '';
 
 // Campos obrigatórios
-if (empty($new_email) || empty($password)) {
-    echo json_encode(['success' => false, 'message' => 'Preencha todos os campos.']);
+if (empty($new_email)) {
+    echo json_encode(['success' => false, 'message' => 'Preencha o novo email.']);
     exit;
 }
 
@@ -55,10 +55,19 @@ if (!$user) {
     exit;
 }
 
-// Confirmar senha para autorizar a alteração
-if (!password_verify($password, $user['password'])) {
-    echo json_encode(['success' => false, 'message' => 'Senha incorreta.']);
-    exit;
+// Verifica se autenticou nesta sessão via Google
+$isGoogleSession = (($_SESSION['auth_method'] ?? 'password') === 'google');
+
+// Confirmar senha apenas para utilizadores que não autenticaram via Google
+if (!$isGoogleSession) {
+    if (empty($password)) {
+        echo json_encode(['success' => false, 'message' => 'Insira a sua senha para confirmar.']);
+        exit;
+    }
+    if (!password_verify($password, $user['password'])) {
+        echo json_encode(['success' => false, 'message' => 'Senha incorreta.']);
+        exit;
+    }
 }
 
 // Verificar se é o mesmo email
