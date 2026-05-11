@@ -138,7 +138,7 @@ try {
     $elapsed_ms = (int) round((microtime(true) - $request_started_at) * 1000);
 
     if ($elapsed_ms > 5000) {
-        error_log("Reset email envio lento ({$elapsed_ms}ms) para {$email}");
+        error_log("Reset email envio lento ({$elapsed_ms}ms)");
     }
 
     if ($result['success']) {
@@ -149,7 +149,7 @@ try {
         ]);
     } else {
         // Log do erro para debug
-        error_log("Falha ao enviar email de reset para {$email}: " . $result['message']);
+        error_log('Falha ao enviar email de reset: ' . $result['message']);
         
         ob_end_clean();
         echo json_encode([

@@ -121,20 +121,19 @@ try {
     if ($result['success']) {
         echo json_encode(['success' => true, 'message' => 'Código enviado para o seu e-mail!']);
     } else {
-        error_log("Falha ao enviar e-mail de verificação para {$email}: " . $result['message']);
+        error_log('Falha ao enviar e-mail de verificação: ' . $result['message']);
         echo json_encode([
             'success' => false,
             'message' => 'Não foi possível enviar o e-mail. Verifique a configuração SMTP.',
-            'debug' => $result['message']
         ]);
     }
 
 } catch (Exception $e) {
     if (ob_get_length()) ob_clean();
-    error_log("Erro em send_email_verification.php: " . $e->getMessage());
+    error_log('Erro em send_email_verification.php: ' . $e->getCode());
     echo json_encode(['success' => false, 'message' => 'Erro interno do servidor.']);
 } catch (\Throwable $t) {
     if (ob_get_length()) ob_clean();
-    error_log("Erro fatal em send_email_verification.php: " . $t->getMessage());
+    error_log('Erro fatal em send_email_verification.php: ' . $t->getCode());
     echo json_encode(['success' => false, 'message' => 'Erro interno do servidor.']);
 }

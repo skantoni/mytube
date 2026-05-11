@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -v \"//.*getMessage\")",
+      "Bash(php -l ./autoload.php)",
+      "Bash(php -l ./login.php)",
+      "Bash(php -l ./api/add_comment.php)",
+      "Bash(php -l ./includes/config.php)",
+      "Bash(php -r ' *)"
+    ]
+  }
+}
