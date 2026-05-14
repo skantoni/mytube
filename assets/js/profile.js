@@ -145,22 +145,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Validar arquivo de imagem
+            // Validar arquivo de imagem (foto de perfil)
             const fileInput = document.getElementById('profilePicture');
-            if (fileInput.files.length > 0) {
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/heic', 'image/heif'];
+            const maxSize = 10 * 1024 * 1024; // 10MB
+
+            if (fileInput && fileInput.files.length > 0) {
                 const file = fileInput.files[0];
-                const maxSize = 5 * 1024 * 1024; // 5MB
                 
                 if (file.size > maxSize) {
                     e.preventDefault();
-                    showAlert('A imagem deve ter no máximo 5MB.', 'error');
+                    showAlert('A foto de perfil deve ter no máximo 10MB.', 'error');
                     return;
                 }
                 
-                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/heic', 'image/heif'];
                 if (!allowedTypes.includes(file.type)) {
                     e.preventDefault();
-                    showAlert('Formato de imagem não suportado. Use JPG, PNG, GIF ou WEBP.', 'error');
+                    showAlert('Formato de foto não suportado. Use JPG, PNG, GIF ou WEBP.', 'error');
+                    return;
+                }
+            }
+
+            // Validar arquivo do ícone de nome
+            const iconInput = document.getElementById('nameIcon');
+            if (iconInput && iconInput.files.length > 0) {
+                const file = iconInput.files[0];
+                
+                if (file.size > maxSize) {
+                    e.preventDefault();
+                    showAlert('O ícone deve ter no máximo 5MB.', 'error');
+                    return;
+                }
+                
+                if (!allowedTypes.includes(file.type)) {
+                    e.preventDefault();
+                    showAlert('Formato de ícone não suportado. Use JPG, PNG, GIF ou WEBP.', 'error');
                     return;
                 }
             }
@@ -189,29 +208,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Função para mostrar alertas
 function showAlert(message, type = 'info') {
-    // Remove alertas existentes
-    const existingAlerts = document.querySelectorAll('.alert');
-    existingAlerts.forEach(alert => alert.remove());
-    
-    const alertElement = document.createElement('div');
-    alertElement.className = `alert alert-${type}`;
-    alertElement.textContent = message;
-    
-    const main = document.querySelector('.profile-main');
-    main.insertBefore(alertElement, main.firstChild);
-    
-    // Auto-remover após 5 segundos
-    setTimeout(() => {
-        alertElement.style.opacity = '0';
-        setTimeout(() => {
-            if (alertElement.parentNode) {
-                alertElement.remove();
-            }
-        }, 300);
-    }, 5000);
-    
-    // Scroll para o topo para mostrar o alerta
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Redirecionar para showMessage que tem z-index alto e aparece sobre modais
+    if (typeof showMessage === 'function') {
+        showMessage(message, type);
+    } else {
+        alert(message);
+    }
 }
 
 // Função para formatar números

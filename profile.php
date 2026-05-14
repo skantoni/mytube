@@ -726,7 +726,8 @@ $has_more_videos = $total_user_videos > count($user_videos);
                         Cancelar
                     </button>
                     <?php echo csrf_field(); ?>
-                    <button type="submit" name="update_profile" class="btn btn-primary">
+                    <input type="hidden" name="update_profile" value="1">
+                    <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save"></i>
                         Salvar Alterações
                     </button>
