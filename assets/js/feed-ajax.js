@@ -26,16 +26,52 @@ class FeedManager {
     
     // Devolver a fila de vídeos não vistos ainda (do índice atual em diante)
     // Usa _rawVideoData (dados puros da API, serializáveis) em vez das refs DOM do tiktokPlayer
+    // SINCRONIZA com o estado actual do DOM antes de devolver (likes, comentários, follows)
     _getUnseenQueue() {
         if (!window.tiktokPlayer) return [];
         const domVideos = window.tiktokPlayer.videos || [];
         const currentIndex = window.tiktokPlayer.currentVideoIndex || 0;
         
-        // Pegar os vídeos do índice atual em diante (ainda não vistos)
+        // Pegar os vídeos do índice actual em diante (ainda não vistos)
         return domVideos
             .slice(currentIndex)
-            .map(vd => this._rawVideoData.get(String(vd.videoId)))
-            .filter(Boolean); // Filtrar entradas sem dados (caso raro)
+            .map(vd => {
+                const raw = this._rawVideoData.get(String(vd.videoId));
+                if (!raw) return null;
+                
+                // Sincronizar dados interactivos do DOM → rawData
+                // Sem isto, likes/comentários feitos durante a sessão perdem-se ao restaurar
+                const videoEl = vd.element || document.querySelector(`.video-item[data-video-id="${vd.videoId}"]`);
+                if (videoEl) {
+                    // Like: ler o estado actual do botão e do contador
+                    const likeBtn = videoEl.querySelector('.like-btn');
+                    if (likeBtn) {
+                        raw.user_liked = likeBtn.classList.contains('liked');
+                        const likeCount = videoEl.querySelector('.like-count');
+                        if (likeCount) {
+                            raw.likes_count = parseInt(likeCount.textContent) || 0;
+                        }
+                    }
+                    
+                    // Comentários: ler o contador actual
+                    const commentBtn = videoEl.querySelector('.comment-btn');
+                    if (commentBtn) {
+                        const commentCount = commentBtn.querySelector('.action-count');
+                        if (commentCount) {
+                            raw.comments_count = parseInt(commentCount.textContent) || 0;
+                        }
+                    }
+                    
+                    // Follow: ler o estado actual do botão
+                    const followBtn = videoEl.querySelector('.follow-btn');
+                    if (followBtn) {
+                        raw.user_following = followBtn.classList.contains('following');
+                    }
+                }
+                
+                return raw;
+            })
+            .filter(Boolean);
     }
     
     // Limpar formatos antigos de cache (migração)
