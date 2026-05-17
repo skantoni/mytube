@@ -19,8 +19,31 @@ class FeedManager {
         // Muda quando usuário atualiza a página = novo conteúdo
         this.feedSessionId = this.generateFeedSession();
         
+        // Mapa de dados brutos da API (videoId → objeto JSON puro, serializável)
+        // tiktokPlayer.videos contém refs DOM que não podem ir para localStorage
+        this._rawVideoData = new Map();
+        
+        // Flag para bloquear a gravação no beforeunload
+        // É activada quando o utilizador clica no logo (refresh intencionalmente)
+        // para evitar que o beforeunload re-escreva o estado que o logo acabou de apagar
+        this._suppressSave = false;
+        
         // Limpar cache antigo (formato anterior guardava todos os vídeos)
         this._cleanOldCache();
+    }
+    
+    // Devolver a fila de vídeos não vistos ainda (do índice atual em diante)
+    // Usa _rawVideoData (dados puros da API, serializáveis) em vez das refs DOM do tiktokPlayer
+    _getUnseenQueue() {
+        if (!window.tiktokPlayer) return [];
+        const domVideos = window.tiktokPlayer.videos || [];
+        const currentIndex = window.tiktokPlayer.currentVideoIndex || 0;
+        
+        // Pegar os vídeos do índice atual em diante (ainda não vistos)
+        return domVideos
+            .slice(currentIndex)
+            .map(vd => this._rawVideoData.get(String(vd.videoId)))
+            .filter(Boolean); // Filtrar entradas sem dados (caso raro)
     }
     
     // Remover dados do formato antigo do sessionStorage/localStorage
@@ -32,18 +55,12 @@ class FeedManager {
                 sessionStorage.removeItem(this.storageKey);
                 // Tentar migrar para localStorage se for válido
                 const oldState = JSON.parse(oldRaw);
-                if (oldState.currentVideoId && !oldState.videos) {
+                if (oldState.currentVideoId && !oldState.unseenQueue) {
                     localStorage.setItem(this.storageKey, oldRaw);
                 }
             }
             
-            const raw = localStorage.getItem(this.storageKey);
-            if (!raw) return;
-            const state = JSON.parse(raw);
-            // Formato antigo tinha array "videos" — apagar
-            if (state.videos) {
-                localStorage.removeItem(this.storageKey);
-            }
+            // Sem limpeza do formato novo — unseenQueue é o formato actual
         } catch (e) {
             localStorage.removeItem(this.storageKey);
         }
@@ -67,6 +84,10 @@ class FeedManager {
         const urlParams = new URLSearchParams(window.location.search);
         const isProfileFeed = urlParams.has('user_id') || urlParams.has('video_id');
         
+        // Configurar scroll infinito PRIMEIRO para que o IntersectionObserver
+        // já exista quando os vídeos forem renderizados (restauro ou carga nova)
+        this.setupInfiniteScroll();
+        
         // Verificar se devemos restaurar o feed salvo
         const shouldRestore = !isProfileFeed && this.shouldRestoreFeed();
         
@@ -76,9 +97,6 @@ class FeedManager {
             // Carregar vídeos novos
             this.loadVideos();
         }
-        
-        // Configurar scroll infinito
-        this.setupInfiniteScroll();
         
         // Configurar persistência (só no feed principal)
         if (!isProfileFeed) {
@@ -135,14 +153,15 @@ class FeedManager {
         try {
             const state = JSON.parse(savedState);
             
-            // Verificar se os dados são recentes (menos de 60 minutos)
+            // Verificar se os dados são recentes (menos de 30 minutos)
+            // Com a fila em cache não faz sentido guardar por muito tempo — pode ficar obsoleto
             const age = Date.now() - state.timestamp;
-            if (age > 60 * 60 * 1000) {
+            if (age > 30 * 60 * 1000) {
                 localStorage.removeItem(this.storageKey);
                 return false;
             }
             
-            // Restaurar se tem um vídeo para restaurar
+            // Restaurar se tem um vídeo para restaurar (com ou sem fila)
             if (state.currentVideoId) {
                 return true;
             }
@@ -153,7 +172,9 @@ class FeedManager {
         }
     }
     
-    // Restaurar feed salvo — carrega apenas o vídeo que o utilizador estava a ver
+    // Restaurar feed salvo
+    // Se há vídeos não vistos em cache, reidratá-los directamente (zero requests API)
+    // Se não, pedir à API começando pelo vídeo onde parou (fallback)
     restoreSavedFeed() {
         try {
             const savedState = JSON.parse(localStorage.getItem(this.storageKey));
@@ -163,17 +184,33 @@ class FeedManager {
                 return;
             }
             
-            console.log('[Feed] Restaurando feed a partir do vídeo', savedState.currentVideoId);
+            const queue = savedState.unseenQueue;
+            const hasQueue = Array.isArray(queue) && queue.length > 0;
             
-            // NÃO restaurar o feedSessionId antigo — usar o novo gerado no constructor
-            // Assim a API cria um cache novo com start_video em vez de usar o cache antigo
-            
-            // Usar o mecanismo existente da API: start_video
-            // Isso carrega o vídeo atual primeiro + próximos vídeos
-            window.startVideoId = savedState.currentVideoId;
-            
-            // Carregar via API normalmente — start_video garante que esse vídeo vem primeiro
-            this.loadVideos();
+            if (hasQueue) {
+                console.log(`[Feed] Restaurando ${queue.length} vídeo(s) não vistos do cache — sem request à API`);
+                
+                // Remover o loading inicial
+                this.removeInitialLoading();
+                
+                // Reidratar vídeos directamente da cache
+                const newVideos = queue.filter(v => !this.loadedVideoIds.has(v.id));
+                newVideos.forEach(v => {
+                    this.loadedVideoIds.add(v.id);
+                    this._rawVideoData.set(String(v.id), v); // Restaurar também o mapa de dados brutos
+                });
+                this.renderVideos(newVideos);
+                
+                // Restaurar paginação para que o scroll infinito continue do ponto certo
+                this.offset = savedState.nextOffset || 0;
+                this.hasMore = savedState.hasMore !== undefined ? savedState.hasMore : true;
+                
+            } else {
+                // Fallback: a fila estava vazia (utilizador viu tudo) → pedir vídeos novos
+                console.log('[Feed] Fila vazia — pedindo vídeos novos à API');
+                window.startVideoId = savedState.currentVideoId;
+                this.loadVideos();
+            }
             
         } catch (e) {
             console.error('[Feed] Erro ao restaurar:', e);
@@ -181,9 +218,12 @@ class FeedManager {
         }
     }
     
-    // Salvar estado do feed — salva apenas o ID do vídeo atual
-    // Ao restaurar, a API carrega o feed começando por esse vídeo
+    // Salvar estado do feed — guarda o ID do vídeo atual E a fila de não vistos
+    // Ao restaurar, os vídeos não vistos são reidratados sem chamar a API
     saveFeedState(currentVideoId = null) {
+        // Se o logo foi clicado, não gravar — o logo quer um feed novo
+        if (this._suppressSave) return;
+        
         // Só salvar no feed principal
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('user_id') || urlParams.has('t')) return;
@@ -191,34 +231,60 @@ class FeedManager {
         // Não salvar se não tem vídeo atual
         if (!currentVideoId) return;
         
+        // Recolher a fila de vídeos ainda não apresentados ao utilizador
+        const unseenQueue = this._getUnseenQueue();
+        
         const state = {
             currentVideoId: currentVideoId,
+            // Guardar a fila completa de não vistos (vídeo atual + seguintes)
+            // Se vazia, a restauração pedirá à API via start_video como fallback
+            unseenQueue: unseenQueue.length > 0 ? unseenQueue : [],
+            // Guardar o offset para que o scroll infinito continue do ponto certo
+            nextOffset: this.offset,
+            hasMore: this.hasMore,
             timestamp: Date.now()
         };
         
         try {
             localStorage.setItem(this.storageKey, JSON.stringify(state));
+            // Marcar que deve restaurar na próxima visita ao feed
+            // (funciona tanto para botão Back como para links normais: perfil, ranking, etc.)
+            localStorage.setItem(this.restoreFlagKey, '1');
         } catch (e) {
-            // Silently fail
+            // Silently fail — se o localStorage estiver cheio, continua sem cache
         }
     }
     
     // Configurar persistência
     setupPersistence() {
-        // Salvar quando clicar em links
+        // Detectar clique no logo (refresh intencional) e suprimir gravação
+        // O onclick do logo apaga o localStorage mas o beforeunload iria re-escrevê-lo
+        // Esta flag bloqueia isso
         document.addEventListener('click', (e) => {
-            const link = e.target.closest('a');
-            if (link && link.href && !link.href.includes('#')) {
-                // Obter vídeo atual do TikTokPlayer
-                const currentVideoId = window.tiktokPlayer?.videos?.[window.tiktokPlayer.currentVideoIndex]?.videoId;
-                this.saveFeedState(currentVideoId);
+            if (e.target.closest('.tiktok-logo')) {
+                this._suppressSave = true;
+                // Garantia extra: apagar directamente aqui também
+                localStorage.removeItem(this.storageKey);
+                localStorage.removeItem(this.restoreFlagKey);
             }
-        });
+        }, true); // capture=true para correr antes do onclick nativo
         
-        // Salvar antes de sair
+        // beforeunload: dispara em QUALQUER tipo de navegação
+        // (links <a>, buttons com onclick, window.location.href, etc.)
         window.addEventListener('beforeunload', () => {
             const currentVideoId = window.tiktokPlayer?.videos?.[window.tiktokPlayer.currentVideoIndex]?.videoId;
             this.saveFeedState(currentVideoId);
+        });
+        
+        // Também capturar cliques em <a> para cobrir navegação programática atrasada
+        // (ex: perfis de outros utilizadores, hashtags — links normais)
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a');
+            // Ignorar links internos (#) e âncoras sem href
+            if (link && link.href && !link.href.includes('#')) {
+                const currentVideoId = window.tiktokPlayer?.videos?.[window.tiktokPlayer.currentVideoIndex]?.videoId;
+                this.saveFeedState(currentVideoId);
+            }
         });
     }
     
@@ -286,8 +352,11 @@ class FeedManager {
                 const newVideos = data.videos.filter(v => !this.loadedVideoIds.has(v.id));
                 
                 if (newVideos.length > 0) {
-                    // Registrar IDs carregados
-                    newVideos.forEach(v => this.loadedVideoIds.add(v.id));
+                    // Registrar IDs carregados + guardar dados brutos para persistência
+                    newVideos.forEach(v => {
+                        this.loadedVideoIds.add(v.id);
+                        this._rawVideoData.set(String(v.id), v); // Dados puros da API (serializáveis)
+                    });
                     
                     // Renderizar novos vídeos
                     this.renderVideos(newVideos);
