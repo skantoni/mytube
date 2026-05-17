@@ -164,6 +164,7 @@
     text-align: center;
     border: 1px dashed rgba(168, 85, 247, 0.3);
     animation: bannerPulse 3s ease-in-out infinite;
+    display: none;
 }
 
 @keyframes bannerPulse {
