@@ -69,7 +69,7 @@ try {
 </head>
 <body class="hashtags-page">
     <header class="hashtags-header">
-        <button class="back-btn" onclick="try{localStorage.setItem('mytube_restore_feed','1')}catch(e){} history.back()" title="Voltar">
+        <button class="back-btn" onclick="history.back()" title="Voltar">
             <i class="fas fa-arrow-left"></i>
         </button>
         <div class="hashtags-header-title">

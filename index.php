@@ -239,7 +239,7 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
         <header class="tiktok-header">
             <?php if ($feed_mode === 'profile' && $profile_user): ?>
                 <!-- Header modo perfil -->
-                <button class="header-btn" onclick="try{localStorage.setItem('mytube_restore_feed','1')}catch(e){} history.back()" title="Voltar">
+                <button class="header-btn" onclick="history.back()" title="Voltar">
                     <i class="fas fa-arrow-left"></i>
                 </button>
                 <a href="perfil.php?id=<?php echo $profile_user_id; ?>" class="profile-header-info">
@@ -258,7 +258,7 @@ $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
                 </a>
             <?php else: ?>
                 <!-- Header normal -->
-                <div onclick="localStorage.removeItem('mytube_feed_state'); localStorage.removeItem('mytube_restore_feed'); window.location.href='index.php?t=' + Date.now()" class="tiktok-logo">MyTube</div>
+                <div onclick="window.location.href='index.php?t=' + Date.now()" class="tiktok-logo">MyTube</div>
             <?php endif; ?>
             <div class="header-actions">
                 <button class="header-btn" onclick="openSearchModal()" title="Pesquisar">

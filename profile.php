@@ -389,9 +389,6 @@ $has_more_videos = $total_user_videos > count($user_videos);
             </button>
             <script>
             function smartBack() {
-                // Sinalizar que queremos restaurar o feed ao voltar
-                try { localStorage.setItem('mytube_restore_feed', '1'); } catch(e) {}
-                
                 var ref = document.referrer || '';
                 // Evitar loop: se veio de perfil, profile ou notificações, ir para o feed
                 if (!ref || ref.indexOf('chat.php') !== -1 || ref.indexOf('settings.php') !== -1 || ref.indexOf('perfil.php') !== -1 || ref.indexOf('profile.php') !== -1 || ref.indexOf('notification') !== -1) {

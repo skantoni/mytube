@@ -496,7 +496,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body>
     <!-- Botão de voltar sem menu -->
-    <button onclick="try{localStorage.setItem('mytube_restore_feed','1')}catch(e){} history.back()" class="back-button" title="Voltar">
+    <button onclick="history.back()" class="back-button" title="Voltar">
         <i class="fas fa-arrow-left"></i>
     </button>
     
