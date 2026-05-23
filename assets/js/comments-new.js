@@ -1176,7 +1176,7 @@ class CommentsSystem {
                 input.placeholder = 'Mete dica...';
                 
                 // Add reply to thread view
-                this.addReplyToThread(data.comment);
+                this.addReplyToThread(data.data?.comment || data.comment);
                 this.threadRepliesAdded++;
                 
                 // Update comment count
@@ -1840,7 +1840,7 @@ class CommentsSystem {
                 if (commentItem) {
                     const commentTextDiv = commentItem.querySelector('.comment-text');
                     if (commentTextDiv) {
-                        const savedText = data.comment?.comment_text ?? newText;
+                        const savedText = data.data?.comment?.comment_text ?? data.comment?.comment_text ?? newText;
                         commentTextDiv.innerHTML = this.formatMentions(savedText);
                     }
                     
@@ -2101,7 +2101,7 @@ class CommentsSystem {
                 input.value = '';
                 
                 // Adicionar comentário na UI sem recarregar
-                this.addCommentToUI(data.comment, platform);
+                this.addCommentToUI(data.data?.comment || data.comment, platform);
                 
                 // Atualizar contador de comentários em tempo real
                 this.updateCommentCountInUI(this.currentVideoId, 1);
