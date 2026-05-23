@@ -4,11 +4,40 @@
  */
 
 require('dotenv').config();
+const crypto = require('crypto');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { pool, testConnection } = require('./config/database');
+
+/**
+ * Verifica um JWT gerado pelo PHP (HMAC-SHA256, base64url).
+ * Retorna o payload se válido, null caso contrário.
+ */
+function verifyToken(token) {
+    try {
+        const secret = process.env.CHAT_JWT_SECRET || 'CHANGE_ME_IN_PRODUCTION';
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+
+        const [header, payload, sig] = parts;
+        const expectedSig = crypto
+            .createHmac('sha256', secret)
+            .update(`${header}.${payload}`)
+            .digest('base64url');
+
+        if (expectedSig !== sig) return null;
+
+        const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+        if (!data.exp || data.exp < Math.floor(Date.now() / 1000)) return null;
+        if (!Number.isInteger(data.userId) || data.userId <= 0) return null;
+
+        return data;
+    } catch {
+        return null;
+    }
+}
 
 // Inicializar Express
 const app = express();
@@ -763,6 +792,26 @@ async function searchUsers(query, currentUserId, limit = 20) {
 }
 
 // ==========================================
+// MIDDLEWARE DE AUTENTICAÇÃO JWT
+// ==========================================
+
+io.use((socket, next) => {
+    const token = socket.handshake.auth?.token;
+    if (!token) {
+        return next(new Error('Token de autenticação necessário'));
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+        return next(new Error('Token inválido ou expirado'));
+    }
+
+    socket.userId   = payload.userId;
+    socket.username = payload.username || '';
+    next();
+});
+
+// ==========================================
 // EVENTOS SOCKET.IO
 // ==========================================
 
@@ -808,13 +857,14 @@ io.on('connection', (socket) => {
     
     /**
      * Autenticação do usuário
+     * userId validado pelo middleware JWT — não confiamos em data.userId do cliente.
      */
     socket.on('authenticate', async (data) => {
-        const normalizedUserId = normalizeUserId(data.userId);
-        const username = data.username;
-        
+        const normalizedUserId = socket.userId;
+        const username = socket.username;
+
         if (!normalizedUserId) {
-            socket.emit('error', { message: 'ID do usuário não fornecido' });
+            socket.emit('error', { message: 'Autenticação inválida' });
             return;
         }
 
@@ -913,7 +963,10 @@ io.on('connection', (socket) => {
      * Entrar em uma conversa
      */
     socket.on('join_conversation', async (data) => {
-        const { conversationId, userId, otherUserId } = data;
+        const user = connectedUsers.get(socket.id);
+        if (!user) return;
+        const { conversationId, otherUserId } = data;
+        const userId = user.userId;
         const room = `conversation_${conversationId}`;
         
         socket.join(room);
@@ -976,9 +1029,12 @@ io.on('connection', (socket) => {
      * (quando o destinatário está com a conversa aberta e recebe nova mensagem)
      */
     socket.on('mark_as_read', async (data) => {
-        const { conversationId, userId, messageIds } = data;
-        
-        if (!conversationId || !userId) return;
+        const user = connectedUsers.get(socket.id);
+        if (!user) return;
+        const { conversationId } = data;
+        const userId = user.userId;
+
+        if (!conversationId) return;
         
         // Buscar mensagens não lidas enviadas pelo outro utilizador
         const [unreadMessages] = await pool.execute(`
@@ -1019,10 +1075,12 @@ io.on('connection', (socket) => {
      * Sair de uma conversa
      */
     socket.on('leave_conversation', (data) => {
-        const { conversationId, userId } = data;
+        const user = connectedUsers.get(socket.id);
+        if (!user) return;
+        const { conversationId } = data;
+        const userId = user.userId;
         socket.leave(`conversation_${conversationId}`);
-        
-        // Parar de digitar ao sair
+
         updateTypingStatus(userId, conversationId, false);
         socket.to(`conversation_${conversationId}`).emit('typing_status', {
             conversationId,
@@ -1035,11 +1093,17 @@ io.on('connection', (socket) => {
      * Enviar mensagem
      */
     socket.on('send_message', async (data) => {
-        const { senderId, receiverId, content, replyToId, tempId } = data;
-        
+        const user = connectedUsers.get(socket.id);
+        if (!user) {
+            socket.emit('error', { message: 'Não autenticado' });
+            return;
+        }
+        const { receiverId, content, replyToId, tempId } = data;
+        const senderId = user.userId;
+
         console.log(`📥 Recebido send_message - tempId: ${tempId}, sender: ${senderId}, content: "${content?.substring(0, 30)}"`);
-        
-        if (!senderId || !receiverId || !content?.trim()) {
+
+        if (!receiverId || !content?.trim()) {
             socket.emit('error', { message: 'Dados inválidos para enviar mensagem' });
             return;
         }
@@ -1171,8 +1235,11 @@ io.on('connection', (socket) => {
      * Status de digitação
      */
     socket.on('typing', async (data) => {
-        const { userId, conversationId, otherUserId, isTyping } = data;
-        
+        const user = connectedUsers.get(socket.id);
+        if (!user) return;
+        const { conversationId, otherUserId, isTyping } = data;
+        const userId = user.userId;
+
         console.log(`⌨️ Typing: userId=${userId}, conversationId=${conversationId}, otherUserId=${otherUserId}, isTyping=${isTyping}`);
         
         await updateTypingStatus(userId, conversationId, isTyping);
@@ -1201,13 +1268,15 @@ io.on('connection', (socket) => {
      * Não insere no DB - apenas notifica o receptor
      */
     socket.on('broadcast_uploaded_message', async (data) => {
+        const user = connectedUsers.get(socket.id);
+        if (!user) return;
         const { conversationId, receiverId, message } = data;
-        
+
         if (!conversationId || !message) return;
-        
+
         console.log(`📤 Broadcast uploaded message: ID ${message.id} para conversa ${conversationId}`);
-        
-        const senderId = message.sender_id;
+
+        const senderId = user.userId; // userId validado — ignora message.sender_id do cliente
         const messageId = message.id;
         
         // Verificar se o destinatário está online e marcar como delivered
@@ -1276,16 +1345,16 @@ io.on('connection', (socket) => {
      * Deletar mensagem
      */
     socket.on('delete_message', async (data) => {
-        const { messageId, userId, deleteType } = data;
-        
+        const user = connectedUsers.get(socket.id);
+        if (!user) return;
+        const { messageId, deleteType } = data;
+        const userId = user.userId;
+
         if (deleteType === 'for_me') {
-            // Apagar apenas para mim (via API PHP)
-            // O cliente já faz a chamada HTTP, aqui só removemos do DOM local
             const myConversations = await getUserConversations(userId);
             io.to(`user_${userId}`).emit('conversations_list', myConversations);
             socket.emit('delete_success', { messageId, deleteType: 'for_me' });
         } else {
-            // Apagar para todos (comportamento original)
             const result = await deleteMessage(messageId, userId);
             
             if (result.success) {
@@ -1322,10 +1391,12 @@ io.on('connection', (socket) => {
      * Editar mensagem
      */
     socket.on('edit_message', async (data) => {
-        const { messageId, userId, content } = data;
-        
+        const user = connectedUsers.get(socket.id);
+        if (!user) return;
+        const { messageId, content } = data;
+        const userId = user.userId;
+
         try {
-            // Verificar se é o dono da mensagem
             const [rows] = await pool.execute(
                 'SELECT id, conversation_id, sender_id, type, created_at FROM messages WHERE id = ? AND sender_id = ?',
                 [messageId, userId]
@@ -1374,7 +1445,10 @@ io.on('connection', (socket) => {
      * Adicionar reação a mensagem
      */
     socket.on('add_reaction', async (data) => {
-        const { messageId, emoji, userId } = data;
+        const user = connectedUsers.get(socket.id);
+        if (!user) return;
+        const { messageId, emoji } = data;
+        const userId = user.userId;
         
         const success = await addMessageReaction(messageId, userId, emoji);
         
@@ -1396,7 +1470,10 @@ io.on('connection', (socket) => {
      * Toggle reação (adicionar ou remover)
      */
     socket.on('toggle_reaction', async (data) => {
-        const { messageId, emoji, userId } = data;
+        const user = connectedUsers.get(socket.id);
+        if (!user) return;
+        const { messageId, emoji } = data;
+        const userId = user.userId;
         
         await toggleMessageReaction(messageId, userId, emoji);
         
@@ -1415,25 +1492,28 @@ io.on('connection', (socket) => {
      * Buscar usuários
      */
     socket.on('search_users', async (data) => {
-        const { query, userId } = data;
-        
-        // Não permitir pesquisa vazia ou com menos de 2 caracteres (performance)
+        const user = connectedUsers.get(socket.id);
+        if (!user) return;
+        const { query } = data;
+        const userId = user.userId;
+
         if (!query || query.trim().length < 2) {
             socket.emit('search_results', []);
             return;
         }
-        
+
         const users = await searchUsers(query.trim(), userId);
         socket.emit('search_results', users);
     });
-    
+
     /**
      * Buscar conversas
      */
     socket.on('get_conversations', async (data) => {
-        const { userId } = data;
-        
-        const conversations = await getUserConversations(userId);
+        const user = connectedUsers.get(socket.id);
+        if (!user) return;
+
+        const conversations = await getUserConversations(user.userId);
         socket.emit('conversations_list', conversations);
     });
 
@@ -1594,17 +1674,19 @@ io.on('connection', (socket) => {
      * Iniciar nova conversa
      */
     socket.on('start_conversation', async (data) => {
-        const { userId, targetUserId } = data;
-        
+        const user = connectedUsers.get(socket.id);
+        if (!user) return;
+        const { targetUserId } = data;
+        const userId = user.userId;
+
         const conversationId = await getOrCreateConversation(userId, targetUserId);
         const targetUser = await getUserById(targetUserId);
-        
+
         socket.emit('conversation_started', {
             conversationId,
             otherUser: targetUser
         });
-        
-        // Atualizar lista de conversas
+
         const conversations = await getUserConversations(userId);
         socket.emit('conversations_list', conversations);
     });

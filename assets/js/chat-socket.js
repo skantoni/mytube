@@ -241,7 +241,6 @@ function subscribeContactPresence() {
     lastContactPresenceSubscriptionKey = subscriptionKey;
 
     socket.emit('subscribe_contact_presence', {
-        userId: currentUserId,
         contactIds
     });
 }
@@ -331,11 +330,11 @@ function updateActiveUsersCountUI() {
 // INICIALIZAÇÃO
 // ========================================
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     setupMobileViewportFixes();
     ensureChatActiveUsersCounter();
     updateActiveUsersCountUI();
-    initializeSocket();
+    await initializeSocket();
     setupEventListeners();
     
     // Setup scroll infinito
@@ -359,9 +358,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-function initializeSocket() {
-    // Conectar ao servidor Socket.IO
+async function initializeSocket() {
+    let token;
+    try {
+        const res = await fetch('api/chat_token.php');
+        if (!res.ok) {
+            console.error('Falha ao obter token de chat (HTTP', res.status, ')');
+            return;
+        }
+        const json = await res.json();
+        token = json.token;
+    } catch (e) {
+        console.error('Erro ao buscar token de chat:', e);
+        return;
+    }
+
     socket = io(SOCKET_SERVER, {
+        auth: { token },
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
@@ -622,7 +635,6 @@ function handleConnect() {
     
     // Autenticar usuário
     socket.emit('authenticate', {
-        userId: currentUserId,
         username: currentUsername
     });
 
@@ -669,8 +681,22 @@ function handleDisconnect(reason) {
 
 function handleConnectError(error) {
     console.error('Erro de conexão:', error);
+
+    // Token expirado ou inválido → buscar novo e reconectar
+    if (error.message === 'Token inválido ou expirado' || error.message === 'Token de autenticação necessário') {
+        fetch('api/chat_token.php')
+            .then(r => r.json())
+            .then(({ token }) => {
+                if (socket && token) {
+                    socket.auth = { token };
+                    socket.connect();
+                }
+            })
+            .catch(() => {});
+        return;
+    }
+
     reconnectAttempts++;
-    
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
         showConnectionError();
     }
@@ -974,7 +1000,6 @@ function handleConversationStarted(data) {
     // Entrar na sala da conversa
     socket.emit('join_conversation', {
         conversationId: data.conversationId,
-        userId: currentUserId,
         otherUserId: chatWithUserId
     });
 }
@@ -1008,7 +1033,6 @@ function handleNewMessage(data) {
     if (socket && currentConversationId) {
         socket.emit('mark_as_read', {
             conversationId: currentConversationId,
-            userId: currentUserId,
             messageIds: [data.message.id]
         });
         console.log('✔✔ Enviado mark_as_read para mensagem', data.message.id);
@@ -1495,7 +1519,6 @@ function startConversation(userId) {
     stopAllChatMedia();
     
     socket.emit('start_conversation', {
-        userId: currentUserId,
         targetUserId: userId
     });
 }
@@ -1523,7 +1546,6 @@ function stopTypingStatus() {
 
     isTyping = false;
     socket.emit('typing', {
-        userId: currentUserId,
         conversationId: currentConversationId,
         otherUserId: chatWithUserId,
         isTyping: false
@@ -1552,7 +1574,6 @@ function sendTextMessage(rawMessage, options = {}) {
     if (allowEdit && editingMessageId) {
         socket.emit('edit_message', {
             messageId: editingMessageId,
-            userId: currentUserId,
             content: message
         });
 
@@ -1585,7 +1606,6 @@ function sendTextMessage(rawMessage, options = {}) {
     // Enviar pelo socket
     socket.emit('send_message', {
         tempId: tempId,
-        senderId: currentUserId,
         receiverId: chatWithUserId,
         content: message,
         replyToId: replyToId
@@ -1663,7 +1683,6 @@ function deleteMessage(messageId, deleteType = 'for_all') {
                 if (socket) {
                     socket.emit('delete_message', {
                         messageId: messageId,
-                        userId: currentUserId,
                         deleteType: 'for_me'
                     });
                 }
@@ -1678,7 +1697,6 @@ function deleteMessage(messageId, deleteType = 'for_all') {
         // Apagar para todos via Socket
         socket.emit('delete_message', {
             messageId: messageId,
-            userId: currentUserId,
             deleteType: 'for_all'
         });
     }
@@ -1802,7 +1820,6 @@ function handleTyping() {
     if (hasText && !isTyping && currentConversationId) {
         isTyping = true;
         socket.emit('typing', {
-            userId: currentUserId,
             conversationId: currentConversationId,
             otherUserId: chatWithUserId,
             isTyping: true
@@ -1819,7 +1836,6 @@ function handleTyping() {
         if (isTyping && currentConversationId) {
             isTyping = false;
             socket.emit('typing', {
-                userId: currentUserId,
                 conversationId: currentConversationId,
                 otherUserId: chatWithUserId,
                 isTyping: false
@@ -1856,7 +1872,7 @@ function searchUsers(query) {
     
     // Debounce de 300ms para não sobrecarregar o servidor
     _searchUsersTimer = setTimeout(() => {
-        socket.emit('search_users', { query: query.trim(), userId: currentUserId });
+        socket.emit('search_users', { query: query.trim() });
     }, 300);
 }
 
@@ -2221,16 +2237,14 @@ function addReaction(messageId, emoji) {
     closeReactionPicker();
     socket.emit('add_reaction', {
         messageId: messageId,
-        emoji: emoji,
-        userId: currentUserId
+        emoji: emoji
     });
 }
 
 function toggleReaction(messageId, emoji) {
     socket.emit('toggle_reaction', {
         messageId: messageId,
-        emoji: emoji,
-        userId: currentUserId
+        emoji: emoji
     });
 }
 
@@ -2339,8 +2353,7 @@ function addReactionFromMenu(messageId, emoji) {
     closeMessageOptions();
     socket.emit('add_reaction', {
         messageId: messageId,
-        emoji: emoji,
-        userId: currentUserId
+        emoji: emoji
     });
 }
 

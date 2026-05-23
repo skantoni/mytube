@@ -17,12 +17,13 @@ Uma rede social moderna e completa para compartilhamento de vídeos, inspirada n
 - ✅ **Interface Responsiva** - Mobile-first design
 - ✅ **Tema Azul Moderno** - Design inovador e atrativo
 
-### 🎯 Funcionalidades em Desenvolvimento
-- ⏳ Chat Privado (1:1)
-- ⏳ Chat Público/Grupo
-- ⏳ Páginas de Perfil Completas
-- ⏳ Sistema de Busca
-- ⏳ Notificações em Tempo Real
+### 🎯 Funcionalidades Adicionais
+- ✅ **Chat Privado (1:1)** — Socket.IO com JWT
+- ✅ **Chat de Grupo** — salas geridas pelo Node.js
+- ✅ **Sistema de Amizades** — pedidos e aceitações
+- ✅ **Notificações em Tempo Real** — push notifications (VAPID)
+- ✅ **Rankings Semanais** — Best MyTuber por escola/global
+- ✅ **Moderação de Conteúdo** — painel admin
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -34,7 +35,7 @@ Uma rede social moderna e completa para compartilhamento de vídeos, inspirada n
 
 ## 📋 Pré-requisitos
 
-- **XAMPP/WAMP/LAMP** - Servidor local com PHP e MySQL
+- **XAMPP/WAMP/LAMP/Laragon** - Servidor local com PHP e MySQL
 - **PHP 8.0+** com extensões:
   - PDO
   - PDO_MySQL
@@ -55,46 +56,62 @@ cd mytube
 - Coloque o projeto na pasta `htdocs` (XAMPP) ou `www` (WAMP)
 - Inicie Apache e MySQL
 
-### 3. Configurar Banco de Dados
-
-1. Acesse phpMyAdmin (http://localhost/phpmyadmin)
-2. Crie um novo banco chamado `mytube_db`
-3. Importe o arquivo `database/mytube_structure.sql`
-
-```sql
--- Ou execute via linha de comando:
-mysql -u root -p mytube_db < database/mytube_structure.sql
-```
-
-### 4. Configurar Conexão
-Edite o arquivo `includes/config.php`:
-
-```php
-// Configurações do banco de dados
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'mytube_db');
-define('DB_USER', 'root');        // Seu usuário MySQL
-define('DB_PASS', '');            // Sua senha MySQL
-```
-
-### 5. Configurar Permissões
-Certifique-se que as pastas tenham permissão de escrita:
+### 3. Criar a Base de Dados
 
 ```bash
-chmod 755 uploads/
-chmod 755 uploads/videos/
-chmod 755 uploads/thumbnails/
+# Via linha de comando (recomendado):
+mysql -u root -p -e "CREATE DATABASE mytube CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -p mytube < database/install.sql
 ```
 
-### 6. Acessar a Aplicação
-Abra seu navegador e acesse: `http://localhost/mytube`
+Ou via **phpMyAdmin**:
+1. Clique em **"Novo"** → nomeie `mytube` → charset `utf8mb4`
+2. Seleccione a base de dados → **"Importar"** → escolha `database/install.sql`
+
+### 4. Configurar a Ligação
+Copie o exemplo e edite `includes/config.php`:
+
+```bash
+cp includes/config.example.php includes/config.php
+```
+
+```php
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'mytube');
+define('DB_USER', 'root');   // utilizador MySQL
+define('DB_PASS', '');       // password MySQL
+```
+
+### 5. Configurar o Servidor de Chat (Node.js)
+```bash
+cd chat-server
+cp .env.example .env          # editar credenciais DB e CHAT_JWT_SECRET
+npm install
+npm start                     # ou: pm2 start ecosystem.config.js
+```
+
+### 6. Permissões de Escrita (Linux/macOS)
+```bash
+chmod 755 uploads/ uploads/videos/ uploads/thumbnails/
+```
+
+### 7. Aceder à Aplicação
+`http://localhost/mytube`
 
 ## 👤 Conta Padrão
 
-O sistema cria automaticamente uma conta de administrador:
-- **Usuário**: `admin`
-- **Senha**: `admin123`
-- **Email**: `admin@mytube.com`
+Criada automaticamente pelo `install.sql`:
+- **Utilizador**: `admin`
+- **Password**: `admin123`  ⚠️ **Altere após a primeira entrada**
+- **Email**: `admin@mytube.local`
+
+Para alterar a password via MySQL:
+```sql
+UPDATE users
+SET password = '<hash_gerado_por_php>'
+WHERE username = 'admin';
+```
+Gerar hash: `php -r "echo password_hash('nova_senha', PASSWORD_BCRYPT);"`
 
 ## 📱 Como Usar
 
@@ -126,37 +143,26 @@ O sistema cria automaticamente uma conta de administrador:
 
 ```
 mytube/
-├── api/                    # APIs RESTful
-│   ├── add_comment.php
-│   ├── get_comments.php
-│   ├── toggle_like.php
-│   ├── toggle_follow.php
-│   └── update_views.php
-├── assets/                 # Recursos estáticos
-│   ├── css/
-│   │   ├── main.css       # Estilos globais
-│   │   ├── auth.css       # Estilos de autenticação
-│   │   ├── feed.css       # Estilos do feed
-│   │   └── upload.css     # Estilos de upload
-│   ├── js/
-│   │   ├── auth.js        # JavaScript de autenticação
-│   │   ├── feed.js        # JavaScript do feed
-│   │   ├── upload.js      # JavaScript de upload
-│   │   └── interactions.js # JavaScript de interações
-│   └── images/            # Imagens do sistema
-├── database/              # Scripts de banco
-│   └── mytube_structure.sql
-├── includes/              # Arquivos compartilhados
-│   ├── config.php         # Configurações globais
-│   └── header.php         # Header compartilhado
-├── uploads/               # Arquivos enviados
-│   ├── videos/            # Vídeos dos usuários
-│   └── thumbnails/        # Miniaturas dos vídeos
-├── index.php              # Página principal
-├── login.php              # Página de login/cadastro
-├── logout.php             # Script de logout
-├── upload.php             # Página de upload
-└── README.md              # Este arquivo
+├── api/                    # APIs RESTful (PHP)
+├── assets/
+│   ├── css/               # Estilos globais e por módulo
+│   ├── js/                # JavaScript do cliente
+│   └── images/
+├── chat-server/            # Servidor de chat (Node.js + Socket.IO)
+│   ├── server.js
+│   ├── .env.example
+│   └── ecosystem.config.js
+├── database/
+│   └── install.sql        # Script de instalação limpa (usar este)
+├── includes/              # Configuração e helpers PHP
+│   ├── config.example.php # Exemplo de configuração
+│   └── config.php         # Configuração real (não versionada)
+├── migrations/            # Migrações incrementais (histórico)
+├── uploads/               # Vídeos, thumbnails e avatares
+├── chat.php               # Página de chat
+├── index.php              # Feed principal
+├── login.php              # Autenticação
+└── profile.php            # Perfis de utilizadores
 ```
 
 ## 🔒 Segurança Implementada

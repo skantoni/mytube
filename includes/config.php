@@ -2,6 +2,9 @@
 // Carregar variáveis de ambiente
 require_once __DIR__ . '/env_loader.php';
 
+// PSR-4 autoloader for MyTube\ namespace → app/
+require_once __DIR__ . '/../autoload.php';
+
 // Garantir charset UTF-8 em toda aplicação
 ini_set('default_charset', 'utf-8');
 if (function_exists('mb_internal_encoding')) {

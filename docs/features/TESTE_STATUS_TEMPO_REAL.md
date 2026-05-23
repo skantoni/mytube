@@ -29,8 +29,8 @@ Em ambos os navegadores, abra o console (F12 → Console) para ver os logs.
 
 ### 3. Fazer Login
 
-- **Navegador A**: Login com Usuário 1 (ex: Skeny)
-- **Navegador B**: Login com Usuário 2 (ex: teste)
+- **Navegador A**: Login com Usuário 1 (ex: teste1)
+- **Navegador B**: Login com Usuário 2 (ex: teste2)
 
 ### 4. Abrir Chat
 

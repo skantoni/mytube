@@ -451,7 +451,7 @@ try {
 - ✅ Upload de vídeos funcionando em produção
 
 ### Permissões .env ✅
-- ✅ Permissões corretas: 640 (skeny:www-data)
+- ✅ Permissões corretas: 640 (admin:www-data)
 - ✅ PHP-FPM consegue ler o arquivo
 - ✅ Site funcionando em produção
 

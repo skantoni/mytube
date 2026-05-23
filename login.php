@@ -1,160 +1,66 @@
 <?php
 require_once 'includes/config.php';
 
-// Se já estiver logado, redirecionar para home
+use MyTube\Repositories\UserRepository;
+use MyTube\Services\AuthService;
+use MyTube\Validators\UserValidator;
+
 if (isLoggedIn()) {
     redirect('index.php');
 }
 
-$error = '';
-$success = '';
-$error_from = ''; // 'login' ou 'register'
+$error      = '';
+$success    = '';
+$error_from = '';
 
-// Mensagem de sucesso após registo (Post/Redirect/Get)
 if (isset($_GET['registered']) && $_GET['registered'] === '1') {
     $success = 'Conta criada com sucesso! Faça login.';
 }
 
-// Preservar dados do formulário de cadastro
-$reg_username = '';
-$reg_email = '';
+$reg_username  = '';
+$reg_email     = '';
 $reg_full_name = '';
 $reg_instituicao = '';
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $authService = new AuthService(new UserRepository($pdo), new UserValidator());
+
     if (isset($_POST['login'])) {
-        // LOGIN
-        $username = trim($_POST['username']);
-        $password = $_POST['password'];
-        
+        $username = trim($_POST['username'] ?? '');
+        $password = $_POST['password'] ?? '';
+
         if (empty($username) || empty($password)) {
             $error = 'Por favor, preencha todos os campos.';
         } else {
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE BINARY username = ? OR email = ?");
-            $stmt->execute([$username, $username]);
-            $users = $stmt->fetchAll();
-            
-            $user = null;
-            foreach ($users as $u) {
-                if (password_verify($password, $u['password'])) {
-                    $user = $u;
-                    break;
-                }
-            } // Executar password_verify mesmo quando o usuário não existe.
-            
-            // Sempre executar password_verify com um hash dummy quando não houver usuário
-            if (!$user) {
-                // Gerar um hash dummy (executado apenas em tentativas falhadas) e verificar a senha
-                // Isso ajuda a manter o tempo de resposta similar e mitigar timing attacks
-                $dummy_hash = password_hash('dummy', PASSWORD_DEFAULT);
-                password_verify($password, $dummy_hash);
-            }
-            
-            if ($user) {
-                // Resetar status online stale no banco (pode estar preso de crash anterior)
-                try {
-                    $stmt2 = $pdo->prepare("
-                        UPDATE user_online_status 
-                        SET is_online = 0, last_seen = NOW() 
-                        WHERE user_id = ?
-                    ");
-                    $stmt2->execute([$user['id']]);
-                } catch (Exception $e) {
-                    // Silenciar — login deve sempre funcionar
-                }
-                
-                // ✅ Limpar todas as variáveis de sessão antigas
-                $_SESSION = [];
-                
-                // ✅ Regenerar ID de sessão (previne session fixation e limpa cookies antigos)
-                // O parâmetro true deleta o cookie antigo e cria um novo automaticamente
-                session_regenerate_id(true);
-                
-                // Criar nova sessão com dados do usuário
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-                $_SESSION['full_name'] = $user['full_name'];
-                $_SESSION['profile_picture'] = $user['profile_picture'];
-                $_SESSION['auth_method'] = 'password';
-                
-                // ✅ Regenerar token CSRF para a nova sessão
-                csrf_regenerate();
-                
-                // Usar JavaScript para redirecionamento mais confiável
+            $result = $authService->login($username, $password);
+            if ($result['success']) {
                 echo "<script>window.location.href = 'index.php?splash=1';</script>";
                 exit();
             } else {
-                $error = 'Usuário ou senha incorretos.';
+                $error = $result['error'];
             }
         }
-    } 
-    
-    
-    elseif (isset($_POST['register'])) {
-        // CADASTRO
-        $username = trim($_POST['reg_username']);
-        $email = trim($_POST['reg_email']);
-        $full_name = trim($_POST['reg_full_name']);
-        $instituicao = trim($_POST['reg_instituicao'] ?? '');
-        $password = $_POST['reg_password'];
-        $confirm_password = $_POST['reg_confirm_password'];
-        
-        // Preservar dados para reexibir no formulário
-        $reg_username = $username;
-        $reg_email = $email;
-        $reg_full_name = $full_name;
-        $reg_instituicao = $instituicao;
-        $error_from = 'register';
-        
-        // Validações
-        if (empty($username) || empty($email) || empty($full_name) || empty($password)) {
-            $error = 'Por favor, preencha todos os campos.';
-        } elseif (strlen($username) < 3 || strlen($username) > 12) {
-            $error = 'Nome de usuário deve ter entre 3 e 12 caracteres.';
-        } elseif (!preg_match('/^[a-zA-Z0-9_\-]+$/', $username)) {
-            $error = 'Nome de usuário pode conter apenas letras, números, - e _';
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/@.+\..+/', $email)) {
-            $error = 'E-mail inválido. Verifique se contém @ e um domínio válido.';
-        } elseif (strlen($password) < 6) {
-            $error = 'Senha deve ter pelo menos 6 caracteres.';
-        } elseif ($password !== $confirm_password) {
-            $error = 'Senhas não conferem.';
+    } elseif (isset($_POST['register'])) {
+        $reg_username    = trim($_POST['reg_username'] ?? '');
+        $reg_email       = trim(strtolower($_POST['reg_email'] ?? ''));
+        $reg_full_name   = trim($_POST['reg_full_name'] ?? '');
+        $reg_instituicao = trim($_POST['reg_instituicao'] ?? '');
+        $error_from      = 'register';
+
+        $result = $authService->register([
+            'username'         => $reg_username,
+            'email'            => $reg_email,
+            'full_name'        => $reg_full_name,
+            'instituicao'      => $reg_instituicao,
+            'password'         => $_POST['reg_password'] ?? '',
+            'confirm_password' => $_POST['reg_confirm_password'] ?? '',
+        ]);
+
+        if ($result['success']) {
+            header('Location: login.php?registered=1');
+            exit;
         } else {
-            // Verificar se usuário já existe
-            $stmt_user = $pdo->prepare("SELECT id FROM users WHERE username = ?");
-            $stmt_user->execute([$username]);
-            
-            if ($stmt_user->fetch()) {
-                $error = 'Nome de usuário já existe.';
-            } else {
-                // Verificar limite de contas por email (máx 3)
-                $stmt_email = $pdo->prepare("SELECT COUNT(id) FROM users WHERE email = ?");
-                $stmt_email->execute([$email]);
-                $email_count = (int)$stmt_email->fetchColumn();
-                
-                if ($email_count >= 3) {
-                    $error = 'Este e-mail já atingiu o limite de 3 contas.';
-                } else {
-                    // Criar usuário
-                    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("INSERT INTO users (username, email, full_name, password, instituicao) VALUES (?, ?, ?, ?, ?)");
-                    
-                    try {
-                        if ($stmt->execute([$username, $email, $full_name, $hashed_password, $instituicao])) {
-                            header('Location: login.php?registered=1');
-                            exit;
-                        } else {
-                            $error = 'Erro ao criar conta. Tente novamente.';
-                        }
-                    } catch (PDOException $e) {
-                        if ($e->getCode() == 23000) {
-                            $error = 'Este e-mail já está registado.';
-                        } else {
-                            $error = 'Erro ao criar conta. Tente novamente.';
-                        }
-                    }
-                }
-            }
+            $error = $result['errors'][0] ?? 'Erro ao criar conta.';
         }
     }
 }
