@@ -22,6 +22,8 @@ let tempMessageId = 0;
 let isTyping = false;
 let typingDebounce = null;
 let replyToMessageId = null;
+let isLoadingMoreMessages = false;
+let hasMoreMessages = true;
 
 // Estado de edição de mensagem
 let editingMessageId = null;
@@ -1175,11 +1177,18 @@ function handleMessagesRead(data) {
 function handleMoreMessages(data) {
     if (data.conversationId !== currentConversationId) return;
     
+    isLoadingMoreMessages = false;
+    
+    if (!data.messages || data.messages.length === 0) {
+        hasMoreMessages = false;
+        return;
+    }
+    
     const chatMessages = document.getElementById('chatMessages');
     const scrollHeight = chatMessages.scrollHeight;
     
-    // Adicionar mensagens no início
-    data.messages.forEach(msg => {
+    // Adicionar mensagens no início (reverse para manter a ordem cronológica)
+    data.messages.reverse().forEach(msg => {
         const messageElement = createMessageElement(msg);
         chatMessages.insertBefore(messageElement, chatMessages.firstChild);
     });
@@ -1518,6 +1527,9 @@ function startConversation(userId) {
     // Parar todos os vídeos e áudios antes de trocar de conversa
     stopAllChatMedia();
     
+    isLoadingMoreMessages = false;
+    hasMoreMessages = true;
+    
     socket.emit('start_conversation', {
         targetUserId: userId
     });
@@ -1845,11 +1857,14 @@ function handleTyping() {
 }
 
 function loadMoreMessages() {
+    if (isLoadingMoreMessages || !hasMoreMessages) return;
+
     const chatMessages = document.getElementById('chatMessages');
     const firstMessage = chatMessages.querySelector('[data-message-id]');
     
     if (firstMessage && currentConversationId) {
         const beforeId = firstMessage.getAttribute('data-message-id');
+        isLoadingMoreMessages = true;
         socket.emit('load_more_messages', {
             conversationId: currentConversationId,
             beforeId: parseInt(beforeId)
@@ -1882,6 +1897,9 @@ function searchUsers(query) {
 
 function displayMessages(messages) {
     const chatMessages = document.getElementById('chatMessages');
+    
+    isLoadingMoreMessages = false;
+    hasMoreMessages = true;
     
     // Verificar se o elemento existe
     if (!chatMessages) {
