@@ -852,7 +852,7 @@ if (!$user) {
                         <i class="fas fa-rocket"></i>
                     </div>
                     <div class="settings-item-text">
-                        <span>Batotar</span>
+                        <span>Anunciar</span>
                         <small>Patrocina o teu vídeo no feed</small>
                     </div>
                     <i class="fas fa-chevron-right"></i>
