@@ -154,7 +154,7 @@ try {
         ob_end_clean();
         echo json_encode([
             'success' => false,
-            'message' => 'Não foi possível enviar o e-mail. Verifique a configuração SMTP.',
+            'message' => 'Não foi possível enviar o e-mail. Contacte o suporte mytubeao@gmail.com.',
             'debug_smtp' => $result['message']
         ]);
     }
