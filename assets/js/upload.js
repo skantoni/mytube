@@ -449,7 +449,11 @@ function handleServerResponse(response) {
             // ─── Sucesso normal — redirecionar ───
             showUploadComplete(true, response.message || 'Vídeo enviado com sucesso!');
             setTimeout(() => {
-                window.location.href = 'index.php';
+                if (response.is_ad_flow && response.video_id) {
+                    window.location.href = 'anuncios.php?new_video_id=' + response.video_id;
+                } else {
+                    window.location.href = 'index.php';
+                }
             }, 2000);
         }
     } else {

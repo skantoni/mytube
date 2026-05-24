@@ -847,6 +847,16 @@ if (!$user) {
                     </div>
                     <i class="fas fa-chevron-right"></i>
                 </div>
+                <a href="anuncios.php" class="settings-item" id="settingsAdsLink">
+                    <div class="settings-item-icon" style="background:linear-gradient(135deg,rgba(99,102,241,.18),rgba(245,158,11,.12));color:#a78bfa;">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <div class="settings-item-text">
+                        <span>Anunciar</span>
+                        <small>Patrocina o teu vídeo no feed</small>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                </a>
             </div>
         </div>
 
@@ -917,7 +927,7 @@ if (!$user) {
             </div>
         </div>
 
-        <div class="app-version">MyTube v1.1.2</div>
+        <div class="app-version">MyTube v1.3.0</div>
     </main>
 
     <!-- Modal guia Desktop -->

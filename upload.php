@@ -360,10 +360,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         ? 'Vídeo enviado! Está a aguardar revisão antes de ser publicado.'
                         : 'Vídeo enviado com sucesso!';
 
+                    $is_ad_flow = isset($_POST['ad_flow']) && $_POST['ad_flow'] == '1';
+
                     if ($isAjax) {
                         if (ob_get_level()) ob_end_clean();
                         header('Content-Type: application/json');
-                        echo json_encode(['success' => true, 'message' => $success, 'video_id' => $video_id, 'moderation_status' => $moderation_status]);
+                        echo json_encode(['success' => true, 'message' => $success, 'video_id' => $video_id, 'moderation_status' => $moderation_status, 'is_ad_flow' => $is_ad_flow]);
                         exit;
                     }
 
@@ -677,6 +679,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <!-- Botões -->
                     <div class="form-actions">
                         <?php echo csrf_field(); ?>
+                        <?php if (isset($_GET['ad_flow']) && $_GET['ad_flow'] == '1'): ?>
+                            <input type="hidden" name="ad_flow" value="1">
+                        <?php endif; ?>
                         <button type="button" class="btn btn-secondary" onclick="window.location.href='index.php'">
                             <i class="fas fa-arrow-left"></i>
                             Cancelar

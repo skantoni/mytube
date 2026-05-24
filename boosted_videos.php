@@ -88,6 +88,28 @@ try {
 } catch (Exception $e) {
     $premium_count = 0;
 }
+
+// ── Ad campaigns ──────────────────────────────────────────────
+try {
+    $ads_pending = (int)$pdo->query("SELECT COUNT(*) FROM ad_campaigns WHERE status='pending'")->fetchColumn();
+    $ads_active  = (int)$pdo->query("SELECT COUNT(*) FROM ad_campaigns WHERE status='active'")->fetchColumn();
+    $ads_revenue = (int)$pdo->query("SELECT COALESCE(SUM(plan_price_kz),0) FROM ad_campaigns WHERE status IN ('active','expired')")->fetchColumn();
+    $ads_all_stmt = $pdo->query("
+        SELECT c.*, v.title AS video_title, v.thumbnail_path,
+               u.username, u.full_name, u.profile_picture, u.is_verified
+        FROM ad_campaigns c
+        INNER JOIN videos v ON v.id = c.video_id
+        INNER JOIN users  u ON u.id = c.user_id
+        ORDER BY
+            FIELD(c.status,'pending','active','paused','expired','rejected'),
+            c.created_at DESC
+        LIMIT 100
+    ");
+    $ads_all = $ads_all_stmt->fetchAll();
+} catch (Exception $e) {
+    $ads_pending = $ads_active = $ads_revenue = 0;
+    $ads_all = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -141,6 +163,14 @@ try {
             <span>Premium</span>
             <?php if ($premium_count > 0): ?>
                 <span class="ap-badge ap-badge-gold"><?php echo $premium_count; ?></span>
+            <?php endif; ?>
+        </li>
+
+        <li class="ap-nav-item" data-section="ads" role="button" tabindex="0">
+            <i class="fas fa-rectangle-ad"></i>
+            <span>Anúncios</span>
+            <?php if ($ads_pending > 0): ?>
+                <span class="ap-badge ap-badge-orange"><?php echo $ads_pending; ?></span>
             <?php endif; ?>
         </li>
 
@@ -799,11 +829,242 @@ try {
         </div>
     </section>
 
+    <!-- ═══════════════════════════════════════════════════════
+         ANÚNCIOS / CAMPANHAS
+    ════════════════════════════════════════════════════════════ -->
+    <section class="ap-section" id="section-ads">
+        <div class="ap-section-header">
+            <div>
+                <div class="ap-eyebrow"><i class="fas fa-rectangle-ad"></i> Publicidade</div>
+                <h1 class="ap-section-title">Campanhas de Anúncios</h1>
+                <p class="ap-section-sub">Gere pedidos de patrocínio submetidos pelos utilizadores.</p>
+            </div>
+        </div>
+
+        <!-- Mini stats -->
+        <div class="ap-stats-grid ap-stats-grid--sm" style="margin-bottom:28px;">
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(245,158,11,.15);color:#f59e0b;">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Pendentes</span>
+                    <strong class="ap-stat-value" id="adsPendingCount"><?php echo $ads_pending; ?></strong>
+                </div>
+            </div>
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(16,185,129,.15);color:#10b981;">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Ativas</span>
+                    <strong class="ap-stat-value"><?php echo $ads_active; ?></strong>
+                </div>
+            </div>
+            <div class="ap-stat-card">
+                <div class="ap-stat-icon" style="background:rgba(139,92,246,.15);color:#8b5cf6;">
+                    <i class="fas fa-wallet"></i>
+                </div>
+                <div class="ap-stat-body">
+                    <span class="ap-stat-label">Receita (Kz)</span>
+                    <strong class="ap-stat-value"><?php echo number_format($ads_revenue); ?></strong>
+                </div>
+            </div>
+        </div>
+
+        <?php if (empty($ads_all)): ?>
+            <div class="ap-empty-state">
+                <i class="fas fa-rectangle-ad"></i>
+                <h3>Nenhuma campanha ainda</h3>
+                <p>As campanhas submetidas pelos utilizadores aparecerão aqui.</p>
+            </div>
+        <?php else: ?>
+        <div class="ap-table-wrap">
+            <table class="ap-table" id="adsTable">
+                <thead>
+                    <tr>
+                        <th>Vídeo</th>
+                        <th>Utilizador</th>
+                        <th>Plano</th>
+                        <th>Valor</th>
+                        <th>Público</th>
+                        <th>Data</th>
+                        <th>Estado</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($ads_all as $ad):
+                    $status_badge_map = [
+                        'pending'  => 'ap-badge ap-badge-yellow',
+                        'active'   => 'ap-badge ap-badge-green',
+                        'paused'   => 'ap-badge',
+                        'expired'  => 'ap-badge',
+                        'rejected' => 'ap-badge ap-badge-red',
+                    ];
+                    $status_labels_map = [
+                        'pending'  => 'Pendente',
+                        'active'   => 'Ativa',
+                        'paused'   => 'Pausada',
+                        'expired'  => 'Expirada',
+                        'rejected' => 'Rejeitada',
+                    ];
+                    $badge_cls = $status_badge_map[$ad['status']] ?? 'ap-badge';
+                    $status_lbl = $status_labels_map[$ad['status']] ?? $ad['status'];
+                    $audience = $ad['target_gender'] === 'all' ? 'Todos' : ($ad['target_gender'] === 'male' ? 'Masc.' : 'Fem.');
+                    if ($ad['target_location']) $audience .= ' · ' . htmlspecialchars($ad['target_location']);
+                ?>
+                <tr id="adRow<?php echo (int)$ad['id']; ?>">
+                    <td>
+                        <div class="ap-td-video-title">
+                            <?php if (!empty($ad['thumbnail_path']) && file_exists(__DIR__ . '/uploads/thumbnails/' . $ad['thumbnail_path'])): ?>
+                                <img src="uploads/thumbnails/<?php echo htmlspecialchars($ad['thumbnail_path']); ?>" alt="" class="ap-td-thumb" loading="lazy">
+                            <?php else: ?>
+                                <div class="ap-td-thumb ap-td-thumb-empty"><i class="fas fa-video"></i></div>
+                            <?php endif; ?>
+                            <a href="index.php?video_id=<?php echo (int)$ad['video_id']; ?>" target="_blank" style="color:inherit;text-decoration:none;">
+                                <?php echo htmlspecialchars(apShortText($ad['video_title'], 40)); ?>
+                            </a>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="ap-td-user">
+                            <img src="<?php echo htmlspecialchars(avatar_url($ad['profile_picture'] ?? null)); ?>"
+                                 alt="" class="ap-td-avatar" loading="lazy">
+                            <div>
+                                <span class="ap-td-name">
+                                    <?php echo htmlspecialchars($ad['full_name'] ?: $ad['username']); ?>
+                                    <?php if (!empty($ad['is_verified'])): ?><i class="fas fa-check-circle" style="color:#3b82f6;font-size:.8em"></i><?php endif; ?>
+                                </span>
+                                <span class="ap-td-sub">@<?php echo htmlspecialchars($ad['username']); ?></span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <strong><?php echo htmlspecialchars($ad['plan_name']); ?></strong><br>
+                        <small style="color:#64748b"><?php echo (int)$ad['plan_days']; ?> dias</small>
+                    </td>
+                    <td><strong style="color:#facc15"><?php echo number_format((int)$ad['plan_price_kz']); ?> Kz</strong></td>
+                    <td style="font-size:.8rem;color:#94a3b8;"><?php echo $audience; ?></td>
+                    <td class="ap-td-date"><?php echo date('d/m/y H:i', strtotime($ad['created_at'])); ?></td>
+                    <td><span class="<?php echo $badge_cls; ?>"><?php echo $status_lbl; ?></span></td>
+                    <td>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <?php if ($ad['status'] === 'pending'): ?>
+                            <button class="ap-btn ap-btn-approve ap-btn-xs js-ad-approve"
+                                    data-id="<?php echo (int)$ad['id']; ?>" title="Aprovar">
+                                <i class="fas fa-check"></i> Aprovar
+                            </button>
+                            <button class="ap-btn ap-btn-reject ap-btn-xs js-ad-reject"
+                                    data-id="<?php echo (int)$ad['id']; ?>" title="Rejeitar">
+                                <i class="fas fa-xmark"></i> Rejeitar
+                            </button>
+                        <?php elseif ($ad['status'] === 'active'): ?>
+                            <button class="ap-btn ap-btn-secondary ap-btn-xs js-ad-pause"
+                                    data-id="<?php echo (int)$ad['id']; ?>" title="Pausar">
+                                <i class="fas fa-pause"></i> Pausar
+                            </button>
+                            <button class="ap-btn ap-btn-warn ap-btn-xs js-ad-expire"
+                                    data-id="<?php echo (int)$ad['id']; ?>" title="Terminar">
+                                <i class="fas fa-stop"></i> Terminar
+                            </button>
+                        <?php elseif ($ad['status'] === 'paused'): ?>
+                            <button class="ap-btn ap-btn-approve ap-btn-xs js-ad-activate"
+                                    data-id="<?php echo (int)$ad['id']; ?>" title="Reativar">
+                                <i class="fas fa-play"></i> Reativar
+                            </button>
+                        <?php endif; ?>
+                            <button class="ap-btn ap-btn-ghost ap-btn-xs js-ad-delete"
+                                    data-id="<?php echo (int)$ad['id']; ?>" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+    </section>
+
 </div><!-- /.ap-main -->
 
 <!-- Toast container -->
 <div id="apToastContainer" class="ap-toast-container"></div>
 
 <script src="<?php echo asset('assets/js/boosted-videos.js'); ?>"></script>
+<script>
+// ── Ad campaign management (admin) ────────────────────────────────
+const CSRF_AD = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+async function adAction(action, id, extra = {}) {
+    const body = new URLSearchParams({ csrf_token: CSRF_AD, action, campaign_id: id, ...extra });
+    try {
+        const res = await fetch('api/admin_ad_campaigns.php', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': CSRF_AD },
+            body
+        });
+        return res.json();
+    } catch(e) { return { success: false, error: 'Erro de rede' }; }
+}
+
+function adToast(msg, ok = true) {
+    const t = document.createElement('div');
+    t.className = 'ap-toast ' + (ok ? 'ap-toast--ok' : 'ap-toast--err');
+    t.textContent = msg;
+    document.getElementById('apToastContainer').appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+}
+
+document.getElementById('adsTable')?.addEventListener('click', async function(e) {
+    const btn = e.target.closest('button[data-id]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    btn.disabled = true;
+
+    if (btn.classList.contains('js-ad-approve')) {
+        const data = await adAction('approve', id);
+        if (data.success) {
+            adToast('✅ Campanha aprovada! Ativa até ' + (data.ends_at ? data.ends_at.substring(0,10) : '—'));
+            document.getElementById('adRow' + id)?.querySelectorAll('.ap-badge')[0]?.replaceWith((() => { const s = document.createElement('span'); s.className = 'ap-badge ap-badge-green'; s.textContent = 'Ativa'; return s; })());
+            btn.closest('td').innerHTML = '<span style="color:#34d399;font-size:.8rem"><i class="fas fa-check-circle"></i> Aprovado</span>';
+        } else { adToast('❌ ' + (data.error || 'Erro'), false); btn.disabled = false; }
+    }
+    else if (btn.classList.contains('js-ad-reject')) {
+        const reason = prompt('Motivo da rejeição (opcional):') || '';
+        const data = await adAction('reject', id, { reason });
+        if (data.success) {
+            adToast('Campanha rejeitada.');
+            location.reload();
+        } else { adToast('❌ ' + (data.error || 'Erro'), false); btn.disabled = false; }
+    }
+    else if (btn.classList.contains('js-ad-pause')) {
+        const data = await adAction('pause', id);
+        if (data.success) { adToast('Campanha pausada.'); location.reload(); }
+        else { adToast('❌ ' + (data.error || 'Erro'), false); btn.disabled = false; }
+    }
+    else if (btn.classList.contains('js-ad-activate')) {
+        const data = await adAction('activate', id);
+        if (data.success) { adToast('✅ Campanha reativada!'); location.reload(); }
+        else { adToast('❌ ' + (data.error || 'Erro'), false); btn.disabled = false; }
+    }
+    else if (btn.classList.contains('js-ad-expire')) {
+        if (!confirm('Tens a certeza que queres terminar esta campanha?')) { btn.disabled = false; return; }
+        const data = await adAction('expire', id);
+        if (data.success) { adToast('Campanha terminada.'); location.reload(); }
+        else { adToast('❌ ' + (data.error || 'Erro'), false); btn.disabled = false; }
+    }
+    else if (btn.classList.contains('js-ad-delete')) {
+        if (!confirm('Eliminar esta campanha definitivamente?')) { btn.disabled = false; return; }
+        const data = await adAction('delete', id);
+        if (data.success) {
+            document.getElementById('adRow' + id)?.remove();
+            adToast('Campanha eliminada.');
+        } else { adToast('❌ ' + (data.error || 'Erro'), false); btn.disabled = false; }
+    }
+});
+</script>
 </body>
 </html>

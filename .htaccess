@@ -3,7 +3,7 @@
 # ============================================================
 # BLOQUEAR FICHEIROS ADMINISTRATIVOS E DE DIAGNÓSTICO
 # ============================================================
-<FilesMatch "^(test_|check_|fix_|install_|migrate_|update_|import_|create_|dedupe_|sync_)">
+<FilesMatch "^(test_|check_|fix_|install_|migrate_|import_|dedupe_)">
     Order deny,allow
     Deny from all
 </FilesMatch>
