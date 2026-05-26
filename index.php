@@ -36,6 +36,35 @@ if ($profile_user_id > 0 && isLoggedIn()) {
 // Verificar se o usuário logado é admin
 $is_admin = isLoggedIn() && isAdminUser();
 $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
+
+// Configurar SEO dinâmico para preview de links caso um vídeo específico seja partilhado
+if ($start_video_id > 0) {
+    $stmt = $pdo->prepare("
+        SELECT v.title, v.description, v.thumbnail_path, u.username, u.full_name
+        FROM videos v
+        JOIN users u ON v.user_id = u.id
+        WHERE v.id = ? AND v.is_public = 1 AND v.moderation_status = 'approved'
+    ");
+    $stmt->execute([$start_video_id]);
+    $video_info = $stmt->fetch();
+
+    if ($video_info) {
+        $video_title = trim($video_info['title']);
+        if (empty($video_title)) {
+            $video_title = 'Vídeo de @' . $video_info['username'];
+        }
+        
+        $page_seo = [
+            'title' => $video_title . ' | MyTube por @' . $video_info['username'],
+            'description' => !empty($video_info['description']) ? mb_substr($video_info['description'], 0, 160) : 'Assista a este vídeo de ' . ($video_info['full_name'] ?: $video_info['username']) . ' no MyTube!',
+            'site_url' => SITE_URL . '/index.php?video_id=' . $start_video_id
+        ];
+        
+        if (!empty($video_info['thumbnail_path'])) {
+            $page_seo['image'] = SITE_URL . '/uploads/thumbnails/' . $video_info['thumbnail_path'];
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
