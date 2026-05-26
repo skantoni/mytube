@@ -265,6 +265,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     $stmt = $pdo->prepare($sql);
                     if ($stmt->execute($params)) {
+                        // Atualizar total_students nas escolas
+                        if (in_array("school_id = ?", $changedFields)) {
+                            $old_school_id = $currentData['school_id'] ?? null;
+                            if ($old_school_id) {
+                                $pdo->prepare("UPDATE schools SET total_students = GREATEST(0, total_students - 1) WHERE id = ?")->execute([$old_school_id]);
+                            }
+                            if ($resolved_school_id) {
+                                $pdo->prepare("UPDATE schools SET total_students = total_students + 1 WHERE id = ?")->execute([$resolved_school_id]);
+                            }
+                            
+                            // Limpar caches
+                            require_once __DIR__ . '/includes/ranking_cache.php';
+                            ranking_cache_invalidate('top_schools');
+                            ranking_cache_invalidate('dominant_school');
+                        }
+
                         if ($full_name !== ($currentData['full_name'] ?? '')) {
                             $_SESSION['full_name'] = $full_name;
                         }
