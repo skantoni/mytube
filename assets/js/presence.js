@@ -138,14 +138,26 @@
         connectPresence();
     }
     
-    function connectPresence() {
+    async function connectPresence() {
         // Verificar se Socket.IO está carregado
         if (typeof io === 'undefined') {
             console.warn('Socket.IO não carregado para presença');
             return;
         }
+
+        let token;
+        try {
+            const res = await fetch('api/chat_token.php');
+            if (res.ok) {
+                const json = await res.json();
+                token = json.token;
+            }
+        } catch (e) {
+            console.error('Erro ao buscar token para presença:', e);
+        }
         
         presenceSocket = io(SOCKET_SERVER, {
+            auth: token ? { token } : {},
             transports: ['websocket', 'polling'],
             reconnection: true,
             reconnectionAttempts: 10,
