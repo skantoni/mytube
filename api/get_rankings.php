@@ -376,7 +376,15 @@ function get_top_schools($pdo, int $limit): array {
     $sql = "
         SELECT 
             s.id, s.name, s.short_name, s.logo_path, s.city,
-            COUNT(DISTINCT u.id) AS total_students,
+            (
+                SELECT COUNT(DISTINCT au.id)
+                FROM users au
+                WHERE au.school_id = s.id AND (
+                    EXISTS (SELECT 1 FROM videos v2 WHERE v2.user_id = au.id AND v2.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH))
+                    OR EXISTS (SELECT 1 FROM comments c2 WHERE c2.user_id = au.id AND c2.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH))
+                    OR EXISTS (SELECT 1 FROM video_likes vl WHERE vl.user_id = au.id AND vl.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH))
+                )
+            ) AS total_students,
             COUNT(DISTINCT v.id) AS total_videos,
             COALESCE(SUM(v.likes_count), 0) AS total_likes,
             COALESCE(SUM(v.views_count), 0) AS total_views,
@@ -419,7 +427,15 @@ function get_dominant_school($pdo): array {
     $sql = "
         SELECT 
             s.id, s.name, s.short_name, s.logo_path, s.city,
-            COUNT(DISTINCT u.id) AS total_students,
+            (
+                SELECT COUNT(DISTINCT au.id)
+                FROM users au
+                WHERE au.school_id = s.id AND (
+                    EXISTS (SELECT 1 FROM videos v2 WHERE v2.user_id = au.id AND v2.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY))
+                    OR EXISTS (SELECT 1 FROM comments c2 WHERE c2.user_id = au.id AND c2.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY))
+                    OR EXISTS (SELECT 1 FROM video_likes vl WHERE vl.user_id = au.id AND vl.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY))
+                )
+            ) AS total_students,
             COUNT(DISTINCT v.id) AS total_videos,
             COALESCE(SUM(v.likes_count), 0) AS total_likes,
             COALESCE(SUM(v.views_count), 0) AS total_views,
