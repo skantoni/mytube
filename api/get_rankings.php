@@ -325,7 +325,7 @@ function get_school_creators($pdo, int $school_id, int $limit): array {
     $cached = ranking_cache_get($cache_key, 300);
     if ($cached !== null) return $cached;
 
-    // Calcula pontos dinâmicamente dos últimos 3 meses
+    // Calcula pontos da semana atual (Segunda-feira até agora)
     $sql = "
         SELECT 
             u.id, u.username, u.full_name, u.profile_picture, u.is_verified,
@@ -339,7 +339,8 @@ function get_school_creators($pdo, int $school_id, int $limit): array {
                 COALESCE(SUM(v.views_count), 0) * 1
             ) AS points
         FROM users u
-        LEFT JOIN videos v ON v.user_id = u.id AND v.is_public = 1 AND v.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
+        LEFT JOIN videos v ON v.user_id = u.id AND v.is_public = 1 
+            AND v.created_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY)
         WHERE u.school_id = ? AND (u.role != 'admin' OR u.role IS NULL)
         GROUP BY u.id
         HAVING total_videos > 0
