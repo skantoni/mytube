@@ -460,6 +460,21 @@ function setupEventListeners() {
     setupConversationSearch();
 }
 
+/**
+ * Regista o listener de scroll infinito no #chatMessages.
+ * Usa um atributo data para evitar duplicação caso o elemento seja recriado dinamicamente.
+ */
+function setupChatScrollListener() {
+    const chatMessages = document.getElementById('chatMessages');
+    if (!chatMessages || chatMessages.dataset.scrollListenerAdded) return;
+    chatMessages.dataset.scrollListenerAdded = 'true';
+    chatMessages.addEventListener('scroll', function() {
+        if (this.scrollTop <= 60 && currentConversationId && !isLoadingMoreMessages && hasMoreMessages) {
+            loadMoreMessages();
+        }
+    });
+}
+
 function setupConversationClickListener() {
     const conversationsList = document.getElementById('conversationsList');
     if (conversationsList) {
