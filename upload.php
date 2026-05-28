@@ -122,37 +122,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ── Criar registo na BD e colocar job na fila ────────────────────────────
     if (!$error) {
-        try {
-            $pdo->beginTransaction();
+        // ── IMPORTANTE: Operações DDL (ALTER TABLE) FORA da transação ──────────
+        // No MySQL, DDL causa um commit implícito silencioso. Se forem executadas
+        // dentro de uma transação, corrompem o seu controlo e tornam o rollback
+        // impossível para operações DML subsequentes.
+        $has_music_cols = false;
+        try { $pdo->query("SELECT music_name FROM videos LIMIT 0"); $has_music_cols = true; } catch (Throwable $e) {
+            try {
+                $pdo->exec("ALTER TABLE videos ADD COLUMN music_name VARCHAR(255) NOT NULL DEFAULT '' AFTER hashtags");
+                $pdo->exec("ALTER TABLE videos ADD COLUMN music_artist VARCHAR(255) NOT NULL DEFAULT '' AFTER music_name");
+                $has_music_cols = true;
+            } catch (Throwable $e2) {}
+        }
 
-            // Verificar/adicionar colunas de música e moderação
-            $has_music_cols = false;
-            try { $pdo->query("SELECT music_name FROM videos LIMIT 0"); $has_music_cols = true; } catch (Throwable $e) {
-                try {
-                    $pdo->exec("ALTER TABLE videos ADD COLUMN music_name VARCHAR(255) NOT NULL DEFAULT '' AFTER hashtags");
-                    $pdo->exec("ALTER TABLE videos ADD COLUMN music_artist VARCHAR(255) NOT NULL DEFAULT '' AFTER music_name");
-                    $has_music_cols = true;
-                } catch (Throwable $e2) {}
-            }
+        $has_moderation_cols = false;
+        try { $pdo->query("SELECT moderation_status FROM videos LIMIT 0"); $has_moderation_cols = true; } catch (Throwable $e) {
+            try {
+                $pdo->exec("ALTER TABLE videos
+                    ADD COLUMN moderation_status ENUM('processing','pending','approved','rejected') NOT NULL DEFAULT 'approved',
+                    ADD COLUMN moderation_score FLOAT DEFAULT NULL,
+                    ADD COLUMN moderation_checked_at DATETIME DEFAULT NULL");
+                $has_moderation_cols = true;
+            } catch (Throwable $e2) {}
+        }
 
-            $has_moderation_cols = false;
-            try { $pdo->query("SELECT moderation_status FROM videos LIMIT 0"); $has_moderation_cols = true; } catch (Throwable $e) {
-                try {
-                    $pdo->exec("ALTER TABLE videos
-                        ADD COLUMN moderation_status ENUM('processing','pending','approved','rejected') NOT NULL DEFAULT 'approved',
-                        ADD COLUMN moderation_score FLOAT DEFAULT NULL,
-                        ADD COLUMN moderation_checked_at DATETIME DEFAULT NULL");
-                    $has_moderation_cols = true;
-                } catch (Throwable $e2) {}
-            }
-
-            // Garantir que o ENUM tem o valor 'processing'
-            if ($has_moderation_cols) {
-                try {
+        // Garantir que o ENUM inclui o valor 'processing' (pode ser antigo sem ele)
+        if ($has_moderation_cols) {
+            try {
+                // Verificar se 'processing' já existe no ENUM antes de alterar
+                $enum_row = $pdo->query("SHOW COLUMNS FROM videos LIKE 'moderation_status'")->fetch();
+                if ($enum_row && strpos($enum_row['Type'], 'processing') === false) {
                     $pdo->exec("ALTER TABLE videos
                         MODIFY COLUMN moderation_status ENUM('processing','pending','approved','rejected') NOT NULL DEFAULT 'approved'");
-                } catch (Throwable $e) { /* já existe */ }
-            }
+                }
+            } catch (Throwable $e) { /* ignorar — valor pode já existir */ }
+        }
+
+        try {
+            // Flag que indica se o commit foi executado com sucesso.
+            // O bloco catch NUNCA deve apagar o ficheiro RAW se $committed=true,
+            // porque o job já está na BD a apontar para ele.
+            $committed = false;
+
+            $pdo->beginTransaction();
 
             // Inserir vídeo com status 'processing' — visível para o utilizador
             // mas não aparece no feed até estar 'approved'
@@ -225,6 +237,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $job_id = (int)$pdo->lastInsertId();
             $pdo->commit();
+            $committed = true; // ← commit bem sucedido; catch NÃO deve apagar o ficheiro
 
             // ── Tentar lançar worker imediatamente (não-bloqueante) ─────────
             $worker_script = __DIR__ . '/worker/process_upload_job.php';
@@ -232,11 +245,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $php_bin = PHP_BINARY ?: 'php';
                 $is_win  = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
                 if ($is_win) {
-                    // Windows: start /B para não bloquear
                     $cmd = 'start /B "" ' . escapeshellarg($php_bin) . ' ' . escapeshellarg($worker_script) . ' > NUL 2>&1';
                     pclose(popen($cmd, 'r'));
                 } else {
-                    // Linux: nohup em background
                     $cmd = 'nohup ' . escapeshellarg($php_bin) . ' ' . escapeshellarg($worker_script)
                          . ' > /dev/null 2>&1 &';
                     exec($cmd);
@@ -244,13 +255,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
         } catch (Throwable $e) {
-            try { $pdo->rollBack(); } catch (Throwable $e2) {}
-            // Limpar ficheiro RAW se a BD falhou
-            if (isset($raw_path) && file_exists($raw_path)) {
-                @unlink($raw_path);
+            // Só fazer rollback se ainda não houve commit
+            if (empty($committed)) {
+                try { $pdo->rollBack(); } catch (Throwable $e2) {}
+                // Só apagar o ficheiro RAW se a transação NÃO foi commitada —
+                // se $committed=true o job já está na BD e o worker precisa do ficheiro.
+                if (isset($raw_path) && file_exists($raw_path)) {
+                    @unlink($raw_path);
+                }
+                $error = 'Erro interno ao iniciar o upload. Tente novamente.';
             }
-            $error = 'Erro interno ao iniciar o upload. Tente novamente.';
-            error_log('upload.php: ' . $e->getMessage());
+            // Sempre registar o erro real nos logs do servidor
+            error_log('upload.php ERROR [committed=' . (!empty($committed) ? 'yes' : 'no') . ']: '
+                . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
         }
     }
 
