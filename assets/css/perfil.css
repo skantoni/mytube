@@ -9,8 +9,8 @@
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-/*     background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
- */    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+    /* background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); */
 
     background-attachment: fixed;
     min-height: 100vh;
@@ -40,7 +40,9 @@ body {
     padding: 0 20px;
 }
 
-.back-btn, .edit-btn, .notification-btn {
+.back-btn,
+.edit-btn,
+.notification-btn {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: #fff;
@@ -57,7 +59,9 @@ body {
     position: relative;
 }
 
-.back-btn:hover, .edit-btn:hover, .notification-btn:hover {
+.back-btn:hover,
+.edit-btn:hover,
+.notification-btn:hover {
     background: rgba(255, 255, 255, 0.2);
     transform: translateY(-2px);
 }
@@ -187,7 +191,7 @@ body {
 }
 
 .best-mytuber-badge i {
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
 /* Global Badge = Dourado com coroa */
@@ -208,7 +212,7 @@ body {
     animation: badgePulseSchool 2.5s ease-in-out infinite;
 }
 
-.best-mytuber-global + .best-mytuber-school {
+.best-mytuber-global+.best-mytuber-school {
     right: 28px;
 }
 
@@ -217,13 +221,31 @@ body {
 }
 
 @keyframes badgePulseGlobal {
-    0%, 100% { box-shadow: 0 2px 12px rgba(255, 215, 0, 0.5); transform: scale(1); }
-    50%      { box-shadow: 0 4px 20px rgba(255, 215, 0, 0.9); transform: scale(1.1); }
+
+    0%,
+    100% {
+        box-shadow: 0 2px 12px rgba(255, 215, 0, 0.5);
+        transform: scale(1);
+    }
+
+    50% {
+        box-shadow: 0 4px 20px rgba(255, 215, 0, 0.9);
+        transform: scale(1.1);
+    }
 }
 
 @keyframes badgePulseSchool {
-    0%, 100% { box-shadow: 0 2px 12px rgba(59, 130, 246, 0.5); transform: scale(1); }
-    50%      { box-shadow: 0 4px 20px rgba(59, 130, 246, 0.9); transform: scale(1.1); }
+
+    0%,
+    100% {
+        box-shadow: 0 2px 12px rgba(59, 130, 246, 0.5);
+        transform: scale(1);
+    }
+
+    50% {
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.9);
+        transform: scale(1.1);
+    }
 }
 
 .institution-tooltip {
@@ -267,8 +289,15 @@ body {
 }
 
 @keyframes tooltipFadeIn {
-    from { opacity: 0; transform: translateX(-5px); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+        opacity: 0;
+        transform: translateX(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 .profile-details {
@@ -393,7 +422,7 @@ body {
     background: rgba(255, 255, 255, 0.1);
     color: white;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    
+
 }
 
 .btn-chat:hover {
@@ -512,7 +541,7 @@ body {
         opacity: 1;
         background: linear-gradient(transparent 70%, rgba(0, 0, 0, 0.9));
     }
-    
+
     /* Hover ainda funciona no mobile para dispositivos híbridos */
     .video-card:hover .video-overlay {
         opacity: 1;
@@ -572,31 +601,31 @@ body {
         align-items: center;
         text-align: center;
     }
-    
+
     .profile-stats {
         justify-content: center;
     }
-    
+
     .profile-actions {
         justify-content: center;
         flex-wrap: wrap;
     }
-    
+
     .avatar-image {
         width: 100px;
         height: 100px;
     }
-    
+
     .profile-name {
         font-size: 1.6rem;
         justify-content: center;
     }
-    
+
     .videos-grid {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
         gap: 15px;
     }
-    
+
     .video-thumbnail {
         height: 200px;
     }
@@ -607,20 +636,20 @@ body {
         padding-left: 15px;
         padding-right: 15px;
     }
-    
+
     .videos-section {
         padding: 20px;
     }
-    
+
     .profile-stats {
         gap: 20px;
     }
-    
+
     .videos-grid {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 10px;
     }
-    
+
     .video-thumbnail {
         height: 150px;
     }
@@ -797,6 +826,7 @@ body {
     padding: 8px 12px;
     transition: background 0.2s;
 }
+
 .stat.stat-clickable:hover {
     background: rgba(255, 255, 255, 0.1);
 }
@@ -813,6 +843,7 @@ body {
     align-items: center;
     justify-content: center;
 }
+
 .follow-modal-overlay.active {
     display: flex;
 }
@@ -836,11 +867,13 @@ body {
     padding: 16px 20px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
+
 .follow-modal-header h3 {
     margin: 0;
     font-size: 1.1rem;
     color: #fff;
 }
+
 .follow-modal-close {
     background: none;
     border: none;
@@ -867,6 +900,7 @@ body {
     padding: 10px 20px;
     transition: background 0.15s;
 }
+
 .follow-item:hover {
     background: rgba(255, 255, 255, 0.05);
 }
@@ -920,21 +954,25 @@ body {
     white-space: nowrap;
     flex-shrink: 0;
 }
+
 .btn-follow-small:hover {
     background: #2563eb;
 }
+
 .btn-follow-small.following {
     background: rgba(255, 255, 255, 0.1);
     color: #94a3b8;
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
+
 .btn-follow-small.following:hover {
     background: rgba(239, 68, 68, 0.2);
     color: #f87171;
     border-color: rgba(239, 68, 68, 0.4);
 }
 
-.follow-loading, .follow-empty {
+.follow-loading,
+.follow-empty {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -943,6 +981,7 @@ body {
     color: rgba(255, 255, 255, 0.5);
     gap: 8px;
 }
+
 .follow-empty i {
     font-size: 2rem;
 }
@@ -960,6 +999,7 @@ body {
     cursor: pointer;
     font-weight: 600;
 }
+
 .follow-load-more:hover {
     background: rgba(255, 255, 255, 0.15);
 }
