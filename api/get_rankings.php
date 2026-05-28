@@ -426,34 +426,51 @@ function get_dominant_school($pdo): array {
     if ($cached !== null) return $cached;
 
     $sql = "
-        SELECT 
-            s.id, s.name, s.short_name, s.logo_path, s.city,
-            (
-                SELECT COUNT(DISTINCT au.id)
-                FROM users au
-                WHERE au.school_id = s.id AND (
-                    EXISTS (SELECT 1 FROM videos v2 WHERE v2.user_id = au.id AND v2.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY))
-                    OR EXISTS (SELECT 1 FROM comments c2 WHERE c2.user_id = au.id AND c2.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY))
-                    OR EXISTS (SELECT 1 FROM video_likes vl WHERE vl.user_id = au.id AND vl.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY))
-                )
-            ) AS total_students,
-            COUNT(DISTINCT v.id) AS total_videos,
-            COALESCE(SUM(v.likes_count), 0) AS total_likes,
-            COALESCE(SUM(v.views_count), 0) AS total_views,
-            COALESCE(SUM(v.comments_count), 0) AS total_comments,
-            (
-                COUNT(DISTINCT v.id) * 10 +
-                COALESCE(SUM(v.likes_count), 0) * 2 +
-                COALESCE(SUM(v.comments_count), 0) * 3 +
-                COALESCE(SUM(v.views_count), 0) * 1
-            ) AS points
-        FROM schools s
-        LEFT JOIN users u ON u.school_id = s.id
-        LEFT JOIN videos v ON v.user_id = u.id AND v.is_public = 1
-            AND v.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        WHERE s.is_active = 1
-        GROUP BY s.id
-        HAVING total_videos > 0
+        SELECT *, 
+               (total_videos * 10 + total_likes * 2 + total_comments * 3 + total_views * 1) AS points
+        FROM (
+            SELECT 
+                s.id, s.name, s.short_name, s.logo_path, s.city,
+                (
+                    SELECT COUNT(DISTINCT au.id)
+                    FROM users au
+                    WHERE au.school_id = s.id AND (
+                        EXISTS (SELECT 1 FROM videos v2 WHERE v2.user_id = au.id AND v2.created_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY))
+                        OR EXISTS (SELECT 1 FROM comments c2 WHERE c2.user_id = au.id AND c2.created_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY))
+                        OR EXISTS (SELECT 1 FROM video_likes vl WHERE vl.user_id = au.id AND vl.created_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY))
+                    )
+                ) AS total_students,
+                (
+                    SELECT COUNT(DISTINCT v.id) FROM videos v 
+                    JOIN users u ON v.user_id = u.id 
+                    WHERE u.school_id = s.id AND v.is_public = 1 
+                    AND v.created_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY)
+                ) AS total_videos,
+                (
+                    SELECT COUNT(DISTINCT vl.id) FROM video_likes vl
+                    JOIN videos v ON vl.video_id = v.id
+                    JOIN users u ON v.user_id = u.id
+                    WHERE u.school_id = s.id 
+                    AND vl.created_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY)
+                ) AS total_likes,
+                (
+                    SELECT COUNT(DISTINCT vv.id) FROM video_views vv
+                    JOIN videos v ON vv.video_id = v.id
+                    JOIN users u ON v.user_id = u.id
+                    WHERE u.school_id = s.id 
+                    AND vv.viewed_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY)
+                ) AS total_views,
+                (
+                    SELECT COUNT(DISTINCT c.id) FROM comments c
+                    JOIN videos v ON c.video_id = v.id
+                    JOIN users u ON v.user_id = u.id
+                    WHERE u.school_id = s.id 
+                    AND c.created_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY)
+                ) AS total_comments
+            FROM schools s
+            WHERE s.is_active = 1
+        ) AS school_stats
+        WHERE total_videos > 0 OR total_likes > 0 OR total_comments > 0 OR total_views > 0
         ORDER BY points DESC
         LIMIT 1
     ";
@@ -490,7 +507,7 @@ function get_dominant_school($pdo): array {
                 GROUP BY video_id
             ) rc ON rc.video_id = v.id
             WHERE u.school_id = ? AND v.is_public = 1
-                AND v.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                AND v.created_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY)
             ORDER BY trend_score DESC
             LIMIT 6
         ";
