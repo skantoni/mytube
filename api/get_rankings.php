@@ -454,11 +454,10 @@ function get_dominant_school($pdo): array {
                     AND vl.created_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY)
                 ) AS total_likes,
                 (
-                    SELECT COUNT(DISTINCT vv.id) FROM video_views vv
-                    JOIN videos v ON vv.video_id = v.id
+                    SELECT COALESCE(SUM(v.views_count), 0) FROM videos v
                     JOIN users u ON v.user_id = u.id
-                    WHERE u.school_id = s.id 
-                    AND vv.viewed_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY)
+                    WHERE u.school_id = s.id AND v.is_public = 1
+                    AND v.created_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY)
                 ) AS total_views,
                 (
                     SELECT COUNT(DISTINCT c.id) FROM comments c
