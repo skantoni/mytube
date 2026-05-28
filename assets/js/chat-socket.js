@@ -340,14 +340,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     setupEventListeners();
     
     // Setup scroll infinito — dispara quando o topo está a menos de 60px
-    const chatMessages = document.getElementById('chatMessages');
-    if (chatMessages) {
-        chatMessages.addEventListener('scroll', function() {
-            if (this.scrollTop <= 60 && currentConversationId && !isLoadingMoreMessages && hasMoreMessages) {
-                loadMoreMessages();
-            }
-        });
-    }
+    setupChatScrollListener();
+
     
     // Pedir permissão para notificações
     if ('Notification' in window && Notification.permission === 'default') {
@@ -3011,6 +3005,9 @@ function showChatArea() {
     if (typeof cancelReply === 'function') {
         cancelReply();
     }
+
+    // Registar scroll listener (pode ser a primeira vez que chatMessages existe no DOM)
+    setupChatScrollListener();
 }
 
 function createChatAreaHTML() {
