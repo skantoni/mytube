@@ -339,11 +339,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     await initializeSocket();
     setupEventListeners();
     
-    // Setup scroll infinito
+    // Setup scroll infinito — dispara quando o topo está a menos de 60px
     const chatMessages = document.getElementById('chatMessages');
     if (chatMessages) {
         chatMessages.addEventListener('scroll', function() {
-            if (this.scrollTop === 0 && currentConversationId) {
+            if (this.scrollTop <= 60 && currentConversationId && !isLoadingMoreMessages && hasMoreMessages) {
                 loadMoreMessages();
             }
         });
@@ -1176,25 +1176,75 @@ function handleMessagesRead(data) {
 
 function handleMoreMessages(data) {
     if (data.conversationId !== currentConversationId) return;
-    
+
     isLoadingMoreMessages = false;
-    
+
+    const chatMessages = document.getElementById('chatMessages');
+    if (!chatMessages) return;
+
+    // Remover indicador de carregamento
+    const loader = chatMessages.querySelector('.load-more-spinner');
+    if (loader) loader.remove();
+
     if (!data.messages || data.messages.length === 0) {
         hasMoreMessages = false;
+        // Mostrar indicador de "início da conversa"
+        const startIndicator = document.createElement('div');
+        startIndicator.className = 'conversation-start-indicator';
+        startIndicator.innerHTML = '<i class="fas fa-comments"></i><span>Início da conversa</span>';
+        chatMessages.insertBefore(startIndicator, chatMessages.firstChild);
         return;
     }
-    
-    const chatMessages = document.getElementById('chatMessages');
-    const scrollHeight = chatMessages.scrollHeight;
-    
-    // Adicionar mensagens no início (reverse para manter a ordem cronológica)
-    data.messages.reverse().forEach(msg => {
-        const messageElement = createMessageElement(msg);
-        chatMessages.insertBefore(messageElement, chatMessages.firstChild);
+
+    // Guardar posição de scroll antes de inserir
+    const scrollHeightBefore = chatMessages.scrollHeight;
+    const scrollTopBefore = chatMessages.scrollTop;
+
+    // Determinar a data da primeira mensagem já existente no DOM
+    const existingFirstMsg = chatMessages.querySelector('[data-message-id]');
+    let firstExistingDate = null;
+    if (existingFirstMsg) {
+        const existingTimestamp = existingFirstMsg.getAttribute('data-created-at');
+        if (existingTimestamp) {
+            firstExistingDate = new Date(existingTimestamp).toLocaleDateString('pt-BR');
+        }
+    }
+
+    // Inserir mensagens no topo com separadores de data
+    // data.messages já vem em ordem cronológica (o servidor faz .reverse())
+    // Precisamos de inserir na ordem inversa para o insertBefore funcionar corretamente
+    const fragment = document.createDocumentFragment();
+    let lastDateInBatch = null;
+
+    data.messages.forEach(msg => {
+        const msgDate = new Date(msg.created_at).toLocaleDateString('pt-BR');
+        if (msgDate !== lastDateInBatch) {
+            lastDateInBatch = msgDate;
+            fragment.appendChild(createDateSeparator(msgDate));
+        }
+        const el = createMessageElement(msg);
+        fragment.appendChild(el);
     });
-    
-    // Manter posição do scroll
-    chatMessages.scrollTop = chatMessages.scrollHeight - scrollHeight;
+
+    // Remover o separador de data que já existe para o mesmo dia da primeira mensagem
+    // existente, para evitar duplicação
+    if (firstExistingDate && lastDateInBatch === firstExistingDate) {
+        // Remover o primeiro separador de data do DOM (que pertence ao mesmo dia)
+        const firstDateSep = chatMessages.querySelector('.date-separator');
+        if (firstDateSep) firstDateSep.remove();
+    }
+
+    chatMessages.insertBefore(fragment, chatMessages.firstChild);
+
+    // Restaurar posição de scroll (o utilizador não deve sentir o salto)
+    chatMessages.scrollTop = scrollTopBefore + (chatMessages.scrollHeight - scrollHeightBefore);
+
+    // Re-observar imagens lazy nas mensagens recém-inseridas
+    if (chatMediaObserver) {
+        chatMessages.querySelectorAll('.chat-image[data-src]').forEach(img => {
+            chatMediaObserver.observe(img);
+        });
+    }
 }
 
 // ========================================
@@ -1857,19 +1907,33 @@ function handleTyping() {
 }
 
 function loadMoreMessages() {
-    if (isLoadingMoreMessages || !hasMoreMessages) return;
+    if (isLoadingMoreMessages || !hasMoreMessages || !socket || !socket.connected) return;
 
     const chatMessages = document.getElementById('chatMessages');
+    if (!chatMessages || !currentConversationId) return;
+
+    // Encontrar a primeira mensagem real com ID (ignorar separadores, loaders, etc.)
     const firstMessage = chatMessages.querySelector('[data-message-id]');
-    
-    if (firstMessage && currentConversationId) {
-        const beforeId = firstMessage.getAttribute('data-message-id');
-        isLoadingMoreMessages = true;
-        socket.emit('load_more_messages', {
-            conversationId: currentConversationId,
-            beforeId: parseInt(beforeId)
-        });
+    if (!firstMessage) return;
+
+    const beforeId = parseInt(firstMessage.getAttribute('data-message-id'), 10);
+    if (!beforeId || beforeId <= 0) return;
+
+    isLoadingMoreMessages = true;
+
+    // Mostrar indicador de carregamento no topo
+    let loader = chatMessages.querySelector('.load-more-spinner');
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.className = 'load-more-spinner';
+        loader.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        chatMessages.insertBefore(loader, chatMessages.firstChild);
     }
+
+    socket.emit('load_more_messages', {
+        conversationId: currentConversationId,
+        beforeId
+    });
 }
 
 let _searchUsersTimer = null;
@@ -2028,6 +2092,10 @@ function createMessageElement(msg, isTemp = false) {
         div.setAttribute('data-temp-id', msg.tempId);
     } else {
         div.setAttribute('data-message-id', msg.id);
+    }
+    // Guardar timestamp para lógica de separador de data
+    if (msg.created_at) {
+        div.setAttribute('data-created-at', msg.created_at);
     }
     
     // Indicador de mensagem reencaminhada
