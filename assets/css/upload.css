@@ -410,6 +410,18 @@
     animation: shimmer 2s linear infinite;
 }
 
+.progress-bar-fill.processing-pulse {
+    background: linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b);
+    background-size: 200% 100%;
+    animation: pulse-processing 2s infinite ease-in-out;
+}
+
+@keyframes pulse-processing {
+    0% { opacity: 0.8; }
+    50% { opacity: 0.4; }
+    100% { opacity: 0.8; }
+}
+
 .progress-bar-fill.complete {
     background: linear-gradient(90deg, #10b981, #34d399, #10b981);
     background-size: 200% 100%;

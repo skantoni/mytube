@@ -1,11 +1,7 @@
 <?php
 require_once 'includes/config.php';
-require_once 'includes/ranking_cache.php';
 require_once 'includes/hashtag_helper.php';
-require_once 'includes/r2_storage.php';
-require_once 'includes/video_processing.php';
-require_once 'includes/music_config.php';
-require_once 'includes/content_moderation.php';
+require_once 'includes/upload_validation.php';
 
 // Verificar se está logado
 if (!isLoggedIn()) {
@@ -17,11 +13,11 @@ if (!isLoggedIn()) {
     redirect('login.php');
 }
 
-$error = '';
+$error   = '';
 $success = '';
-$isAjax = isset($_POST['ajax_upload']);
+$isAjax  = isset($_POST['ajax_upload']);
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validar CSRF token
     if (!csrf_verify()) {
         if ($isAjax) {
@@ -32,375 +28,252 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
         csrf_verify_or_die();
     }
-    
-    // Buffer de saída para evitar que warnings corrompam a resposta JSON
+
+    // Buffer para evitar warnings a corromper JSON
     if ($isAjax) {
         ob_start();
     }
 
-    // Sem limite de tempo: FFmpeg + upload R2 podem demorar mais de 30s
-    set_time_limit(300);
-
-    // ── Auto-migração: garantir colunas de música na tabela ──
-    // Corre UMA vez por request e é muito rápido (SELECT LIMIT 0)
-    $has_music_cols = false;
-    try {
-        $pdo->query("SELECT music_name FROM videos LIMIT 0");
-        $has_music_cols = true;
-    } catch (Throwable $e) {
-        // Colunas não existem — tentar criar automaticamente
-        try {
-            $pdo->exec("ALTER TABLE videos ADD COLUMN music_name VARCHAR(255) NOT NULL DEFAULT '' AFTER hashtags");
-            $pdo->exec("ALTER TABLE videos ADD COLUMN music_artist VARCHAR(255) NOT NULL DEFAULT '' AFTER music_name");
-            $has_music_cols = true;
-            error_log('upload.php: colunas music_name/music_artist adicionadas automaticamente');
-        } catch (Throwable $e2) {
-            $has_music_cols = false;
-            error_log('upload.php: falha ao adicionar colunas de música: ' . $e2->getMessage());
-        }
-    }
-
-    // ── Auto-migração: garantir colunas de moderação ──
-    $has_moderation_cols = false;
-    try {
-        $pdo->query("SELECT moderation_status FROM videos LIMIT 0");
-        $has_moderation_cols = true;
-    } catch (Throwable $e) {
-        try {
-            $pdo->exec("ALTER TABLE videos
-                ADD COLUMN moderation_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'approved' AFTER is_boosted,
-                ADD COLUMN moderation_score FLOAT DEFAULT NULL AFTER moderation_status,
-                ADD COLUMN moderation_checked_at DATETIME DEFAULT NULL AFTER moderation_score");
-            $has_moderation_cols = true;
-            error_log('upload.php: colunas de moderação adicionadas automaticamente');
-        } catch (Throwable $e2) {
-            $has_moderation_cols = false;
-            error_log('upload.php: falha ao adicionar colunas de moderação: ' . $e2->getMessage());
-        }
-    }
-
-    $title = sanitize($_POST['title']);
-    $description = mb_substr(sanitize($_POST['description']), 0, 400);
-    $hashtags_input = isset($_POST['hashtags']) ? trim((string)$_POST['hashtags']) : '';
-    $parsed_hashtags = [];
-    $hashtags = '';
-    $is_public = isset($_POST['is_public']) ? 1 : 0;
+    // ── Validações rápidas (< 1s) ─────────────────────────────────────────────
+    $title       = sanitize($_POST['title'] ?? '');
+    $description = mb_substr(sanitize($_POST['description'] ?? ''), 0, 400);
+    $hashtags_raw = trim((string)($_POST['hashtags'] ?? ''));
+    $is_public   = isset($_POST['is_public']) ? 1 : 0;
+    $ad_flow     = (isset($_POST['ad_flow']) && $_POST['ad_flow'] == '1') ? 1 : 0;
 
     if (empty($title)) {
         $error = 'Título é obrigatório.';
     } else {
+        // Validar hashtags (rápido, só strings)
         try {
-            $parsed_hashtags = hashtag_parse_input($hashtags_input);
-            $hashtags = hashtag_format_for_storage($parsed_hashtags);
+            $parsed_hashtags = hashtag_parse_input($hashtags_raw);
         } catch (InvalidArgumentException $e) {
             $error = $e->getMessage();
+            $parsed_hashtags = [];
         }
     }
 
+    // ── Validar ficheiro enviado ─────────────────────────────────────────────
     if (!$error && (!isset($_FILES['video']) || $_FILES['video']['error'] !== UPLOAD_ERR_OK)) {
-        $uploadError = isset($_FILES['video']) ? $_FILES['video']['error'] : -1;
-        switch ($uploadError) {
-            case UPLOAD_ERR_INI_SIZE:
-            case UPLOAD_ERR_FORM_SIZE:
-                $error = 'Arquivo muito grande. Tamanho máximo permitido: 50MB';
-                break;
-            case UPLOAD_ERR_PARTIAL:
-                $error = 'Upload interrompido. O arquivo foi enviado parcialmente.';
-                break;
-            case UPLOAD_ERR_NO_FILE:
-                $error = 'Nenhum arquivo selecionado.';
-                break;
-            case UPLOAD_ERR_NO_TMP_DIR:
-            case UPLOAD_ERR_CANT_WRITE:
-                $error = 'Erro no servidor ao salvar arquivo temporário.';
-                break;
-            default:
-                $error = 'Por favor, selecione um vídeo válido.';
-        }
-    } elseif (!$error) {
-        // ── Detecção de upload parcial (tamanho recebido vs declarado pelo cliente) ──
-        // Mesmo mecanismo usado por YouTube/S3: Content-Length integrity check.
-        // $_FILES['video']['size'] = bytes realmente recebidos pelo PHP.
-        // expected_size = tamanho original declarado pelo browser antes do envio.
+        $uploadError = $_FILES['video']['error'] ?? -1;
+        $error = match($uploadError) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Arquivo muito grande. Tamanho máximo permitido: 100MB',
+            UPLOAD_ERR_PARTIAL  => 'Upload interrompido. O arquivo foi enviado parcialmente.',
+            UPLOAD_ERR_NO_FILE  => 'Nenhum arquivo selecionado.',
+            UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE => 'Erro no servidor ao salvar arquivo temporário.',
+            default             => 'Por favor, selecione um vídeo válido.',
+        };
+    }
+
+    // ── Verificar upload parcial ─────────────────────────────────────────────
+    if (!$error) {
         $expected_size = isset($_POST['expected_size']) ? (int)$_POST['expected_size'] : 0;
         if ($expected_size > 0 && (int)$_FILES['video']['size'] !== $expected_size) {
-            $error = 'Upload incompleto. O ficheiro foi enviado parcialmente — verifique a sua ligação à internet e tente novamente.';
-        }
-
-        require_once 'includes/upload_validation.php';
-        
-        $video = $_FILES['video'];
-        $videoName = $video['name'];
-        $videoSize = $video['size'];
-        $videoTmp = $video['tmp_name'];
-        $videoType = strtolower(pathinfo($videoName, PATHINFO_EXTENSION));
-
-        // Validação segura de vídeo com MIME type checking
-        // Guardado por !$error para não executar FFmpeg em ficheiros incompletos.
-        if (!$error) {
-            $validation = validate_video_upload(
-                $videoTmp,
-                $videoName,
-                ['mp4', 'avi', 'mov', 'wmv', 'webm'],
-                50 // 50MB máximo
-            );
-
-            if (!$validation['valid']) {
-                $error = $validation['error'];
-            } else {
-                $processing_result = video_prepare_for_storage($videoTmp, $validation['extension']);
-                if (!$processing_result['success']) {
-                    $error = $processing_result['error'] ?: 'Erro ao processar vídeo para formato compatível.';
-                }
-            }
-        }
-
-        if (!$error) {
-            $processed_video_path = (string)$processing_result['output_path'];
-            $processed_video_ext = (string)$processing_result['extension'];
-            $is_transcoded = !empty($processing_result['transcoded']);
-
-            // ============================================
-            // MÚSICA DE FUNDO (ROYALTY-FREE)
-            // ============================================
-            $music_name = '';
-            $music_artist = '';
-            $music_tmp_path = null;
-            $music_merged_path = null;
-
-            $music_data_raw = trim($_POST['music_track_data'] ?? '');
-            if ($music_data_raw !== '') {
-                $music_data = json_decode($music_data_raw, true);
-                if (is_array($music_data) && !empty($music_data['download_url'])) {
-                    $music_mode = ($_POST['music_mode'] ?? 'mix') === 'replace' ? 'replace' : 'mix';
-                    $music_volume_pct = max(5, min(100, (int)($_POST['music_volume'] ?? 25)));
-                    $music_volume = $music_volume_pct / 100.0;
-                    $music_start = max(0.0, min(300.0, (float)($_POST['music_start'] ?? 0)));
-
-                    $music_tmp_path = video_download_music($music_data['download_url']);
-                    if ($music_tmp_path) {
-                        $merge_result = video_merge_music(
-                            $processed_video_path,
-                            $music_tmp_path,
-                            $music_mode,
-                            $music_volume,
-                            $music_start
-                        );
-
-                        if ($merge_result['success'] && $merge_result['output_path']) {
-                            // Limpar video anterior se era transcoded
-                            if ($is_transcoded && file_exists($processed_video_path)) {
-                                @unlink($processed_video_path);
-                            }
-                            $music_merged_path = $merge_result['output_path'];
-                            $processed_video_path = $music_merged_path;
-                            $processed_video_ext = 'mp4';
-                            $is_transcoded = true; // marcar para cleanup
-                            $music_name = sanitize($music_data['name'] ?? '');
-                            $music_artist = sanitize($music_data['artist'] ?? '');
-                        } else {
-                            $error = 'Falha ao adicionar música ao vídeo: ' . ($merge_result['error'] ?? 'erro desconhecido no FFmpeg');
-                            error_log('Music merge failed: ' . ($merge_result['error'] ?? 'unknown'));
-                        }
-                        @unlink($music_tmp_path);
-                    } else {
-                        $error = 'Não foi possível descarregar a música selecionada. Verifique a conexão do servidor.';
-                        error_log('Music download failed for URL: ' . $music_data['download_url']);
-                    }
-                }
-            }
-
-            // Se houve erro na música, abortar antes do upload
-            if ($error) {
-                // Limpar ficheiro de vídeo processado
-                if ($is_transcoded && file_exists($processed_video_path)) {
-                    @unlink($processed_video_path);
-                }
-            }
-
-            if (!$error) {
-
-            // ============================================
-            // MODERAÇÃO DE CONTEÚDO (NudeNet)
-            // O ficheiro local ainda existe neste ponto.
-            // Se rejeitado, abortar ANTES de subir para R2.
-            // ============================================
-            $moderation_status = 'approved'; // fallback se colunas não existem
-            $moderation_score  = null;
-
-            if ($has_moderation_cols) {
-                $mod_decision = moderation_decide_status($processed_video_path);
-                error_log('upload.php moderation: ' . $mod_decision['log']);
-
-                if ($mod_decision['db_status'] === 'rejected') {
-                    // NudeNet rejeitou → BLOQUEAR upload (não enviar para R2)
-                    $error = $mod_decision['reject_msg'] ?: 'O vídeo contém conteúdo inapropriado e não pode ser publicado.';
-                    error_log(sprintf(
-                        'upload.php: vídeo REJEITADO pelo NudeNet (score=%.3f, user_id=%d)',
-                        $mod_decision['score'] ?? 0,
-                        $_SESSION['user_id'] ?? 0
-                    ));
-                    // Limpar ficheiro processado
-                    if ($is_transcoded && file_exists($processed_video_path)) {
-                        @unlink($processed_video_path);
-                    }
-                } else {
-                    $moderation_status = $mod_decision['db_status'];  // 'approved' ou 'pending'
-                    $moderation_score  = $mod_decision['score'];
-                }
-            }
-
-            if (!$error) {
-
-            $uniqueName = uniqid() . '_' . time() . '.' . $processed_video_ext;
-
-            // ============================================
-            // UPLOAD PARA CLOUDFLARE R2 OU LOCAL
-            // ============================================
-            $upload_success = false;
-            $db_video_path = $uniqueName; // valor padrão (local)
-            $local_path = null;
-            
-            if (R2_ENABLED) {
-                // Tentar upload para R2 directamente do ficheiro temporário
-                $mime_type = r2_get_mime_type($processed_video_ext);
-                $r2_result = r2_upload_video($processed_video_path, $uniqueName, $mime_type);
-                
-                if ($r2_result['success']) {
-                    $upload_success = true;
-                    $db_video_path = R2_PATH_PREFIX . $uniqueName; // r2://nome_ficheiro.mp4
-                } else {
-                    // Fallback: salvar localmente se R2 falhar
-                    error_log('R2 upload falhou, usando armazenamento local: ' . $r2_result['error']);
-                    $local_path = 'uploads/videos/' . $uniqueName;
-                    if (!is_dir('uploads/videos/')) {
-                        mkdir('uploads/videos/', 0755, true);
-                    }
-                    if (video_move_to_storage($processed_video_path, $local_path)) {
-                        $upload_success = true;
-                        $db_video_path = $uniqueName;
-                    }
-                }
-            } else {
-                // R2 desactivado — usar armazenamento local
-                $local_path = 'uploads/videos/' . $uniqueName;
-                if (!is_dir('uploads/videos/')) {
-                    mkdir('uploads/videos/', 0755, true);
-                }
-                if (video_move_to_storage($processed_video_path, $local_path)) {
-                    $upload_success = true;
-                    $db_video_path = $uniqueName;
-                }
-            }
-
-            if ($is_transcoded && !$upload_success && file_exists($processed_video_path)) {
-                @unlink($processed_video_path);
-            }
-
-            if ($upload_success) {
-                try {
-                    $pdo->beginTransaction();
-
-                    // INSERT com ou sem colunas de música + moderação
-                    if ($has_music_cols && $has_moderation_cols) {
-                        $stmt = $pdo->prepare("
-                            INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, music_name, music_artist, moderation_status, moderation_score, moderation_checked_at, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-                        ");
-                        if (!$stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public, $music_name, $music_artist, $moderation_status, $moderation_score])) {
-                            throw new RuntimeException('Erro ao salvar vídeo no banco de dados.');
-                        }
-                    } elseif ($has_music_cols) {
-                        $stmt = $pdo->prepare("
-                            INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, music_name, music_artist, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-                        ");
-                        if (!$stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public, $music_name, $music_artist])) {
-                            throw new RuntimeException('Erro ao salvar vídeo no banco de dados.');
-                        }
-                    } elseif ($has_moderation_cols) {
-                        $stmt = $pdo->prepare("
-                            INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, moderation_status, moderation_score, moderation_checked_at, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-                        ");
-                        if (!$stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public, $moderation_status, $moderation_score])) {
-                            throw new RuntimeException('Erro ao salvar vídeo no banco de dados.');
-                        }
-                    } else {
-                        $stmt = $pdo->prepare("
-                            INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, NOW())
-                        ");
-                        if (!$stmt->execute([$_SESSION['user_id'], $title, $description, $db_video_path, $hashtags, $is_public])) {
-                            throw new RuntimeException('Erro ao salvar vídeo no banco de dados.');
-                        }
-                    }
-
-                    $video_id = (int)$pdo->lastInsertId();
-                    if ($video_id > 0) {
-                        hashtag_sync_video_relations($pdo, $video_id, $parsed_hashtags);
-                    }
-
-                    $pdo->prepare("
-                        UPDATE users 
-                        SET videos_count = videos_count + 1
-                        WHERE id = ?
-                    ")->execute([$_SESSION['user_id']]);
-
-                    ranking_points_increment($pdo, $_SESSION['user_id'], 10);
-                    ranking_cache_clear_all();
-
-                    $pdo->commit();
-
-                    if ($is_transcoded && file_exists($processed_video_path)) {
-                        @unlink($processed_video_path);
-                    }
-
-                    $success = ($moderation_status === 'pending')
-                        ? 'Vídeo enviado! Está a aguardar revisão antes de ser publicado.'
-                        : 'Vídeo enviado com sucesso!';
-
-                    $is_ad_flow = isset($_POST['ad_flow']) && $_POST['ad_flow'] == '1';
-
-                    if ($isAjax) {
-                        if (ob_get_level()) ob_end_clean();
-                        header('Content-Type: application/json');
-                        echo json_encode(['success' => true, 'message' => $success, 'video_id' => $video_id, 'moderation_status' => $moderation_status, 'is_ad_flow' => $is_ad_flow]);
-                        exit;
-                    }
-
-                    header('refresh:2;url=index.php');
-                } catch (Throwable $e) {
-                    if ($pdo->inTransaction()) {
-                        $pdo->rollBack();
-                    }
-
-                    $error = 'Erro interno: ' . $e->getMessage();
-                    
-                    // Limpar ficheiro em caso de erro
-                    if (r2_is_r2_path($db_video_path)) {
-                        r2_delete_video($db_video_path);
-                    } elseif ($local_path && file_exists($local_path)) {
-                        unlink($local_path);
-                    }
-
-                    if ($is_transcoded && file_exists($processed_video_path)) {
-                        @unlink($processed_video_path);
-                    }
-                }
-            } else {
-                $error = 'Erro ao fazer upload do arquivo.';
-            }
-            }   // fecha if (!$error) interno (pós-moderação)
-            }   // fecha if (!$error) externo (bloco de moderação)
+            $error = 'Upload incompleto. O ficheiro foi enviado parcialmente — verifique a sua ligação e tente novamente.';
         }
     }
 
-    if ($isAjax && $error) {
+    // ── Validação de tipo/MIME do vídeo ─────────────────────────────────────
+    if (!$error) {
+        $video        = $_FILES['video'];
+        $videoTmp     = $video['tmp_name'];
+        $originalName = $video['name'];
+
+        $validation = validate_video_upload(
+            $videoTmp,
+            $originalName,
+            ['mp4', 'avi', 'mov', 'wmv', 'webm'],
+            100 // 100MB
+        );
+
+        if (!$validation['valid']) {
+            $error = $validation['error'];
+        }
+    }
+
+    // ── Verificar que a tabela upload_jobs existe ────────────────────────────
+    if (!$error) {
+        try {
+            $tableExists = $pdo->query("SHOW TABLES LIKE 'upload_jobs'")->fetchColumn();
+            if (!$tableExists) {
+                $error = 'Sistema de upload não está configurado. Contacte o administrador.';
+                error_log('upload.php: tabela upload_jobs não existe. Corre worker/install_upload_jobs.php');
+            }
+        } catch (Throwable $e) {
+            $error = 'Erro ao verificar sistema de upload.';
+        }
+    }
+
+    // ── Salvar ficheiro RAW na fila ──────────────────────────────────────────
+    if (!$error) {
+        $raw_queue_dir = __DIR__ . '/uploads/raw_queue';
+        if (!is_dir($raw_queue_dir)) {
+            mkdir($raw_queue_dir, 0750, true);
+        }
+
+        $safe_ext     = $validation['extension'];
+        $raw_filename = uniqid('raw_', true) . '_' . time() . '.' . $safe_ext;
+        $raw_path     = $raw_queue_dir . '/' . $raw_filename;
+
+        if (!move_uploaded_file($videoTmp, $raw_path)) {
+            $error = 'Falha ao salvar o ficheiro no servidor. Tente novamente.';
+        }
+    }
+
+    // ── Criar registo na BD e colocar job na fila ────────────────────────────
+    if (!$error) {
+        try {
+            $pdo->beginTransaction();
+
+            // Verificar/adicionar colunas de música e moderação
+            $has_music_cols = false;
+            try { $pdo->query("SELECT music_name FROM videos LIMIT 0"); $has_music_cols = true; } catch (Throwable $e) {
+                try {
+                    $pdo->exec("ALTER TABLE videos ADD COLUMN music_name VARCHAR(255) NOT NULL DEFAULT '' AFTER hashtags");
+                    $pdo->exec("ALTER TABLE videos ADD COLUMN music_artist VARCHAR(255) NOT NULL DEFAULT '' AFTER music_name");
+                    $has_music_cols = true;
+                } catch (Throwable $e2) {}
+            }
+
+            $has_moderation_cols = false;
+            try { $pdo->query("SELECT moderation_status FROM videos LIMIT 0"); $has_moderation_cols = true; } catch (Throwable $e) {
+                try {
+                    $pdo->exec("ALTER TABLE videos
+                        ADD COLUMN moderation_status ENUM('processing','pending','approved','rejected') NOT NULL DEFAULT 'approved',
+                        ADD COLUMN moderation_score FLOAT DEFAULT NULL,
+                        ADD COLUMN moderation_checked_at DATETIME DEFAULT NULL");
+                    $has_moderation_cols = true;
+                } catch (Throwable $e2) {}
+            }
+
+            // Garantir que o ENUM tem o valor 'processing'
+            if ($has_moderation_cols) {
+                try {
+                    $pdo->exec("ALTER TABLE videos
+                        MODIFY COLUMN moderation_status ENUM('processing','pending','approved','rejected') NOT NULL DEFAULT 'approved'");
+                } catch (Throwable $e) { /* já existe */ }
+            }
+
+            // Inserir vídeo com status 'processing' — visível para o utilizador
+            // mas não aparece no feed até estar 'approved'
+            $hashtags_formatted = hashtag_format_for_storage($parsed_hashtags);
+
+            if ($has_music_cols && $has_moderation_cols) {
+                $stmt = $pdo->prepare("
+                    INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public,
+                                        music_name, music_artist, moderation_status, created_at)
+                    VALUES (?, ?, ?, '', ?, ?, '', '', 'processing', NOW())
+                ");
+                $stmt->execute([$_SESSION['user_id'], $title, $description, $hashtags_formatted, $is_public]);
+            } elseif ($has_moderation_cols) {
+                $stmt = $pdo->prepare("
+                    INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public,
+                                        moderation_status, created_at)
+                    VALUES (?, ?, ?, '', ?, ?, 'processing', NOW())
+                ");
+                $stmt->execute([$_SESSION['user_id'], $title, $description, $hashtags_formatted, $is_public]);
+            } elseif ($has_music_cols) {
+                $stmt = $pdo->prepare("
+                    INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public,
+                                        music_name, music_artist, created_at)
+                    VALUES (?, ?, ?, '', ?, ?, '', '', NOW())
+                ");
+                $stmt->execute([$_SESSION['user_id'], $title, $description, $hashtags_formatted, $is_public]);
+            } else {
+                $stmt = $pdo->prepare("
+                    INSERT INTO videos (user_id, title, description, video_path, hashtags, is_public, created_at)
+                    VALUES (?, ?, ?, '', ?, ?, NOW())
+                ");
+                $stmt->execute([$_SESSION['user_id'], $title, $description, $hashtags_formatted, $is_public]);
+            }
+
+            $video_id = (int)$pdo->lastInsertId();
+
+            // Incrementar contagem de vídeos (rollback se o job falhar fica no worker)
+            $pdo->prepare("UPDATE users SET videos_count = videos_count + 1 WHERE id = ?")
+                ->execute([$_SESSION['user_id']]);
+
+            // Inserir job na fila
+            $music_track_data = trim($_POST['music_track_data'] ?? '');
+            $music_mode       = in_array($_POST['music_mode'] ?? '', ['mix','replace'], true)
+                                ? $_POST['music_mode']
+                                : 'mix';
+            $music_volume     = max(5, min(100, (int)($_POST['music_volume'] ?? 25))) / 100.0;
+            $music_start      = max(0.0, min(300.0, (float)($_POST['music_start'] ?? 0)));
+
+            $pdo->prepare("
+                INSERT INTO upload_jobs
+                    (user_id, video_id, tmp_video_path, original_name, title, description,
+                     hashtags, is_public, music_track_data, music_mode, music_volume, music_start, ad_flow,
+                     status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', NOW())
+            ")->execute([
+                $_SESSION['user_id'],
+                $video_id,
+                $raw_path,
+                $originalName,
+                $title,
+                $description,
+                $hashtags_formatted,
+                $is_public,
+                $music_track_data ?: null,
+                $music_mode,
+                $music_volume,
+                $music_start,
+                $ad_flow,
+            ]);
+
+            $job_id = (int)$pdo->lastInsertId();
+            $pdo->commit();
+
+            // ── Tentar lançar worker imediatamente (não-bloqueante) ─────────
+            $worker_script = __DIR__ . '/worker/process_upload_job.php';
+            if (file_exists($worker_script) && function_exists('exec')) {
+                $php_bin = PHP_BINARY ?: 'php';
+                $is_win  = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+                if ($is_win) {
+                    // Windows: start /B para não bloquear
+                    $cmd = 'start /B "" ' . escapeshellarg($php_bin) . ' ' . escapeshellarg($worker_script) . ' > NUL 2>&1';
+                    pclose(popen($cmd, 'r'));
+                } else {
+                    // Linux: nohup em background
+                    $cmd = 'nohup ' . escapeshellarg($php_bin) . ' ' . escapeshellarg($worker_script)
+                         . ' > /dev/null 2>&1 &';
+                    exec($cmd);
+                }
+            }
+
+        } catch (Throwable $e) {
+            try { $pdo->rollBack(); } catch (Throwable $e2) {}
+            // Limpar ficheiro RAW se a BD falhou
+            if (isset($raw_path) && file_exists($raw_path)) {
+                @unlink($raw_path);
+            }
+            $error = 'Erro interno ao iniciar o upload. Tente novamente.';
+            error_log('upload.php: ' . $e->getMessage());
+        }
+    }
+
+    // ── Responder AJAX ───────────────────────────────────────────────────────
+    if ($isAjax) {
         if (ob_get_level()) ob_end_clean();
         header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => $error]);
+        if ($error) {
+            echo json_encode(['success' => false, 'error' => $error]);
+        } else {
+            echo json_encode([
+                'success'  => true,
+                'job_id'   => $job_id,
+                'video_id' => $video_id,
+                'message'  => 'Vídeo recebido! A processar em background...',
+            ]);
+        }
         exit;
+    }
+
+    if (!$error) {
+        $success = 'Vídeo recebido! Está a ser processado e estará disponível em breve.';
+        header('refresh:3;url=index.php');
     }
 }
 ?>
@@ -535,7 +408,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <p>ou clique para selecionar</p>
                             <div class="file-size-limit">
                                 <i class="fas fa-info-circle"></i>
-                                Formatos: MP4, AVI, MOV, WMV, WebM &bull; Tamanho máximo: <strong>50MB</strong>
+                                Formatos: MP4, AVI, MOV, WMV, WebM &bull; Tamanho máximo: <strong>100MB</strong>
                             </div>
                         </div>
                         <div class="file-info" id="fileInfo" style="display: none;">
@@ -666,15 +539,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </div>
                     
                     <!-- Progresso do upload -->
-                    <div class="upload-progress" id="uploadProgress" style="display: none;">
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="progressFill"></div>
-                        </div>
-                        <div class="progress-text">
-                            <span id="progressText">Enviando...</span>
-                            <span id="progressPercent">0%</span>
-                        </div>
-                    </div>
+                    <div class="upload-progress" id="uploadProgress" style="display: none;"></div>
                     
                     <!-- Botões -->
                     <div class="form-actions">

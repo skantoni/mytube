@@ -433,22 +433,41 @@ function showUploadComplete(success, message) {
     }
 }
 
-// Tratar resposta do servidor (sucesso ou erro) — separado para reutilização
+// ============================================
+// BACKGROUND PROCESSING — POLLING
+// ============================================
+
+let pollingTimer    = null;
+let pollingJobId    = null;
+let pollingAttempts = 0;
+const POLLING_INTERVAL_MS  = 2000;  // 2 segundos entre cada poll
+const POLLING_MAX_ATTEMPTS = 300;   // máximo ~10 minutos
+
+/**
+ * Tratar resposta imediata após transferência.
+ * O servidor responde em < 5s com { success, job_id, video_id }.
+ * Processamento pesado corre em background — iniciamos polling.
+ */
 function handleServerResponse(response) {
     if (response.success) {
-        const videoId = response.video_id || null;
-
         if (cancelRequested) {
-            // ─── Utilizador cancelou durante o processamento ───
-            // O servidor já inseriu o vídeo — apagar imediatamente
-            uploadedVideoId = videoId;
+            uploadedVideoId = response.video_id || null;
             deleteOrphanedUpload();
             showUploadComplete(false, 'Upload cancelado. Vídeo removido do servidor.');
             resetUploadUI();
+            return;
+        }
+
+        const jobId = response.job_id || null;
+        if (jobId) {
+            // Novo fluxo: polling de background
+            pollingJobId   = jobId;
+            uploadedVideoId = response.video_id || null;
+            startPolling(jobId);
         } else {
-            // ─── Sucesso normal — redirecionar ───
+            // Fluxo legado sem job_id — redirecionar directamente
             showUploadComplete(true, response.message || 'Vídeo enviado com sucesso!');
-            setTimeout(() => {
+            setTimeout(function() {
                 if (response.is_ad_flow && response.video_id) {
                     window.location.href = 'anuncios.php?new_video_id=' + response.video_id;
                 } else {
@@ -462,25 +481,141 @@ function handleServerResponse(response) {
     }
 }
 
+function startPolling(jobId) {
+    pollingAttempts = 0;
+    showProcessingState('Vídeo recebido! A iniciar processamento...');
+    scheduleNextPoll(jobId);
+}
+
+function scheduleNextPoll(jobId) {
+    pollingTimer = setTimeout(function() { doPoll(jobId); }, POLLING_INTERVAL_MS);
+}
+
+function doPoll(jobId) {
+    pollingAttempts++;
+    if (pollingAttempts > POLLING_MAX_ATTEMPTS) {
+        showUploadComplete(false, 'Tempo de processamento esgotado. Verifica o teu perfil em alguns minutos.');
+        resetUploadUI();
+        return;
+    }
+
+    fetch('api/upload_status.php?job_id=' + encodeURIComponent(jobId), {
+        credentials: 'same-origin',
+        cache: 'no-store'
+    })
+    .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    })
+    .then(function(data) {
+        if (cancelRequested) {
+            clearTimeout(pollingTimer);
+            showUploadComplete(false, 'Cancelamento solicitado.');
+            resetUploadUI();
+            return;
+        }
+
+        var msg = data.progress || '';
+
+        if (data.status === 'queued') {
+            showProcessingState(msg || 'Na fila de espera...');
+            scheduleNextPoll(jobId);
+
+        } else if (data.status === 'processing') {
+            showProcessingState(msg || 'A processar vídeo...');
+            scheduleNextPoll(jobId);
+
+        } else if (data.status === 'done') {
+            clearTimeout(pollingTimer);
+            var modMsg = (data.moderation === 'pending')
+                ? 'Vídeo enviado! Está em revisão e será publicado em breve.'
+                : 'Vídeo publicado com sucesso! 🎉';
+            showUploadComplete(true, modMsg);
+            setTimeout(function() {
+                window.location.href = data.redirect || 'index.php';
+            }, 2000);
+
+        } else if (data.status === 'failed') {
+            clearTimeout(pollingTimer);
+            showUploadComplete(false, data.error || 'Erro no processamento do vídeo.');
+            resetUploadUI();
+
+        } else {
+            scheduleNextPoll(jobId);
+        }
+    })
+    .catch(function(err) {
+        console.warn('Polling error:', err);
+        if (pollingAttempts < POLLING_MAX_ATTEMPTS) {
+            scheduleNextPoll(jobId);
+        } else {
+            showUploadComplete(false, 'Erro de ligação durante o processamento. Verifica o teu perfil.');
+            resetUploadUI();
+        }
+    });
+}
+
+/**
+ * Mostrar estado de "a processar" com animação de pulso na barra.
+ */
+function showProcessingState(message) {
+    var uploadProgress = document.getElementById('uploadProgress');
+    if (!uploadProgress) return;
+
+    // Se já está em modo processing, só actualizar o texto
+    var existingStatus = document.getElementById('progressStatusText');
+    if (existingStatus && document.getElementById('progressBarFill') &&
+        document.getElementById('progressBarFill').classList.contains('processing-pulse')) {
+        existingStatus.textContent = message;
+        return;
+    }
+
+    uploadProgress.style.display = 'block';
+    uploadProgress.innerHTML =
+        '<div class="progress-upload-container">' +
+            '<div class="progress-header">' +
+                '<div class="progress-status">' +
+                    '<i class="fas fa-cog fa-spin progress-icon processing"></i>' +
+                    '<span id="progressStatusText">' + message + '</span>' +
+                '</div>' +
+                '<button type="button" onclick="cancelUpload()" class="progress-cancel-btn" id="cancelUploadBtn" title="Cancelar">' +
+                    '<i class="fas fa-times"></i>' +
+                '</button>' +
+            '</div>' +
+            '<div class="progress-bar-wrapper">' +
+                '<div class="progress-bar-track">' +
+                    '<div class="progress-bar-fill processing-pulse" id="progressBarFill" style="width:100%"></div>' +
+                '</div>' +
+                '<div class="progress-percentage" id="progressPercentage" style="color:#3b82f6">⏳</div>' +
+            '</div>' +
+            '<div class="progress-details">' +
+                '<div class="progress-detail-item">' +
+                    '<i class="fas fa-info-circle"></i>' +
+                    '<span>Podes fechar esta janela — o vídeo continuará a processar.</span>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+}
+
 // Cancelar upload
-// ─ Se transferência < 100%: abortar XHR (PHP nunca recebeu tudo → sem registo)
-// ─ Se transferência = 100% (a processar): NÃO abortar — marcar flag e aguardar
-//   resposta do servidor para obter o video_id e apagá-lo correctamente
+// ─ Fase de transferência (< 100%): abortar XHR
+// ─ Fase de polling (background): parar polling e limpar
 function cancelUpload() {
     if (uploadXHR && uploadPercent < 100) {
-        // Fase de transferência: abortar é seguro, PHP não terminou de receber
         uploadXHR.abort();
         uploadXHR = null;
 
-    } else if (uploadXHR && uploadPercent >= 100) {
-        // Fase de processamento no servidor: NÃO abortar!
-        // O PHP já recebeu tudo e está a trabalhar — se abortarmos o XHR
-        // perdemos a resposta (e o video_id) e o vídeo fica órfão.
+    } else if (pollingTimer) {
+        clearTimeout(pollingTimer);
+        pollingTimer = null;
         cancelRequested = true;
-        showCancellingUI();
+        if (uploadedVideoId) {
+            deleteOrphanedUpload();
+        }
+        showUploadComplete(false, 'Cancelamento solicitado. O servidor irá limpar o vídeo.');
+        resetUploadUI();
 
     } else if (uploadedVideoId) {
-        // Servidor já respondeu e temos o video_id — apagar directamente
         deleteOrphanedUpload();
         showUploadComplete(false, 'Upload cancelado. Vídeo removido do servidor.');
         resetUploadUI();
