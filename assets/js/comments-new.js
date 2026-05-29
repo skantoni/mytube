@@ -45,6 +45,7 @@ class CommentsSystem {
         this.setupCommentEmojiPicker();
         this.setupMentionAutocomplete();
         this._createMentionDropdown();
+        this.setupInputValidation();
         
         window.addEventListener('resize', () => {
             this.isMobile = window.innerWidth <= 768;
@@ -52,6 +53,40 @@ class CommentsSystem {
                 this._positionCommentEmojiPicker();
             }
         });
+    }
+    
+    setupInputValidation() {
+        const validateInput = (inputId, btnId) => {
+            const input = document.getElementById(inputId);
+            const btn = document.getElementById(btnId);
+            if (!input || !btn) return;
+            
+            const checkEmpty = () => {
+                // Don't override disabled if it's currently submitting (managed by submit methods)
+                if (btn.querySelector('.fa-spinner')) return;
+                btn.disabled = input.value.trim() === '';
+            };
+            
+            input.addEventListener('input', checkEmpty);
+            
+            // Override value setter to trigger checkEmpty programmatically
+            const descriptor = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+            if (descriptor) {
+                Object.defineProperty(input, 'value', {
+                    get: function() { return descriptor.get.call(this); },
+                    set: function(val) {
+                        descriptor.set.call(this, val);
+                        checkEmpty();
+                    }
+                });
+            }
+            
+            // Initial check
+            checkEmpty();
+        };
+
+        validateInput('commentInput', 'submitComment');
+        validateInput('commentInputMobile', 'submitCommentMobile');
     }
     
     setupDelegatedCommentButtons() {
@@ -1154,9 +1189,14 @@ class CommentsSystem {
         
         input.disabled = true;
         
-        // Disable submit button
+        // Disable submit button and show loading spinner
         const submitBtn = input.closest('.comment-input-container')?.querySelector('.submit-comment');
-        if (submitBtn) submitBtn.disabled = true;
+        let originalBtnHtml = '';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            originalBtnHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
         
         try {
             const response = await fetch('api/add_comment.php', {
@@ -1189,7 +1229,10 @@ class CommentsSystem {
             alert('Erro de conexão');
         } finally {
             input.disabled = false;
-            if (submitBtn) submitBtn.disabled = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHtml;
+            }
         }
     }
     
@@ -1820,7 +1863,12 @@ class CommentsSystem {
         
         input.disabled = true;
         const submitBtn = input.closest('.comment-input-container')?.querySelector('.submit-comment');
-        if (submitBtn) submitBtn.disabled = true;
+        let originalBtnHtml = '';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            originalBtnHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
         
         try {
             const response = await fetch('api/edit_comment.php', {
@@ -1867,7 +1915,10 @@ class CommentsSystem {
             showMessage('Erro de conexão ao editar comentário', 'error');
         } finally {
             input.disabled = false;
-            if (submitBtn) submitBtn.disabled = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHtml;
+            }
         }
     }
     
@@ -2087,6 +2138,14 @@ class CommentsSystem {
         // Desabilitar input enquanto envia
         input.disabled = true;
         
+        const submitBtn = input.closest('.comment-input-container')?.querySelector('.submit-comment');
+        let originalBtnHtml = '';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            originalBtnHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
+        
         fetch('api/add_comment.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2115,6 +2174,10 @@ class CommentsSystem {
         })
         .finally(() => {
             input.disabled = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHtml;
+            }
         });
     }
     

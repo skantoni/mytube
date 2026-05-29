@@ -927,7 +927,7 @@ if (!$user) {
             </div>
         </div>
 
-        <div class="app-version">MyTube v1.3.0</div>
+        <div class="app-version">MyTube v1.4.1</div>
     </main>
 
     <!-- Modal guia Desktop -->
