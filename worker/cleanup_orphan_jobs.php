@@ -128,7 +128,8 @@ if (is_dir($raw_queue_dir)) {
             $age_hours = (time() - filemtime($file)) / 3600;
             if ($age_hours > 2) {
                 @unlink($file);
-                log_line("Ficheiro órfão eliminado ({$age_hours:.1f}h): {$basename}");
+                $formatted_age = number_format($age_hours, 1);
+                log_line("Ficheiro órfão eliminado ({$formatted_age}h): {$basename}");
                 $cleaned_files++;
             } else {
                 log_line("Ficheiro recente (< 2h), a ignorar: {$basename}");
