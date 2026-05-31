@@ -16,7 +16,7 @@ $manifestVersion = @filemtime(__DIR__ . '/../manifest.json') ?: time();
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MyTube">
-<link rel="apple-touch-icon" href="assets/images/logo_icon.png">
+<link rel="apple-touch-icon" href="/assets/images/logo_icon.png">
     <!-- <link rel="apple-touch-startup-image" href="assets/images/logo.png">
  -->
 <!-- PWA: Service Worker Registration -->
