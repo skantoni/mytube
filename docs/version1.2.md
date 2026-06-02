@@ -109,11 +109,19 @@ CHAT_JWT_SECRET=sua_chave_gerada_aqui_minimo_32_caracteres
 
 #### Configurar no PHP:
 
-Adicionar em `includes/config.php`:
+Adicionar ao ficheiro `.env` (não ao código-fonte):
+
+```env
+CHAT_JWT_SECRET=a_mesma_chave_gerada_acima
+```
+
+Carregar em `includes/config.php` via `env()`:
 
 ```php
-define('CHAT_JWT_SECRET', 'a_mesma_chave_do_env_acima');
+define('CHAT_JWT_SECRET', env('CHAT_JWT_SECRET'));
 ```
+
+> **Segurança:** Nunca coloque o secret diretamente no código-fonte (`define('CHAT_JWT_SECRET', 'valor_hardcoded')`). Use sempre variáveis de ambiente via `.env`.
 
 ### 3️⃣ Reiniciar Chat Server
 

@@ -192,6 +192,69 @@ Certifique-se de que os seguintes arquivos existem:
 - [ ] Mensagens programadas
 - [ ] Grupos de chat
 
+## Arquitetura de Status de Mensagens
+
+O sistema implementa confirmações de leitura estilo WhatsApp via Socket.IO.
+
+### Estados e Ícones
+
+| Estado | Ícone | CSS | Quando |
+|--------|-------|-----|--------|
+| Enviando | ⏰ | `.sending` | Durante o envio |
+| Enviado | ✔ cinza | `.sent` | Salvo no servidor |
+| Entregue | ✔✔ cinza | `.delivered` | Destinatário online |
+| Lido | ✔✔ azul | `.read` | Destinatário abriu conversa |
+
+### Fluxo (Destinatário Online)
+
+```
+Utilizador A envia mensagem
+  → status: 'sent' (✔)
+  → Salvo no banco de dados
+
+Servidor verifica se B está online
+  → status: 'delivered' (✔✔ cinza)
+  → Emite 'message_status_update' para A
+
+Utilizador B abre a conversa
+  → join_conversation event
+  → status: 'read' (✔✔ azul)
+  → Emite 'message_status_update' para A
+```
+
+### Eventos Socket.IO
+
+**Emitidos pelo cliente:**
+
+| Evento | Dados | Descrição |
+|--------|-------|-----------|
+| `send_message` | `{ senderId, receiverId, content, replyToId, tempId }` | Envia mensagem |
+| `join_conversation` | `{ conversationId, userId, otherUserId }` | Marca como lido |
+
+**Recebidos pelo cliente:**
+
+| Evento | Dados | Descrição |
+|--------|-------|-----------|
+| `message_sent` | `{ tempId, messageId, status }` | Confirma envio |
+| `message_status_update` | `{ messageId, conversationId, status }` | Atualiza estado |
+| `new_message` | `{ conversationId, message }` | Nova mensagem |
+
+### Esquema da Base de Dados (tabela messages)
+
+```sql
+status ENUM('sent', 'delivered', 'read') DEFAULT 'sent'
+```
+
+### CSS dos Estados
+
+```css
+.message-status.sent     { color: #8696a0; }
+.message-status.delivered{ color: #8696a0; }
+.message-status.read     { color: #53bdeb; }  /* azul */
+```
+
+---
+
 ## 🐛 Troubleshooting
 
 ### Chat não carrega mensagens

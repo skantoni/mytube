@@ -1,150 +1,240 @@
-# Checklist de Segurança - MyTube
+# CHECKLIST DE SEGURANÇA — MyTube
 
-## ✅ Correções Implementadas (18/04/2026)
-
-### 1. Sistema de Email Único
-- ✅ **1 conta por email** (padrão mais seguro)
-- ✅ Script de migração criado ([fix_duplicate_emails.php](fix_duplicate_emails.php))
-- ✅ Constraint UNIQUE será adicionado automaticamente pelo script
-- ✅ Lógica de "3 contas por email" removida de [login.php](login.php)
-
-### 2. Reset de Senha Seguro
-- ✅ **Usa `user_id` em vez de `email`** para atualização
-- ✅ [reset_password.php](api/reset_password.php) - atualiza apenas 1 conta específica
-- ✅ [send_reset_code.php](api/send_reset_code.php) - rate limiting por usuário
-- ✅ [verify_reset_code.php](api/verify_reset_code.php) - validação por user_id
-- ✅ Códigos de reset expiram em 15 minutos
-- ✅ Rate limiting: máximo 3 códigos por hora
-
-### 3. Login Seguro
-- ✅ **Proteção contra timing attacks** - tempo constante de processamento
-- ✅ `password_verify()` sempre executado (mesmo se usuário não existir)
-- ✅ Mensagens de erro genéricas (não revela se usuário existe)
-- ✅ `session_regenerate_id()` após login bem-sucedido
-- ✅ Prepared statements (proteção SQL injection)
-- ✅ Log de tentativas falhadas para análise
-
-### 4. Cadastro Seguro
-- ✅ Validação de email com `filter_var()`
-- ✅ Validação de formato de email (requer @ e domínio)
-- ✅ Verificação de código de 6 dígitos
-- ✅ Username: 3-12 caracteres, apenas alphanumeric + - _
-- ✅ Senha: mínimo 6 caracteres
-- ✅ `password_hash()` com PASSWORD_DEFAULT
-- ✅ Proteção contra email duplicado (constraint UNIQUE)
-- ✅ Proteção contra username duplicado
-
-### 5. Gestão de Senhas
-- ✅ [change_password.php](api/change_password.php) - requer senha atual
-- ✅ Verifica se nova senha é diferente da atual
-- ✅ Hash com `PASSWORD_DEFAULT` (bcrypt)
-- ✅ Atualiza apenas conta do usuário logado
-
-## 🔒 Camadas de Segurança
-
-### SQL Injection
-- ✅ **100% Prepared Statements** em todos os arquivos
-- ✅ Nenhuma concatenação de SQL com dados do usuário
-- ✅ Parâmetros sempre bindados com `?`
-
-### Password Security
-- ✅ `password_hash()` com PASSWORD_DEFAULT
-- ✅ `password_verify()` para comparação
-- ✅ Nunca armazena senhas em plain text
-- ✅ Hash de senha sempre no servidor
-
-### Session Security
-- ✅ `session_regenerate_id(true)` após login
-- ✅ Limpeza de sessão `$_SESSION = []` antes de popular
-- ✅ Validação de sessão em todas as APIs protegidas
-
-### Email Verification
-- ✅ Código de 6 dígitos com expiração (15min)
-- ✅ Rate limiting: 3 códigos por hora
-- ✅ Códigos marcados como `used` após uso
-- ✅ Validação de formato de código `^\d{6}$`
-
-### Timing Attacks
-- ✅ **Novo**: Login com tempo constante
-- ✅ Hash dummy quando usuário não existe
-- ✅ Mensagens de erro genéricas
-
-## 📋 Próximos Passos Recomendados
-
-### Prioridade Alta 🔴
-1. **Execute o script de migração**:
-   ```
-   http://localhost/my/fix_duplicate_emails.php
-   ```
-2. **Backup do banco de dados** antes da migração
-3. **Testar reset de senha** após migração
-
-### Prioridade Média 🟡
-4. Adicionar CSRF tokens em formulários
-5. Implementar rate limiting no login (ex: 5 tentativas/minuto por IP)
-6. Adicionar CAPTCHA após X tentativas falhadas
-7. Implementar 2FA (autenticação em dois fatores)
-
-### Prioridade Baixa 🟢
-8. Política de senha mais forte (maiúsculas, números, símbolos)
-9. Expiração de senha após X dias
-10. Histórico de senhas (não permitir reutilização)
-11. Notificação por email em login de novo dispositivo
-
-## 🚨 Verificações de Segurança
-
-### Teste Manual
-- [ ] Tentar criar conta com email duplicado (deve falhar)
-- [ ] Resetar senha e verificar se afeta apenas 1 conta
-- [ ] Testar código de reset expirado (após 15min)
-- [ ] Testar rate limiting (4+ códigos em 1 hora)
-- [ ] Login com credenciais erradas (timing similar ao sucesso)
-
-### Monitoramento
-- [ ] Verificar logs de tentativas falhadas em `error_log`
-- [ ] Monitorar tentativas de SQL injection
-- [ ] Alertas de múltiplas tentativas falhadas do mesmo IP
-
-## 📊 Arquivos Modificados
-
-### Novos Arquivos
-- ✅ `fix_duplicate_emails.php` - Script de migração
-- ✅ `FIX_EMAIL_DUPLICADO.md` - Documentação da correção
-- ✅ `SECURITY_CHECKLIST.md` - Este arquivo
-
-### Arquivos Modificados
-- ✅ `login.php` - Removida lógica de 3 emails + timing attack protection
-- ✅ `api/reset_password.php` - Usa user_id em vez de email
-- ✅ `api/send_reset_code.php` - Rate limiting por user_id
-- ✅ `api/verify_reset_code.php` - Removido reset_email da sessão
-
-### Arquivos Verificados (OK)
-- ✅ `api/change_password.php` - Já usa user_id corretamente
-- ✅ `api/send_email_verification.php` - Seguro (email para verificação)
-
-## 🛡️ Compliance & Best Practices
-
-### OWASP Top 10 (2021)
-- ✅ A01: Broken Access Control - Sessions validadas
-- ✅ A02: Cryptographic Failures - Senhas hasheadas
-- ✅ A03: Injection - Prepared statements
-- ✅ A04: Insecure Design - Email único, rate limiting
-- ✅ A05: Security Misconfiguration - Erros genéricos
-- 🟡 A07: Authentication Failures - Pode melhorar com 2FA
-
-### GDPR Considerations
-- ✅ Email único facilita exercício de direitos (delete, export)
-- ✅ Dados de apenas 1 conta por email
-- ✅ Logs de segurança (tentativas falhadas)
-
-## 📞 Suporte
-
-Em caso de problemas de segurança:
-1. Verificar logs PHP: `c:\xampp\php\logs\php_error_log`
-2. Verificar logs Apache: `c:\xampp\apache\logs\error.log`
-3. Testar em ambiente local antes de produção
+**Última atualização:** 02 de Junho, 2026
+**Estado:** Auditoria completa realizada — ver [SECURITY_AUDIT.md](./SECURITY_AUDIT.md) para detalhe total
 
 ---
-**Última atualização**: 18 de Abril de 2026
-**Responsável**: Sistema de Segurança MyTube
-**Status**: ✅ Pronto para migração
+
+## ESTADO RESUMIDO
+
+| Severidade | Total | Resolvido | Pendente |
+|-----------|-------|-----------|---------|
+| Crítico   | 16    | 13        | 3       |
+| Alto      | 17    | 7         | 10      |
+| Médio     | 15    | 1         | 14      |
+| Baixo     | 10    | 0         | 10      |
+| **Total** | **58**| **21**    | **37**  |
+
+---
+
+## AÇÕES IMEDIATAS (Esta semana)
+
+- [ ] **Eliminar do repositório:** `test_csrf.php`, `test_rate_limit.php`, `test_upload_validation.php`, `check_session_browser.php`, `debug_csrf.php`, `debug_csrf_production.php`
+- [ ] **Chat-server:** Fazer `CHAT_JWT_SECRET` obrigatório — falhar com `process.exit(1)` se não definido
+- [ ] **Upload:** Remover `application/octet-stream` da validação de MIME de vídeos
+- [ ] **Amizades:** Adicionar rate limiting em `api/send_friend_request.php`
+- [ ] **Streaming:** Decodificar URL antes de verificar padrões de path traversal em `api/stream_video.php`
+
+---
+
+## AUTENTICAÇÃO E SESSÕES
+
+### Login
+
+- [x] Proteção contra timing attacks (hash dummy quando utilizador não existe)
+- [x] `password_verify()` sempre executado
+- [x] Mensagens de erro genéricas (não revela se utilizador existe)
+- [x] `session_regenerate_id(true)` após login bem-sucedido
+- [x] Prepared statements (proteção SQL injection)
+- [x] Rate limiting: 5 tentativas/utilizador + 15 tentativas/IP em 15 minutos
+- [ ] CAPTCHA após N tentativas falhadas
+- [ ] Autenticação de dois fatores (2FA)
+
+### Registo
+
+- [x] Validação de email com `filter_var()`
+- [x] Username: 3–12 caracteres, apenas alphanumeric + `- _`
+- [ ] **Senha: mínimo 12 caracteres + maiúscula + número** (atualmente apenas 6 chars)
+- [x] `password_hash(PASSWORD_DEFAULT)` (bcrypt)
+- [x] Proteção contra email duplicado (constraint UNIQUE)
+- [x] Proteção contra username duplicado
+- [x] Verificação de email por código de 6 dígitos
+
+### Reset de Senha
+
+- [x] Usa `user_id` (não email) para atualização
+- [x] Token apenas em `$_SESSION` (não retornado ao cliente)
+- [x] Códigos expiram em 15 minutos
+- [x] Rate limiting: 10 tentativas/IP + 5 tentativas/email em 15 minutos
+- [x] Códigos marcados como `used` após utilização
+- [ ] Prevenir enumeração de emails via timing (equalizar tempo de resposta)
+
+### Sessões
+
+- [x] `HttpOnly`, `SameSite=Lax`, `Secure` (produção) nos cookies
+- [x] `session.use_only_cookies = 1`
+- [x] Sessão expira em 2 horas (via `SESSION_LIFETIME` no `.env`)
+- [x] `$_SESSION = []` antes de popular após login
+- [ ] `session_regenerate_id()` após mudança de senha (`api/change_password.php`)
+- [ ] Gestão de sessões ativas em múltiplos dispositivos
+
+---
+
+## PROTEÇÃO CONTRA INJEÇÃO
+
+### SQL Injection
+
+- [x] 100% Prepared Statements (PDO com `?` ou named parameters)
+- [x] Nenhuma concatenação de SQL com dados do utilizador
+- [x] Parâmetros sempre bindados
+
+### XSS (Cross-Site Scripting)
+
+- [x] `htmlspecialchars(ENT_QUOTES, 'UTF-8')` em output PHP
+- [x] `escapeHtml()` em output JavaScript
+- [x] CSP header implementado
+- [ ] **CSP com `unsafe-inline` e `unsafe-eval` — migrar para nonces** (atual CSP é ineficaz)
+- [ ] Texto de comentários sanitizado no servidor (atualmente apenas no JS)
+- [ ] Notificações — campo `message` sanitizado no servidor
+
+### CSRF
+
+- [x] Tokens de 64 caracteres via `random_bytes(32)`
+- [x] Verificação com `hash_equals()` (timing-safe)
+- [x] CSRF em todos os 47+ endpoints POST
+- [x] Interceptação global em `fetch()` e `XMLHttpRequest` via `csrf.js`
+- [x] Meta tag `<meta name="csrf-token">` em todas as páginas
+
+---
+
+## UPLOADS E FICHEIROS
+
+### Validação de Uploads
+
+- [x] MIME type real via `finfo_file()` (não apenas extensão)
+- [x] `getimagesize()` para validação adicional de imagens
+- [x] Lista whitelist de tipos permitidos
+- [ ] **Remover `application/octet-stream` do mapeamento de vídeos**
+- [x] Limite de tamanho verificado no servidor
+- [x] Nomes de ficheiro sanitizados (remove caracteres perigosos)
+- [ ] **Nomes de ficheiro aleatórios** (`bin2hex(random_bytes(16))`) — atualmente previsíveis
+
+### Segurança de Imagens
+
+- [x] Remoção de EXIF/GPS via `includes/image_sanitizer.php`
+- [x] Suporte para JPEG, PNG, GIF, WebP
+- [x] Log de uploads com GPS (para revisão)
+- [ ] Avatares antigos eliminados após atualização
+
+### Path Traversal
+
+- [x] `realpath()` para resolver caminhos absolutos
+- [x] Validação de prefixo de caminho (`strpos($path, $uploads_dir) === 0`)
+- [x] Logs de tentativas de path traversal
+- [ ] **Decodificação URL antes de verificar padrões** (`..%2F`, `..%5C`, null bytes)
+
+### Diretórios
+
+- [ ] Permissões `0750` em vez de `0755` nos diretórios de upload
+
+---
+
+## PROTEÇÃO DE API E RATE LIMITING
+
+### Rate Limiting
+
+- [x] Sistema via tabela MySQL `rate_limits`
+- [x] Login: 5 tentativas/utilizador + 15 tentativas/IP em 15 minutos
+- [x] Reset de senha: 10 tentativas/IP + 5 tentativas/email em 15 minutos
+- [ ] **Comentários: migrar de SESSION para DB** (atualmente contornável)
+- [ ] **Pedidos de amizade: sem limite** — adicionar rate limiting
+- [ ] Mensagens no chat: sem limite por utilizador
+- [x] Deteção de IP real (Cloudflare, proxies)
+
+### SSRF
+
+- [x] `includes/ssrf_protection.php` com whitelist de domínios
+- [x] Bloqueio de IPs privados/reservados (IPv4 e IPv6)
+- [x] `CURLOPT_FOLLOWLOCATION => false`
+- [x] Whitelist: apenas `dzcdn.net` e `deezer.com`
+- [ ] **Domínios não-resolvíveis aceites se na whitelist** — DNS rebinding parcial
+
+### Chat / Socket.IO
+
+- [x] Autenticação JWT no handshake
+- [x] Verificação de assinatura HMAC-SHA256
+- [x] Expiração de token validada
+- [x] `socket.userId` em vez de `data.userId` (não confia no cliente)
+- [ ] **`CHAT_JWT_SECRET` sem fallback seguro** — deve falhar se não configurado
+- [ ] Rate limiting de mensagens por utilizador
+
+---
+
+## HEADERS E CONFIGURAÇÃO HTTP
+
+### Headers de Segurança
+
+- [x] `Strict-Transport-Security` (HSTS): max-age=1 ano + includeSubDomains
+- [x] `X-Frame-Options: SAMEORIGIN`
+- [x] `X-Content-Type-Options: nosniff`
+- [x] `Referrer-Policy: strict-origin-when-cross-origin`
+- [x] `Permissions-Policy: geolocation=(), microphone=(), camera=()`
+- [x] `Content-Security-Policy` configurado
+- [ ] **CSP sem `unsafe-inline` e `unsafe-eval`** — migrar para nonces
+
+### HTTPS e Certificados
+
+- [x] Redirect automático HTTP → HTTPS em produção
+- [x] Deteção de Cloudflare proxy para SSL
+
+---
+
+## CONFIGURAÇÃO E SEGREDOS
+
+### Ficheiros de Configuração
+
+- [x] Credenciais em `.env` (não no código)
+- [x] `.env` em `.gitignore`
+- [x] Permissões `640` no `.env` (`admin:www-data`)
+- [x] `includes/env_loader.php` para carregar variáveis
+- [ ] **Ficheiros debug no repositório** — eliminar `test_*.php`, `check_*.php`, `debug_*.php`
+- [ ] Ficheiros `*.example.php` protegidos por Nginx
+
+### Segredos
+
+- [x] Credenciais R2 em `.env` (antigas revogadas)
+- [x] Credenciais SMTP em `.env`
+- [x] CRON_SECRET em `.env`
+- [ ] **CHAT_JWT_SECRET — verificar configuração em produção**
+
+---
+
+## PROCESSAMENTO DE VÍDEO
+
+- [x] Validação da existência do binário FFmpeg antes de usar
+- [x] `escapeshellarg()` em todos os argumentos de shell
+- [x] Validação de MIME type do vídeo
+- [ ] **Timeout em processos FFmpeg** — vulnerável a DoS via vídeo malformado
+- [ ] **Limpeza de ficheiros temporários** em caso de crash
+
+---
+
+## LOGS E MONITORIZAÇÃO
+
+- [x] Tentativas de login falhadas logadas
+- [x] Tentativas de path traversal logadas
+- [x] Rate limit exceeded logado
+- [ ] **Logs com dados sensíveis** — remover sessão/tokens dos logs
+- [ ] Logging centralizado e estruturado
+- [ ] Alertas para padrões de ataque (múltiplas falhas do mesmo IP)
+
+---
+
+## PRIVACIDADE E COMPLIANCE (RGPD/LGPD)
+
+- [x] Email único por conta
+- [x] Senhas nunca armazenadas em texto plano
+- [x] Remoção de EXIF/GPS das imagens
+- [ ] Mecanismo de export de dados pessoais
+- [ ] Mecanismo de eliminação de conta (com limpeza de dados)
+- [ ] Banner de consentimento de cookies
+- [ ] Política de retenção de dados (mensagens, logs, views)
+
+---
+
+## REFERÊNCIAS
+
+- Auditoria completa: [SECURITY_AUDIT.md](./SECURITY_AUDIT.md)
+- Lista de vulnerabilidades: [SECURITY_VULNERABILITIES.md](./SECURITY_VULNERABILITIES.md)
+- Ações de rotação de credenciais: [SECURITY_ACTIONS.md](./SECURITY_ACTIONS.md)
+- Relatório executivo: [PROJECT_AUDIT_REPORT.md](./PROJECT_AUDIT_REPORT.md)
