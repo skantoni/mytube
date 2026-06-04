@@ -1095,7 +1095,31 @@ class TikTokPlayer {
             countEl.textContent = optimisticCount.toString();
         }
 
-        // ======= REQUISIÇÃO AO SERVIDOR (em background) =======
+        // ======= MICRO-INTERAÇÃO: Pontos Flutuantes =======
+        // Só mostrar quando está a DAR like (não ao tirar)
+        if (!wasLiked && button) {
+            // Encontrar o card do vídeo para pulsar o badge
+            const videoCard = button.closest('.video-item');
+            
+            // Usar a escola do utilizador logado para a mensagem flutuante
+            const schoolShort = window.currentUserSchool || null;
+            const scoreText = schoolShort
+                ? `🔥 +1 pt para ${schoolShort}!`
+                : `🔥 +1 Ponto no Ranking!`;
+            this.showFloatingScore(button, scoreText, false);
+            // Também pulsar o ranking badge do card
+            if (videoCard) {
+                const badge = videoCard.querySelector('.ranking-badge');
+                if (badge) {
+                    badge.classList.remove('pulse-once');
+                    // Force reflow to restart animation
+                    void badge.offsetWidth;
+                    badge.classList.add('pulse-once');
+                    setTimeout(() => badge.classList.remove('pulse-once'), 600);
+                }
+            }
+        }
+
         fetch('api/toggle_like.php', {
             method: 'POST',
             headers: {
@@ -1157,6 +1181,34 @@ class TikTokPlayer {
                 countEl.textContent = previousCount.toString();
             }
         }
+    }
+
+    /**
+     * Mostra uma notificação flutuante de pontos (micro-interação).
+     * @param {HTMLElement} anchorEl  - Elemento de referência para posicionamento
+     * @param {string}      text      - Texto a mostrar (ex: "🏆 +1 pt para Betânia!")
+     * @param {boolean}     isComment - Se true, usa variante azul (comentários)
+     */
+    showFloatingScore(anchorEl, text, isComment = false) {
+        if (!anchorEl) return;
+
+        // Criar elemento
+        const el = document.createElement('div');
+        el.className = 'floating-score' + (isComment ? ' comment-score' : '');
+        el.textContent = text;
+        document.body.appendChild(el);
+
+        // Posicionar centrado horizontalmente sobre o botão clicado
+        const rect = anchorEl.getBoundingClientRect();
+        const elW = 180; // estimativa; o CSS define o tamanho real
+        let left = rect.left + rect.width / 2 - elW / 2;
+        // Manter dentro dos limites da viewport
+        left = Math.max(8, Math.min(window.innerWidth - elW - 8, left));
+        el.style.left = `${left}px`;
+        el.style.top  = `${rect.top - 10}px`;
+
+        // Auto-remover após o fim da animação (1.6s)
+        setTimeout(() => el.remove(), 1700);
     }
 
     followUser(userId, button) {

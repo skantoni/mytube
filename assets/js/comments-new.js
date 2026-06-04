@@ -2164,10 +2164,24 @@ class CommentsSystem {
                 
                 // Atualizar contador de comentários em tempo real
                 this.updateCommentCountInUI(this.currentVideoId, 1);
+
+                // ======= MICRO-INTERAÇÃO: Pontos Flutuantes (+3 por comentário) =======
+                if (window.tiktokPlayer && typeof window.tiktokPlayer.showFloatingScore === 'function') {
+                    // Usar a escola do utilizador logado para a mensagem flutuante
+                    const schoolShort = window.currentUserSchool || null;
+                    const scoreText = schoolShort
+                        ? `💬 +3 pts para ${schoolShort}!`
+                        : `💬 +3 Pontos no Ranking!`;
+                    // Ancorar ao botão de comentários do vídeo atual
+                    const commentBtn = document.querySelector(`.comment-btn[data-video-id="${this.currentVideoId}"]`);
+                    const anchor = commentBtn || document.getElementById(platform === 'mobile' ? 'submitCommentMobile' : 'submitComment');
+                    window.tiktokPlayer.showFloatingScore(anchor, scoreText, true);
+                }
             } else {
                 alert(data.error || 'Erro ao adicionar comentário');
             }
         })
+
         .catch(error => {
             console.error('Erro:', error);
             alert('Erro de conexão ao adicionar comentário');

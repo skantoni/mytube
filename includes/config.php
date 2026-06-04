@@ -229,7 +229,12 @@ function ensureUserData() {
             ($now - $_SESSION['_user_cache_time']) > $cache_ttl ||
             !isset($_SESSION['username'])) {
             
-            $stmt = $pdo->prepare("SELECT profile_picture, username, full_name FROM users WHERE id = ?");
+            $stmt = $pdo->prepare("
+                SELECT u.profile_picture, u.username, u.full_name, s.short_name as school_short, s.name as school_name 
+                FROM users u 
+                LEFT JOIN schools s ON u.school_id = s.id 
+                WHERE u.id = ?
+            ");
             $stmt->execute([$_SESSION['user_id']]);
             $user = $stmt->fetch();
             
@@ -237,6 +242,8 @@ function ensureUserData() {
                 $_SESSION['profile_picture'] = $user['profile_picture'];
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['full_name'] = $user['full_name'];
+                $_SESSION['school_short'] = $user['school_short'];
+                $_SESSION['school_name'] = $user['school_name'];
                 $_SESSION['_user_cache_time'] = $now;
             }
         }

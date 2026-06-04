@@ -1016,7 +1016,7 @@
                     html += `
                         <div class="best-mytuber-card best-mytuber-global-card" onclick="goToProfile('${esc(globalWinner.username)}')">
                             <div class="best-mytuber-card-glow"></div>
-                            <div class="best-mytuber-crown-icon">🏆</div>
+                            <div class="best-mytuber-crown-icon"><svg class="mytube-rank-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:1.2em; height:1.2em; vertical-align:middle; display:inline-block; filter:drop-shadow(0 2px 4px rgba(0,123,255,0.4));"><defs><linearGradient id="mytubeFlame" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4facfe"/><stop offset="100%" stop-color="#00f2fe"/></linearGradient><linearGradient id="mytubeBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#007BFF"/><stop offset="100%" stop-color="#003D82"/></linearGradient></defs><path d="M12 2C12 2 15 5.5 15 8C15 9.65 13.65 11 12 11C10.35 11 9 9.65 9 8C9 5.5 12 2 12 2Z" fill="url(#mytubeFlame)"/><rect x="7" y="13" width="10" height="4" rx="1" fill="url(#mytubeBar)"/><rect x="3" y="19" width="18" height="4" rx="1" fill="url(#mytubeBar)"/></svg></div>
                             <div class="best-mytuber-tag">Best MyTuber Global</div>
                             <div class="best-mytuber-avatar-wrapper">
                                 <img src="${esc(pic)}" class="best-mytuber-avatar" alt="${esc(globalWinner.full_name)}">

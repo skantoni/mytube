@@ -202,7 +202,7 @@ try {
                         if ($ub['scope'] === 'school') $is_best_school = true;
                     }
                     if ($is_best_global): ?>
-                        <span class="best-mytuber-badge best-mytuber-global" title="🏆 Best MyTuber Global da Semana">
+                        <span class="best-mytuber-badge best-mytuber-global" title="🔥 Best MyTuber Global da Semana">
                             <i class="fas fa-crown"></i>
                         </span>
                     <?php endif; ?>

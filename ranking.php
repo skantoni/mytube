@@ -266,7 +266,7 @@ $is_admin = isAdminUser();
                     html += '<div style="color:#94a3b8;">Candidatos: ' + (data.total_candidates || 0) + '</div>';
                     if (data.winners && data.winners.length > 0) {
                         data.winners.forEach(w => {
-                            const icon = w.scope === 'global' ? '🏆' : '🏅';
+                            const icon = w.scope === 'global' ? '🔥' : '🏅';
                             html += '<div style="margin-top:6px;padding:6px 8px;background:rgba(255,215,0,0.1);border-radius:8px;">';
                             html += icon + ' <strong>@' + w.username + '</strong> (' + w.scope + ')';
                             html += '<br><span style="color:#FFD700;">Score: ' + w.score + '</span>';
