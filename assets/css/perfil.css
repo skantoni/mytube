@@ -533,15 +533,29 @@ body {
     border-radius: 10px;
     overflow: hidden;
     cursor: pointer;
-    transition: all 0.25s ease;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
     border: 1px solid rgba(255, 255, 255, 0.08);
     position: relative;
+
+    /* ✅ Performance: o browser ignora o rendering de cards fora do ecrã */
+    content-visibility: auto;
+    /* Tamanho estimado do card (thumbnail 160px + info ~60px) para a barra de scroll não saltar */
+    contain-intrinsic-size: 0 220px;
+    /* Isola o repaint: hover num card não dispara recálculos nos outros */
+    contain: layout style paint;
 }
 
 .video-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     border-color: rgba(59, 130, 246, 0.5);
+    /* ✅ Performance: delega a animação à GPU */
+    will-change: transform;
+}
+
+/* Limpa o will-change quando não está em hover (evita consumo de VRAM) */
+.video-card:not(:hover) {
+    will-change: auto;
 }
 
 .video-thumbnail {
