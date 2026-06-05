@@ -513,7 +513,7 @@
             const c = top3[i];
             const pic = c.profile_picture_url || 'assets/images/avatars/default.webp';
             html += `
-                <div class="podium-item ${classes[i]}" onclick="goToProfile('${esc(c.username)}')">
+                <div class="podium-item ${classes[i]}" onclick="goToProfile('${escAttr(c.username)}')">
                     <div class="podium-avatar-wrapper">
                         ${crowns[i] ? `<div class="podium-crown">${crowns[i]}</div>` : ''}
                         <img src="${pic}" class="podium-avatar" alt="${esc(c.full_name)}">
@@ -545,7 +545,7 @@
             const pic = c.profile_picture_url || 'assets/images/avatars/' + (c.profile_picture || 'default.webp');
             
             return `
-                <div class="creator-row ${isMe ? 'highlighted' : ''}" onclick="goToProfile('${esc(c.username)}')">
+                <div class="creator-row ${isMe ? 'highlighted' : ''}" onclick="goToProfile('${escAttr(c.username)}')">
                     <div class="creator-position ${posClass}">
                         ${pos <= 3 ? getMedal(pos) : pos}
                     </div>
@@ -597,7 +597,7 @@
                 el.innerHTML = data.schools.map(s => {
                     const topClass = s.position <= 3 ? `top-${s.position}` : '';
                     return `
-                        <div class="school-rank-card ${topClass}" onclick="viewSchoolRanking(${s.id}, '${esc(s.name)}')">
+                        <div class="school-rank-card ${topClass}" onclick="viewSchoolRanking(${s.id}, '${escAttr(s.name)}')">
                             <div class="school-rank-header">
                                 <div class="school-rank-position">${s.position <= 3 ? getMedal(s.position) : s.position}</div>
                                 <div class="school-rank-logo">🏫</div>
@@ -708,7 +708,7 @@
         
         el.innerHTML = schools.map(s => `
             <div class="school-list-item ${s.id == window.userSchoolId ? 'selected' : ''}" 
-                 onclick="selectSchool(${s.id}, '${esc(s.name)}')">
+                 onclick="selectSchool(${s.id}, '${escAttr(s.name)}')">
                 <div class="school-list-icon">🏫</div>
                 <div class="school-list-name">${esc(s.name)}</div>
                 <div class="school-list-short">${esc(s.short_name || '')}</div>
@@ -793,6 +793,11 @@
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    function escAttr(str) {
+        if (!str) return '';
+        return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
     }
 
     function formatNum(num) {

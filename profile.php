@@ -1567,7 +1567,8 @@ $has_more_videos = $total_user_videos > count($user_videos);
         return d.innerHTML;
     }
     function escAttr(s) {
-        return s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        if (!s) return '';
+        return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
     }
 
     // Validar escola ao sair do campo (sem alertas)
