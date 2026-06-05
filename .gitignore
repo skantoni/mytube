@@ -37,6 +37,8 @@ chat-server/.env.production
 # === CACHE & LOGS ===
 cache/rankings/*
 !cache/rankings/.gitkeep
+sessions/*
+!sessions/.gitkeep
 *.log
 logs/*
 !logs/.gitkeep

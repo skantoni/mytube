@@ -100,7 +100,18 @@ if ($is_production && !$is_cli) {
 
 // Iniciar sessão com configuração segura (apenas se não for CLI)
 if (!$is_cli && session_status() === PHP_SESSION_NONE) {
-    $session_lifetime = (int)env('SESSION_LIFETIME', 7200); // Padrão: 2 horas
+    $session_lifetime = (int)env('SESSION_LIFETIME', 2592000); // Padrão: 30 dias (2592000 segs)
+
+    // ✅ ISOLAR SESSÕES: Evitar que o Lixeiro global do servidor (ex: 24 mins) apague as nossas sessões
+    $session_dir = __DIR__ . '/../sessions';
+    if (!is_dir($session_dir)) {
+        @mkdir($session_dir, 0755, true);
+    }
+    ini_set('session.save_path', $session_dir);
+    
+    // Forçar o PHP a gerir o Lixo (Garbage Collection) nesta pasta customizada baseando-se na nossa vida útil
+    ini_set('session.gc_probability', 1);
+    ini_set('session.gc_divisor', 100);
 
     ini_set('session.cookie_httponly', 1); // Previne XSS via JavaScript
     ini_set('session.use_only_cookies', 1); // Previne session fixation via URL
@@ -126,6 +137,20 @@ if (!$is_cli && session_status() === PHP_SESSION_NONE) {
     ini_set('session.cookie_lifetime', $session_lifetime);
 
     session_start();
+
+    // ✅ RENOVAÇÃO AUTOMÁTICA (Session Touch):
+    // Garante que o ficheiro de sessão no servidor atualiza a sua data de modificação 
+    // enquanto o utilizador navega, impedindo o lixeiro de achar que está inativo.
+    $now = time();
+    $touch_interval = 300; // Atualiza a cada 5 minutos
+    if (!isset($_SESSION['last_activity']) || ($now - $_SESSION['last_activity']) > $touch_interval) {
+        $_SESSION['last_activity'] = $now;
+        
+        // Opcional para manter o cookie vivo no navegador estendendo a sua data (Remember Me constante)
+        if (isset($_COOKIE[session_name()])) {
+            setcookie(session_name(), session_id(), $now + $session_lifetime, BASE_PATH ? BASE_PATH . '/' : '/');
+        }
+    }
 }
 
 // ✅ HEADERS DE SEGURANÇA HTTP (apenas se não for CLI)
