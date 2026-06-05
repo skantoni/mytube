@@ -4554,51 +4554,100 @@ function toggleVoiceRecording() {
 }
 
 async function startVoiceRecording() {
-    if (!chatWithUserId) {
+    // ✅ Verificar se há uma conversa activa (1:1 ou grupo)
+    if (!chatWithUserId && !currentGroupId) {
         showToast('Selecione uma conversa primeiro', 'error');
         return;
     }
-    
+
+    // ✅ Verificar contexto seguro (HTTPS ou localhost)
+    // getUserMedia() só funciona em páginas HTTPS ou em localhost
+    if (!window.isSecureContext) {
+        showToast('Gravação de áudio requer HTTPS. Contacte o suporte.', 'error');
+        console.error('❌ getUserMedia requer contexto seguro (HTTPS/localhost)');
+        return;
+    }
+
+    // ✅ Verificar suporte da API no browser
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+        showToast('O seu browser não suporta gravação de áudio. Tente Chrome ou Firefox.', 'error');
+        console.error('❌ navigator.mediaDevices.getUserMedia não disponível');
+        return;
+    }
+
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        // Detectar formato suportado
-        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-            ? 'audio/webm;codecs=opus' 
-            : MediaRecorder.isTypeSupported('audio/webm') 
-                ? 'audio/webm' 
-                : 'audio/ogg';
-        
-        mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+        // Detectar formato suportado (com fallback para iOS/Safari)
+        let mimeType = '';
+        const formats = [
+            'audio/webm;codecs=opus',
+            'audio/webm',
+            'audio/ogg;codecs=opus',
+            'audio/ogg',
+            'audio/mp4',
+            ''  // deixar o browser escolher como último recurso
+        ];
+        for (const fmt of formats) {
+            if (fmt === '' || MediaRecorder.isTypeSupported(fmt)) {
+                mimeType = fmt;
+                break;
+            }
+        }
+
+        const recorderOptions = mimeType ? { mimeType } : {};
+        mediaRecorder = new MediaRecorder(stream, recorderOptions);
         audioChunks = [];
-        
+
         mediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) audioChunks.push(e.data);
+            if (e.data && e.data.size > 0) audioChunks.push(e.data);
         };
-        
+
         mediaRecorder.onstop = () => {
-            // Parar todas as tracks do microfone
+            // Parar todas as tracks do microfone ao terminar
             stream.getTracks().forEach(track => track.stop());
         };
-        
-        mediaRecorder.start();
+
+        mediaRecorder.start(250); // colectar dados a cada 250ms (mais robusto)
         isRecordingVoice = true;
         recordingStartTime = Date.now();
-        
+
         // Mostrar UI de gravação
         showRecordingUI();
-        
-        // Timer
+
+        // Timer de contagem
         recordingTimerInterval = setInterval(updateRecordingTimer, 1000);
-        
-        console.log('🎤 Gravação de áudio iniciada');
-        
+
+        console.log(`🎤 Gravação iniciada | formato: ${mediaRecorder.mimeType || 'auto'}`);
+
     } catch (err) {
-        console.error('Erro ao aceder ao microfone:', err);
-        if (err.name === 'NotAllowedError') {
-            showToast('Permissão de microfone negada. Ative nas configurações do navegador.', 'error');
-        } else {
-            showToast('Não foi possível aceder ao microfone', 'error');
+        console.error('Erro ao aceder ao microfone:', err.name, err.message);
+
+        // ✅ Tratamento específico para cada tipo de erro
+        switch (err.name) {
+            case 'NotAllowedError':
+            case 'PermissionDeniedError':
+                showToast('Permissão de microfone negada. Clique no ícone 🔒 na barra de endereço e permita o microfone.', 'error');
+                break;
+            case 'NotFoundError':
+            case 'DevicesNotFoundError':
+                showToast('Nenhum microfone encontrado. Verifique se está ligado.', 'error');
+                break;
+            case 'NotReadableError':
+            case 'TrackStartError':
+                showToast('Microfone em uso por outra aplicação. Feche-a e tente novamente.', 'error');
+                break;
+            case 'OverconstrainedError':
+                showToast('Microfone incompatível com as configurações requeridas.', 'error');
+                break;
+            case 'SecurityError':
+                showToast('Gravação de áudio bloqueada por política de segurança. Use HTTPS.', 'error');
+                break;
+            case 'AbortError':
+                showToast('Acesso ao microfone interrompido. Tente novamente.', 'error');
+                break;
+            default:
+                showToast('Não foi possível aceder ao microfone: ' + (err.message || err.name), 'error');
         }
     }
 }
@@ -4661,54 +4710,72 @@ function updateRecordingTimer() {
 
 function cancelVoiceRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        // ✅ Parar stream antes de parar o recorder (evita microfone preso)
+        try {
+            if (mediaRecorder.stream) {
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+        } catch (e) {
+            console.warn('Aviso ao parar stream no cancelamento:', e);
+        }
+        mediaRecorder.onstop = null; // Cancelar callback (não enviar)
         mediaRecorder.stop();
     }
-    
+
     clearInterval(recordingTimerInterval);
     isRecordingVoice = false;
     mediaRecorder = null;
     audioChunks = [];
     recordingStartTime = null;
-    
+
     hideRecordingUI();
     console.log('❌ Gravação cancelada');
 }
 
 function stopAndSendVoiceRecording() {
     if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
-    
+
     clearInterval(recordingTimerInterval);
     const duration = Math.floor((Date.now() - recordingStartTime) / 1000);
-    
+
+    // ✅ Capturar referências ANTES do onstop (evita referência nula)
+    const capturedMimeType = mediaRecorder.mimeType || 'audio/webm';
+    const capturedStream = mediaRecorder.stream;
+
     mediaRecorder.onstop = async () => {
-        // Parar microfone
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
-        
+        // Parar microfone (usar stream capturada antes do stop)
+        try {
+            if (capturedStream) {
+                capturedStream.getTracks().forEach(track => track.stop());
+            }
+        } catch (e) {
+            console.warn('Aviso ao parar stream:', e);
+        }
+
         isRecordingVoice = false;
         hideRecordingUI();
-        
+
         if (audioChunks.length === 0) {
             showToast('Nenhum áudio gravado', 'error');
             return;
         }
-        
+
         // Criar blob do áudio
-        const mimeType = mediaRecorder.mimeType;
-        const audioBlob = new Blob(audioChunks, { type: mimeType });
+        const audioBlob = new Blob(audioChunks, { type: capturedMimeType });
         audioChunks = [];
-        
+
         // Ignorar gravações muito curtas (< 1 segundo)
         if (duration < 1) {
-            showToast('Áudio muito curto', 'error');
+            showToast('Áudio muito curto. Mantenha o botão pressionado por mais tempo.', 'error');
             return;
         }
-        
-        console.log(`🎤 Áudio gravado: ${duration}s, ${(audioBlob.size / 1024).toFixed(1)}KB`);
-        
+
+        console.log(`🎤 Áudio gravado: ${duration}s, ${(audioBlob.size / 1024).toFixed(1)}KB, tipo: ${capturedMimeType}`);
+
         // Enviar via upload
-        await uploadVoiceMessage(audioBlob, duration, mimeType);
+        await uploadVoiceMessage(audioBlob, duration, capturedMimeType);
     };
-    
+
     mediaRecorder.stop();
 }
 

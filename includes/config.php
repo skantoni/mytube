@@ -172,8 +172,10 @@ if (!$is_cli) {
     // Referrer-Policy: controla envio de referrer
     header('Referrer-Policy: strict-origin-when-cross-origin');
 
-    // Permissions-Policy: desabilita features desnecessárias
-    header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+    // Permissions-Policy: bloqueia geolocalização mas permite microfone e câmera para o próprio site
+    // IMPORTANTE: microphone=(self) é necessário para gravação de voz no chat
+    // microphone=() bloquearia completamente e o browser NUNCA pediria permissão ao utilizador
+    header('Permissions-Policy: geolocation=(), microphone=(self), camera=(self)');
 
     // ✅ COOP: Necessário para Google Identity Services (popup OAuth)
     // 'same-origin-allow-popups' permite que popups de accounts.google.com
