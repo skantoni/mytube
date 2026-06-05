@@ -4,6 +4,7 @@
  */
 
 require('dotenv').config();
+require('node:dns').setDefaultResultOrder('ipv4first');
 const crypto = require('crypto');
 const express = require('express');
 const http = require('http');
