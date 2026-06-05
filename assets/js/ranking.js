@@ -10,7 +10,7 @@
     // STATE
     // ═══════════════════════════════════════
     let currentTab = 'dominant';
-    let currentPeriod = 'all';
+    let currentPeriod = 'week';
     let allSchools = [];
     let dataCache = {};
 

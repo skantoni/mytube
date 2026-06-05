@@ -132,8 +132,8 @@ $is_admin = isAdminUser();
             <div class="creators-section">
                 <!-- Period Filter -->
                 <div class="period-filter">
-                    <button class="period-btn active" data-period="all" onclick="filterPeriod('all')">Todos</button>
-                    <button class="period-btn" data-period="week" onclick="filterPeriod('week')">Semana</button>
+                    <button class="period-btn" data-period="all" onclick="filterPeriod('all')">Todos</button>
+                    <button class="period-btn active" data-period="week" onclick="filterPeriod('week')">Semana</button>
                     <button class="period-btn" data-period="month" onclick="filterPeriod('month')">Mês</button>
                 </div>
                 
