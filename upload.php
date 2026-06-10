@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$error && (!isset($_FILES['video']) || $_FILES['video']['error'] !== UPLOAD_ERR_OK)) {
         $uploadError = $_FILES['video']['error'] ?? -1;
         $error = match($uploadError) {
-            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Arquivo muito grande. Tamanho máximo permitido: 100MB',
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Arquivo muito grande. Tamanho máximo permitido: 150MB',
             UPLOAD_ERR_PARTIAL  => 'Upload interrompido. O arquivo foi enviado parcialmente.',
             UPLOAD_ERR_NO_FILE  => 'Nenhum arquivo selecionado.',
             UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE => 'Erro no servidor ao salvar arquivo temporário.',
