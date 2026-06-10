@@ -9,10 +9,10 @@
 // Configurações padrão
 $seo_config = [
     'site_name' => 'MyTube',
-    'site_url' => 'https://www.mytube.social',
+    'site_url' => 'https://mytube.social',
     'title' => 'MyTube - Compartilhe vídeos e conecte-se com outros criadores e Aqui os criadores competem!',
     'description' => 'MyTube é a rede social angolana onde criadores competem e talentos são descobertos! Participe de competições escolares, compartilhe vídeos e conecte-se com outros criadores. Mostre seu talento!',
-    'image' => 'https://www.mytube.social/assets/images/og-image.jpg',
+    'image' => 'https://mytube.social/assets/images/og-image.jpg',
     'image_width' => 1200,
     'image_height' => 630,
     'type' => 'website',

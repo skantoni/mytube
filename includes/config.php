@@ -109,8 +109,9 @@ if (!$is_cli && session_status() === PHP_SESSION_NONE) {
     }
     ini_set('session.save_path', $session_dir);
     
-    // Forçar o PHP a gerir o Lixo (Garbage Collection) nesta pasta customizada baseando-se na nossa vida útil
-    ini_set('session.gc_probability', 1);
+    // ⚠️ ATENÇÃO: GC do PHP DESATIVADO para não bloquear requests (como o crawler do WhatsApp)
+    // O lixo deve ser limpo por um Cron Job: `php clean_sessions.php` ou via bash
+    ini_set('session.gc_probability', 0);
     ini_set('session.gc_divisor', 100);
 
     ini_set('session.cookie_httponly', 1); // Previne XSS via JavaScript
