@@ -368,11 +368,11 @@ $r = runQuery($pdo, "
 ", [$test_user_id]);
 row('Dados base do perfil (user + school)', $r, "user_id=$test_user_id");
 
-$r = runQuery($pdo, "SELECT COUNT(*) FROM followers WHERE following_id = ?", [$test_user_id]);
-row('Contagem de seguidores', $r, "followers.following_id=$test_user_id");
+$r = runQuery($pdo, "SELECT COUNT(*) FROM follows WHERE following_id = ?", [$test_user_id]);
+row('Contagem de seguidores', $r, "follows.following_id=$test_user_id");
 
-$r = runQuery($pdo, "SELECT COUNT(*) FROM followers WHERE follower_id = ?", [$test_user_id]);
-row('Contagem a seguir', $r, "followers.follower_id=$test_user_id");
+$r = runQuery($pdo, "SELECT COUNT(*) FROM follows WHERE follower_id = ?", [$test_user_id]);
+row('Contagem a seguir', $r, "follows.follower_id=$test_user_id");
 
 $r = runQuery($pdo, "
     SELECT v.*, v.views_count, v.likes_count
