@@ -8,10 +8,14 @@
  * ============================================================
  */
 
-define('DIAG_SECRET', 'mytube_diag_2026'); // ← muda antes de usar
+require_once __DIR__ . '/includes/env_loader.php';
+$diag_secret = env('DIAG_SECRET', '');
+if ($diag_secret === '' || strlen($diag_secret) < 16) {
+    http_response_code(503);
+    die('DIAG_SECRET not configured in .env');
+}
 
-// Protecção básica
-if (($_GET['secret'] ?? '') !== DIAG_SECRET) {
+if (!hash_equals($diag_secret, ($_GET['secret'] ?? ''))) {
     http_response_code(403);
     die('403 Forbidden');
 }

@@ -103,25 +103,25 @@ try {
                 $delta = $liked ? 1 : -1;
                 $stmt->execute([$delta, $delta, $video_id]);
                 
-                // Commit
-                $pdo->commit();
-
-                // Atualizar ranking_points do dono do vídeo (+2 like, -2 unlike)
+                // Atualizar ranking_points do dono do vídeo (+2 like, -2 unlike) dentro da transação
                 $ownerStmt = $pdo->prepare("SELECT user_id FROM videos WHERE id = ?");
                 $ownerStmt->execute([$video_id]);
                 $vid_owner = $ownerStmt->fetchColumn();
                 if ($vid_owner) {
                     ranking_points_increment($pdo, (int)$vid_owner, $liked ? 2 : -2);
-                    
-                    // Push notification de like (só quando é like, não unlike)
-                    if ($liked && (int)$vid_owner !== $user_id) {
-                        $actorName = $_SESSION['username'] ?? 'Alguém';
-                        $destUserStmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
-                        $destUserStmt->execute([$vid_owner]);
-                        $destUsername = $destUserStmt->fetchColumn() ?: 'Usuário';
+                }
 
-                        sendPushNotification($pdo, (int)$vid_owner, 'Novo like ❤️', "$destUsername, $actorName curtiu o teu vídeo", "/index.php?v=$video_id");
-                    }
+                // Commit
+                $pdo->commit();
+
+                // Push notification fora da transação (não-crítico)
+                if ($vid_owner && $liked && (int)$vid_owner !== $user_id) {
+                    $actorName = $_SESSION['username'] ?? 'Alguém';
+                    $destUserStmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+                    $destUserStmt->execute([$vid_owner]);
+                    $destUsername = $destUserStmt->fetchColumn() ?: 'Usuário';
+
+                    sendPushNotification($pdo, (int)$vid_owner, 'Novo like ❤️', "$destUsername, $actorName curtiu o teu vídeo", "/index.php?v=$video_id");
                 }
                 
                 // Buscar contagem atualizada

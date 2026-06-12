@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     $file_extension = $validation['extension'];
-                    $new_filename = 'user_' . $user_id . '_' . time() . '.' . $file_extension;
+                    $new_filename = bin2hex(random_bytes(16)) . '.' . $file_extension;
                     
                     if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $upload_dir . $new_filename)) {
                         // ✅ SANITIZAR IMAGEM: Remover EXIF/metadados (GPS, câmera, data, etc)

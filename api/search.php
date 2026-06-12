@@ -12,6 +12,11 @@ if (!isLoggedIn()) {
 
 $query = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
 $context = isset($_GET['context']) ? trim((string)$_GET['context']) : '';
+
+if (mb_strlen($query, 'UTF-8') > 200) {
+    $query = mb_substr($query, 0, 200, 'UTF-8');
+}
+
 $is_hashtag_query = $query !== '' && mb_substr($query, 0, 1, 'UTF-8') === '#';
 $min_hashtag_chars = 2;
 

@@ -147,7 +147,6 @@ function validate_video_upload(string $tmp_path, string $filename, array $allowe
         'video/x-ms-wmv' => ['wmv'],
         'video/webm' => ['webm'],
         'video/mpeg' => ['mpeg', 'mpg'],
-        'application/octet-stream' => ['mp4', 'avi', 'mov'] // Fallback para alguns servidores
     ];
     
     // 4. Verificar se o MIME type é permitido

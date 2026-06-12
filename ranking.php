@@ -28,6 +28,7 @@ $is_admin = isAdminUser();
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>🏆 Rankings - MyTube</title>
     <link rel="stylesheet" href="<?php echo asset('assets/css/main.css'); ?>">
+    <script src="<?php echo asset('assets/js/utils.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/avatar-fallback.js'); ?>"></script>
     <link rel="stylesheet" href="<?php echo asset('assets/css/tiktok.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset('assets/css/ranking.css'); ?>">

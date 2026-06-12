@@ -365,9 +365,8 @@ function redirect($url) {
     }
 }
 
-// Função para limpar dados de entrada
 function sanitize($data) {
-    return htmlspecialchars(strip_tags(trim($data)));
+    return htmlspecialchars(trim($data), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
 // Função para formatar números de forma compacta (1k, 1.2M, etc.)

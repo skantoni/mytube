@@ -30,8 +30,13 @@ if (empty($current_password) || empty($new_password) || empty($confirm_password)
     exit;
 }
 
-if (strlen($new_password) < 6) {
-    echo json_encode(['success' => false, 'message' => 'A nova senha deve ter pelo menos 6 caracteres.']);
+if (strlen($new_password) < 8) {
+    echo json_encode(['success' => false, 'message' => 'A nova senha deve ter pelo menos 8 caracteres.']);
+    exit;
+}
+
+if (!preg_match('/[A-Z]/', $new_password) || !preg_match('/[0-9]/', $new_password)) {
+    echo json_encode(['success' => false, 'message' => 'A senha deve conter pelo menos uma letra maiúscula e um número.']);
     exit;
 }
 
@@ -65,6 +70,7 @@ $hashed = password_hash($new_password, PASSWORD_DEFAULT);
 $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
 
 if ($stmt->execute([$hashed, $user_id])) {
+    session_regenerate_id(true);
     echo json_encode(['success' => true, 'message' => 'Senha alterada com sucesso!']);
 } else {
     echo json_encode(['success' => false, 'message' => 'Erro ao alterar senha. Tente novamente.']);

@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/config.php';
 require_once '../includes/push_helper.php';
+require_once '../includes/rate_limit.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id'])) {
@@ -20,6 +21,14 @@ $receiver_id = isset($_POST['receiver_id']) ? intval($_POST['receiver_id']) : 0;
 
 if ($receiver_id <= 0 || $receiver_id === $current_user_id) {
     echo json_encode(['success' => false, 'error' => 'Utilizador inválido']);
+    exit;
+}
+
+// Rate limiting: 20 friend requests per hour
+$rate = rate_limit_check($pdo, 'friend_request', (string)$current_user_id, 20, 60);
+if ($rate['blocked']) {
+    http_response_code(429);
+    echo json_encode(['success' => false, 'error' => 'Demasiados pedidos. Tenta novamente mais tarde.']);
     exit;
 }
 
@@ -65,6 +74,7 @@ try {
                 error_log('⚠️ Erro notificação friend_request: ' . $e->getMessage());
             }
 
+            rate_limit_record($pdo, 'friend_request', (string)$current_user_id);
             echo json_encode(['success' => true, 'message' => 'Pedido de amizade reenviado']);
             exit;
         }
@@ -85,6 +95,7 @@ try {
         error_log('⚠️ Erro notificação friend_request: ' . $e->getMessage());
     }
 
+    rate_limit_record($pdo, 'friend_request', (string)$current_user_id);
     echo json_encode(['success' => true, 'message' => 'Pedido de amizade enviado']);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => 'Erro ao enviar pedido']);

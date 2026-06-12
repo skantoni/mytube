@@ -65,6 +65,7 @@ $current_user = $stmt->fetch();
     <?php include __DIR__ . '/includes/favicon.php'; ?>
     <!-- CSRF Token para proteção de formulários AJAX -->
     <?php echo csrf_meta(); ?>
+    <script src="<?php echo asset('assets/js/utils.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/csrf.js'); ?>"></script>
 </head>
 <body>

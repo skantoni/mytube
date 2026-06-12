@@ -1,65 +1,78 @@
-# MyTube - Rede Social de Vídeos Estilo TikTok
+# MyTube - Rede Social de Videos Estilo TikTok
 
 ![MyTube Logo](assets/images/logo.png)
 
-Uma rede social moderna e completa para compartilhamento de vídeos, inspirada no TikTok, desenvolvida com PHP, MySQL, HTML5, CSS3 e JavaScript.
+Uma rede social moderna e completa para compartilhamento de videos, inspirada no TikTok, desenvolvida com PHP, MySQL, Node.js e JavaScript.
 
-## 🚀 Características Principais
+## Funcionalidades
 
-### ✨ Funcionalidades Implementadas
-- ✅ **Sistema de Autenticação** - Cadastro, login e logout seguros
-- ✅ **Upload de Vídeos** - Suporte a múltiplos formatos com validação
-- ✅ **Feed Estilo TikTok** - Rolagem vertical com reprodução automática
-- ✅ **Sistema de Likes** - Curtir/descurtir vídeos em tempo real
-- ✅ **Sistema de Comentários** - Comentar e visualizar comentários
-- ✅ **Sistema de Seguir** - Seguir outros usuários
-- ✅ **Contadores Automáticos** - Views, likes e comentários atualizados via triggers
-- ✅ **Interface Responsiva** - Mobile-first design
-- ✅ **Tema Azul Moderno** - Design inovador e atrativo
+### Core
+- **Feed Estilo TikTok** - Rolagem vertical com reproducao automatica e scroll snap
+- **Upload de Videos** - Suporte a multiplos formatos com validacao MIME, EXIF sanitization e streaming adaptativo
+- **Sistema de Likes** - Curtir/descurtir videos em tempo real com double tap (mobile)
+- **Sistema de Comentarios** - Comentarios em tempo real com contadores via DB triggers
+- **Sistema de Seguir** - Seguir outros utilizadores
+- **Contadores Automaticos** - Views, likes e comentarios atualizados via triggers MySQL
 
-### 🎯 Funcionalidades Adicionais
-- ✅ **Chat Privado (1:1)** — Socket.IO com JWT
-- ✅ **Chat de Grupo** — salas geridas pelo Node.js
-- ✅ **Sistema de Amizades** — pedidos e aceitações
-- ✅ **Notificações em Tempo Real** — push notifications (VAPID)
-- ✅ **Rankings Semanais** — Best MyTuber por escola/global
-- ✅ **Moderação de Conteúdo** — painel admin
+### Social
+- **Chat Privado (1:1)** - Socket.IO com autenticacao JWT, read receipts, typing indicators
+- **Chat de Grupo** - Salas geridas pelo Node.js com imagens de grupo
+- **Sistema de Amizades** - Pedidos e aceitacoes
+- **Notificacoes Push** - Web push notifications via VAPID
+- **Rankings Semanais** - Best MyTuber por escola/global
 
-## 🛠️ Tecnologias Utilizadas
+### Seguranca e Admin
+- **Autenticacao Segura** - bcrypt, CSRF protection, rate limiting, sessoes HttpOnly/SameSite
+- **Moderacao de Conteudo** - Painel admin com roles (admin/moderator/vip/user)
+- **Protecao SSRF** - Whitelist de dominios, validacao de IPs privados
+- **Sanitizacao de Imagens** - Remocao de EXIF/GPS metadata
+- **Prepared Statements** - 100% PDO com parametros bindados
 
-- **Backend**: PHP 8.0+
-- **Banco de Dados**: MySQL 8.0+
-- **Frontend**: HTML5, CSS3 (Flexbox/Grid), JavaScript ES6+
-- **Bibliotecas**: Font Awesome 6.0
-- **Arquitetura**: MVC Pattern, RESTful APIs
+### UX
+- **Interface Responsiva** - Mobile-first design com tema azul moderno
+- **Glassmorphism** - Efeitos de vidro com backdrop-filter
+- **Keyboard Shortcuts** - Espaco (play/pause), M (som), L (like)
+- **Progressive Loading** - Lazy loading e pre-carregamento inteligente de videos
 
-## 📋 Pré-requisitos
+## Tecnologias
+
+| Camada | Tecnologia |
+|--------|-----------|
+| Backend | PHP 8.0+, PDO, PSR-4 autoloading |
+| Base de Dados | MySQL 8.0+ (triggers, prepared statements) |
+| Frontend | HTML5, CSS3 (Flexbox/Grid), JavaScript ES6+ |
+| Chat | Node.js + Socket.IO + JWT |
+| Storage | Cloudflare R2 (opcional), local filesystem |
+| Icons | Font Awesome 6.0 |
+| Arquitetura | MVC (Repository/Service/Controller), RESTful APIs |
+
+## Pre-requisitos
 
 - **XAMPP/WAMP/LAMP/Laragon** - Servidor local com PHP e MySQL
-- **PHP 8.0+** com extensões:
-  - PDO
-  - PDO_MySQL
-  - JSON
-  - Session
+- **PHP 8.0+** com extensoes: PDO, PDO_MySQL, JSON, Session, GD/Imagick
 - **MySQL 8.0+**
+- **Node.js 18+** (para o servidor de chat)
 - **Navegador moderno** (Chrome, Firefox, Safari, Edge)
 
-## 🔧 Instalação
+## Instalacao
 
-### 1. Clone o Repositório
+> Para instrucoes detalhadas por SO, consulte [docs/started/INSTALL.md](docs/started/INSTALL.md)
+
+### 1. Clonar o Repositorio
+
 ```bash
-git clone https://github.com/seu-usuario/mytube.git
+git clone https://github.com/skantoni/mytube.git
 cd mytube
 ```
 
 ### 2. Configurar Servidor Local
+
 - Coloque o projeto na pasta `htdocs` (XAMPP) ou `www` (WAMP)
 - Inicie Apache e MySQL
 
 ### 3. Criar a Base de Dados
 
 ```bash
-# Via linha de comando (recomendado):
 mysql -u root -p -e "CREATE DATABASE mytube CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql -u root -p mytube < database/install.sql
 ```
@@ -68,21 +81,16 @@ Ou via **phpMyAdmin**:
 1. Clique em **"Novo"** → nomeie `mytube` → charset `utf8mb4`
 2. Seleccione a base de dados → **"Importar"** → escolha `database/install.sql`
 
-### 4. Configurar a Ligação
-Copie o exemplo e edite `includes/config.php`:
+### 4. Configurar Variaveis de Ambiente
 
 ```bash
-cp includes/config.example.php includes/config.php
+cp .env.example .env
 ```
 
-```php
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'mytube');
-define('DB_USER', 'root');   // utilizador MySQL
-define('DB_PASS', '');       // password MySQL
-```
+Edite o `.env` com as suas credenciais (DB, SMTP, R2, etc.).
 
 ### 5. Configurar o Servidor de Chat (Node.js)
+
 ```bash
 cd chat-server
 cp .env.example .env          # editar credenciais DB e CHAT_JWT_SECRET
@@ -90,62 +98,38 @@ npm install
 npm start                     # ou: pm2 start ecosystem.config.js
 ```
 
-### 6. Permissões de Escrita (Linux/macOS)
+Gerar JWT secret:
 ```bash
-chmod 755 uploads/ uploads/videos/ uploads/thumbnails/
+node -e "console.log(require('crypto').randomBytes(40).toString('hex'))"
 ```
 
-### 7. Aceder à Aplicação
+### 6. Permissoes de Escrita (Linux/macOS)
+
+```bash
+chmod 755 uploads/ uploads/videos/ uploads/thumbnails/ uploads/avatars/
+```
+
+### 7. Aceder a Aplicacao
+
 `http://localhost/mytube`
 
-## 👤 Conta Padrão
+## Conta Padrao
 
 Criada automaticamente pelo `install.sql`:
 - **Utilizador**: `admin`
-- **Password**: `admin123`  ⚠️ **Altere após a primeira entrada**
+- **Password**: `admin123`
 - **Email**: `admin@mytube.local`
 
-Para alterar a password via MySQL:
-```sql
-UPDATE users
-SET password = '<hash_gerado_por_php>'
-WHERE username = 'admin';
-```
-Gerar hash: `php -r "echo password_hash('nova_senha', PASSWORD_BCRYPT);"`
+> **Altere a password imediatamente apos a primeira entrada.**
 
-## 📱 Como Usar
-
-### Para Visitantes
-1. Acesse a página inicial para ver vídeos públicos
-2. Crie uma conta gratuita ou faça login
-3. Explore o feed de vídeos com scroll vertical
-
-### Para Usuários Registrados
-1. **Upload de Vídeos**:
-   - Clique em "Upload" no menu
-   - Arraste e solte seu vídeo ou clique para selecionar
-   - Adicione título, descrição e hashtags
-   - Publique seu vídeo
-
-2. **Interações**:
-   - 👆 Clique para pausar/reproduzir vídeos
-   - ❤️ Clique no coração para curtir
-   - 💬 Clique no balão para comentar
-   - 👥 Clique em "Seguir" para seguir usuários
-   - 🔊 Clique no som para ativar/desativar áudio
-
-3. **Navegação**:
-   - 📱 **Mobile**: Deslize para cima/baixo para trocar vídeos
-   - 💻 **Desktop**: Use scroll do mouse ou setas do teclado
-   - ⌨️ **Atalhos**: Espaço (play/pause), M (som), L (like)
-
-## 🎨 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```
 mytube/
 ├── api/                    # APIs RESTful (PHP)
+├── app/                    # Classes MVC (Repositories, Services, Validators)
 ├── assets/
-│   ├── css/               # Estilos globais e por módulo
+│   ├── css/               # Estilos globais e por modulo
 │   ├── js/                # JavaScript do cliente
 │   └── images/
 ├── chat-server/            # Servidor de chat (Node.js + Socket.IO)
@@ -153,104 +137,93 @@ mytube/
 │   ├── .env.example
 │   └── ecosystem.config.js
 ├── database/
-│   └── install.sql        # Script de instalação limpa (usar este)
-├── includes/              # Configuração e helpers PHP
-│   ├── config.example.php # Exemplo de configuração
-│   └── config.php         # Configuração real (não versionada)
-├── migrations/            # Migrações incrementais (histórico)
-├── uploads/               # Vídeos, thumbnails e avatares
-├── chat.php               # Página de chat
+│   └── install.sql        # Script de instalacao limpa
+├── docs/                   # Documentacao completa (ver docs/README.md)
+├── includes/              # Configuracao e helpers PHP
+│   ├── config.php         # Configuracao (via .env, nao versionada)
+│   ├── csrf_helpers.php   # Protecao CSRF
+│   ├── rate_limit.php     # Rate limiting
+│   ├── upload_validation.php
+│   └── ssrf_protection.php
+├── migrations/            # Migracoes incrementais (historico)
+├── uploads/               # Videos, thumbnails e avatares
 ├── index.php              # Feed principal
-├── login.php              # Autenticação
-└── profile.php            # Perfis de utilizadores
+├── chat.php               # Pagina de chat
+├── login.php / register.php
+├── profile.php / perfil.php
+├── ranking.php            # Rankings semanais
+├── settings.php           # Definicoes do utilizador
+└── upload.php             # Upload de videos
 ```
 
-## 🔒 Segurança Implementada
+## Documentacao
 
-- **Autenticação Segura**: Hash de senhas com `password_hash()`
-- **Proteção CSRF**: Validação de origem das requisições
-- **Sanitização**: Limpeza de dados de entrada
-- **Validação de Arquivos**: Verificação de tipos e tamanhos
-- **Prepared Statements**: Proteção contra SQL Injection
-- **Sessões Seguras**: Controle de acesso baseado em sessões
+Toda a documentacao esta organizada em `docs/` — consulte o [indice de documentacao](docs/README.md).
 
-## 🎯 Recursos Inovadores
+Destaques:
+- [Guia de Instalacao](docs/started/INSTALL.md)
+- [Deploy para Producao](docs/deployment/DEPLOY.md)
+- [Sistema de Chat](docs/features/CHAT_README.md)
+- [Auditoria de Seguranca](docs/SECURITY_AUDIT.md)
+- [Sugestoes de Funcionalidades](docs/FEATURE_SUGGESTIONS.md)
 
-### Design Diferenciado
-- **Tema Azul Moderno**: Gradientes e cores harmoniosas
-- **Animações Suaves**: Transições CSS3 avançadas
-- **Glassmorphism**: Efeitos de vidro com backdrop-filter
-- **Micro-interações**: Feedback visual em todas as ações
+## Roadmap
 
-### Experiência do Usuário
-- **Double Tap to Like**: Duplo toque para curtir (mobile)
-- **Keyboard Shortcuts**: Atalhos de teclado para power users
-- **Scroll Snap**: Navegação suave entre vídeos
-- **Progressive Loading**: Carregamento otimizado
-- **Auto-save Drafts**: Salvar rascunhos automaticamente
+### Proximas Funcionalidades
+- [ ] Autenticacao de dois fatores (2FA/TOTP)
+- [ ] Painel de analytics para criadores
+- [ ] Stories temporarios (24h)
+- [ ] Filtros e efeitos nos videos
+- [ ] Sistema de monetizacao
+- [ ] API publica documentada
 
-### Performance
-- **Lazy Loading**: Carregamento sob demanda
-- **Video Optimization**: Pré-carregamento inteligente
-- **Database Triggers**: Atualizações automáticas de contadores
-- **AJAX Real-time**: Interações sem recarregar página
-
-## 📈 Roadmap Futuro
-
-### Próximas Funcionalidades
-- [ ] Sistema de Chat em Tempo Real (WebSockets)
-- [ ] Stories temporários (24h)
-- [ ] Filtros e efeitos nos vídeos
-- [ ] Sistema de monetização
-- [ ] Analytics detalhados
-- [ ] API pública
-- [ ] App mobile (React Native)
-
-### Melhorias Técnicas
+### Melhorias Tecnicas
 - [ ] Cache Redis
-- [ ] CDN para vídeos
-- [ ] Compressão automática
-- [ ] Push notifications
-- [ ] PWA (Progressive Web App)
-- [ ] Testes automatizados
+- [ ] CDN para videos
+- [ ] Migracao CSP para nonces (remover unsafe-inline)
+- [ ] Testes automatizados (PHPUnit + Jest)
+- [ ] CI/CD com GitHub Actions
+- [ ] Migracao completa para TypeScript (frontend)
 
-## 🐛 Solução de Problemas
+## Solucao de Problemas
 
-### Erro de Conexão com Banco
-1. Verifique se MySQL está rodando
-2. Confirme as credenciais em `includes/config.php`
-3. Certifique-se que o banco `mytube_db` foi criado
+### Erro de Conexao com Banco
+1. Verifique se MySQL esta rodando
+2. Confirme as credenciais no `.env`
+3. Certifique-se que o banco `mytube` foi criado
 
-### Vídeos não aparecem
-1. Verifique permissões da pasta `uploads/`
+### Videos nao aparecem
+1. Verifique permissoes da pasta `uploads/`
 2. Confirme se o arquivo foi enviado corretamente
-3. Verifique logs de erro do PHP
+3. Verifique logs de erro do PHP (`error_log`)
 
 ### Upload falha
-1. Verifique `upload_max_filesize` no php.ini
-2. Confirme se a pasta `uploads/videos/` existe
-3. Teste com arquivos menores
+1. Verifique `upload_max_filesize` e `post_max_size` no `php.ini`
+2. Confirme se a pasta `uploads/videos/` existe e tem permissoes de escrita
+3. Teste com arquivos menores (limite: 100MB)
 
-## 🤝 Contribuição
+### Chat nao conecta
+1. Verifique se o servidor Node.js esta rodando (`npm start` em `chat-server/`)
+2. Confirme que `CHAT_JWT_SECRET` esta configurado no `.env` do PHP e do chat-server
+3. Verifique a consola do browser (F12) para erros de WebSocket
+
+## Contribuicao
 
 1. Fork o projeto
 2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+3. Commit suas mudancas (`git commit -m 'feat: Add some AmazingFeature'`)
 4. Push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
 
-## 📄 Licença
+## Licenca
 
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para detalhes.
+Este projeto esta sob a licenca MIT. Veja o arquivo `LICENSE` para detalhes.
 
-## 📞 Suporte
+## Suporte
 
-- **Email**: suporte@mytube.com
-- **GitHub Issues**: [Reportar Bug](https://github.com/seu-usuario/mytube/issues)
-- **Documentação**: [Wiki do Projeto](https://github.com/seu-usuario/mytube/wiki)
+- **GitHub Issues**: [Reportar Bug](https://github.com/skantoni/mytube/issues)
+- **Documentacao**: [docs/README.md](docs/README.md)
 
 ---
 
-**MyTube** - Feito com ❤️ para conectar pessoas através de vídeos
-
-*Desenvolvido usando as melhores práticas de desenvolvimento web moderno*
+**MyTube** - Feito com amor para conectar pessoas atraves de videos

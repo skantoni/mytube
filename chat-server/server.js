@@ -12,19 +12,24 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const { pool, testConnection } = require('./config/database');
 
+const JWT_SECRET = process.env.CHAT_JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+    console.error('[FATAL] CHAT_JWT_SECRET not set or too short (min 32 chars). Exiting.');
+    process.exit(1);
+}
+
 /**
  * Verifica um JWT gerado pelo PHP (HMAC-SHA256, base64url).
  * Retorna o payload se válido, null caso contrário.
  */
 function verifyToken(token) {
     try {
-        const secret = process.env.CHAT_JWT_SECRET || 'CHANGE_ME_IN_PRODUCTION';
         const parts = token.split('.');
         if (parts.length !== 3) return null;
 
         const [header, payload, sig] = parts;
         const expectedSig = crypto
-            .createHmac('sha256', secret)
+            .createHmac('sha256', JWT_SECRET)
             .update(`${header}.${payload}`)
             .digest('base64url');
 

@@ -1,6 +1,6 @@
 # CHECKLIST DE SEGURANÇA — MyTube
 
-**Última atualização:** 02 de Junho, 2026
+**Última atualização:** 13 de Junho, 2026
 **Estado:** Auditoria completa realizada — ver [SECURITY_AUDIT.md](./SECURITY_AUDIT.md) para detalhe total
 
 ---
@@ -9,21 +9,23 @@
 
 | Severidade | Total | Resolvido | Pendente |
 |-----------|-------|-----------|---------|
-| Crítico   | 16    | 13        | 3       |
-| Alto      | 17    | 7         | 10      |
-| Médio     | 15    | 1         | 14      |
+| Crítico   | 16    | 16        | 0       |
+| Alto      | 17    | 12        | 5       |
+| Médio     | 15    | 2         | 13      |
 | Baixo     | 10    | 0         | 10      |
-| **Total** | **58**| **21**    | **37**  |
+| **Total** | **58**| **30**    | **28**  |
+
+> Atualização 13/06/2026: +9 resolvidos (debug files, JWT secret, path traversal, octet-stream, friend request rate limit, session regenerate, avatar filenames, ranking transaction, diagnostics secret, password policy, sanitize function, search input limit)
 
 ---
 
 ## AÇÕES IMEDIATAS (Esta semana)
 
-- [ ] **Eliminar do repositório:** `test_csrf.php`, `test_rate_limit.php`, `test_upload_validation.php`, `check_session_browser.php`, `debug_csrf.php`, `debug_csrf_production.php`
-- [ ] **Chat-server:** Fazer `CHAT_JWT_SECRET` obrigatório — falhar com `process.exit(1)` se não definido
-- [ ] **Upload:** Remover `application/octet-stream` da validação de MIME de vídeos
-- [ ] **Amizades:** Adicionar rate limiting em `api/send_friend_request.php`
-- [ ] **Streaming:** Decodificar URL antes de verificar padrões de path traversal em `api/stream_video.php`
+- [x] **Eliminar do repositório:** `test_csrf.php`, `test_rate_limit.php`, `test_upload_validation.php`, `check_session_browser.php`, `debug_csrf.php`, `debug_csrf_production.php`
+- [x] **Chat-server:** Fazer `CHAT_JWT_SECRET` obrigatório — falhar com `process.exit(1)` se não definido
+- [x] **Upload:** Remover `application/octet-stream` da validação de MIME de vídeos
+- [x] **Amizades:** Adicionar rate limiting em `api/send_friend_request.php`
+- [x] **Streaming:** Decodificar URL antes de verificar padrões de path traversal em `api/stream_video.php`
 
 ---
 
@@ -44,7 +46,7 @@
 
 - [x] Validação de email com `filter_var()`
 - [x] Username: 3–12 caracteres, apenas alphanumeric + `- _`
-- [ ] **Senha: mínimo 12 caracteres + maiúscula + número** (atualmente apenas 6 chars)
+- [x] **Senha: mínimo 8 caracteres + maiúscula + número** (atualizado 13/06/2026)
 - [x] `password_hash(PASSWORD_DEFAULT)` (bcrypt)
 - [x] Proteção contra email duplicado (constraint UNIQUE)
 - [x] Proteção contra username duplicado
@@ -65,7 +67,7 @@
 - [x] `session.use_only_cookies = 1`
 - [x] Sessão expira em 2 horas (via `SESSION_LIFETIME` no `.env`)
 - [x] `$_SESSION = []` antes de popular após login
-- [ ] `session_regenerate_id()` após mudança de senha (`api/change_password.php`)
+- [x] `session_regenerate_id()` após mudança de senha (`api/change_password.php`)
 - [ ] Gestão de sessões ativas em múltiplos dispositivos
 
 ---

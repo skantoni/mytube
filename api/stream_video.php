@@ -85,13 +85,15 @@ try {
         die('Erro interno do servidor');
     }
     
-    // ✅ PRIMEIRA VALIDAÇÃO: Detectar padrões de path traversal no video_path
-    // Bloqueia ../, ..\, etc ANTES de tentar resolver o caminho
-    $suspicious_patterns = ['../', '..\\', '../', '..\\'];
+    // Decode URL encoding and strip null bytes before checking for traversal
+    $decoded_path = urldecode(urldecode($video['video_path']));
+    $decoded_path = str_replace("\0", '', $decoded_path);
+
+    $suspicious_patterns = ['../', '..\\', '..%2f', '..%5c'];
     foreach ($suspicious_patterns as $pattern) {
-        if (strpos($video['video_path'], $pattern) !== false) {
+        if (stripos($decoded_path, $pattern) !== false) {
             http_response_code(403);
-            error_log("stream_video.php: TENTATIVA DE PATH TRAVERSAL BLOQUEADA (padrão suspeito) - video_id: $video_id, path: {$video['video_path']}");
+            error_log("stream_video.php: TENTATIVA DE PATH TRAVERSAL BLOQUEADA - video_id: $video_id, path: {$video['video_path']}");
             die('Acesso negado');
         }
     }
