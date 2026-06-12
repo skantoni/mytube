@@ -13,7 +13,9 @@
     
     /* Variáveis para cálculo de centralização do player */
     --player-max-height: 90vh;
-    --player-top-offset: calc((100vh - var(--player-max-height)) / 2);
+    --player-max-height: 90dvh; /* fallback */
+    --player-top-offset: calc((100vh - 90vh) / 2);
+    --player-top-offset: calc((100dvh - var(--player-max-height)) / 2);
 }
 
 * {
@@ -98,6 +100,7 @@ body * {
 /* Container principal do feed */
 .tiktok-container {
     height: 100vh;
+    height: 100dvh;
     width: 100%;
     max-width: 100vw;
     overflow-y: auto;
@@ -112,6 +115,7 @@ body * {
     width: 100%;
     max-width: 100vw;
     height: 100vh;
+    height: 100dvh;
     scroll-snap-align: start;
     scroll-snap-stop: always;
     display: flex;
@@ -127,8 +131,9 @@ body * {
     width: 100%;
     height: 100%;
     /* Escala pela altura da viewport mantendo proporção 9:16 */
-    max-width: min(calc(90vh * 9 / 16), 100%);
+    max-width: min(calc(90dvh * 9 / 16), 100%);
     max-height: 90vh;
+    max-height: 90dvh;
     background: #000;
     border-radius: 20px;
     overflow: hidden;
@@ -919,6 +924,7 @@ body * {
         max-width: 100%;
         border-radius: 0;
         height: 100vh;
+        height: 100dvh;
         width: 100%;
     }
 
@@ -1053,6 +1059,7 @@ body * {
     justify-content: center;
     text-align: center;
     height: 100vh;
+    height: 100dvh;
     padding: 40px;
     color: #fff;
 }
@@ -2056,5 +2063,130 @@ body * {
 @media (max-width: 768px) {
     .desktop-nav-buttons {
         display: none !important;
+    }
+}
+
+/* ====================================================
+   RANKING BADGE — Badge de escola e pontos no feed
+   ==================================================== */
+
+.ranking-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px 4px 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(59, 130, 246, 0.35); /* --secondary-blue with opacity */
+    background: rgba(0, 0, 0, 0.35);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    text-decoration: none;
+    cursor: pointer;
+    pointer-events: auto;
+    transition: all 0.25s ease;
+    width: fit-content;
+    /* subtle blue glow */
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    margin-top: 4px;
+    /* prevent layout overflow */
+    max-width: calc(100% - 16px);
+    overflow: hidden;
+}
+
+.ranking-badge:hover {
+    background: rgba(0, 0, 0, 0.55);
+    border-color: rgba(59, 130, 246, 0.65);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
+    transform: translateY(-1px);
+}
+
+.ranking-badge:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.ranking-badge-icon {
+    font-size: 11px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.ranking-badge-text {
+    font-size: 11px;
+    font-weight: 700;
+    color: #60a5fa; /* --light-blue */
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Animação de pulso quando o usuário acaba de curtir */
+.ranking-badge.pulse-once {
+    animation: rankBadgePulse 0.5s ease;
+}
+
+@keyframes rankBadgePulse {
+    0%   { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); border-color: rgba(59, 130, 246, 0.9); }
+    50%  { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); border-color: rgba(59, 130, 246, 0.35); }
+}
+
+
+/* ====================================================
+   FLOATING SCORE — Micro-interação de pontos flutuantes
+   ==================================================== */
+
+.floating-score {
+    position: fixed;
+    /* Será posicionado via JS sobre o botão clicado */
+    z-index: 999999;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    /* Blue gradient matching site colors */
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.45), 0 1px 4px rgba(0,0,0,0.3);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.2);
+    /* Animation */
+    animation: floatScoreUp 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* For comment reactions — cyan variant */
+.floating-score.comment-score {
+/*     background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+       box-shadow: 0 4px 16px rgba(6, 182, 212, 0.4), 0 1px 4px rgba(0,0,0,0.3);
+    */
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.45), 0 1px 4px rgba(0,0,0,0.3);
+}
+
+@keyframes floatScoreUp {
+    0% {
+        opacity: 0;
+        transform: translateY(0) scale(0.7);
+    }
+    15% {
+        opacity: 1;
+        transform: translateY(-8px) scale(1.05);
+    }
+    40% {
+        opacity: 1;
+        transform: translateY(-24px) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-60px) scale(0.9);
     }
 }

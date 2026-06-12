@@ -202,7 +202,7 @@ try {
                         if ($ub['scope'] === 'school') $is_best_school = true;
                     }
                     if ($is_best_global): ?>
-                        <span class="best-mytuber-badge best-mytuber-global" title="🏆 Best MyTuber Global da Semana">
+                        <span class="best-mytuber-badge best-mytuber-global" title="🔥 Best MyTuber Global da Semana">
                             <i class="fas fa-crown"></i>
                         </span>
                     <?php endif; ?>
@@ -311,47 +311,49 @@ try {
                     <?php endif; ?>
                 </div>
             <?php else: ?>
-                <div class="videos-grid" id="perfilVideosGrid">
-                    <?php foreach ($user_videos as $video): ?>
-                        <div class="video-card" data-video-id="<?php echo (int)$video['id']; ?>" onclick="window.location.href='index.php?user_id=<?php echo $profile_user_id; ?>&video_id=<?php echo $video['id']; ?>'">
-                            <div class="video-thumbnail">
-                                <?php if (!empty($video['thumbnail_path'])): ?>
-                                    <img src="uploads/thumbnails/<?php echo htmlspecialchars($video['thumbnail_path']); ?>" alt="Thumbnail" loading="lazy" decoding="async">
-                                <?php else: ?>
-                                    <?php $resolved_url = resolve_video_url($video['video_path']); ?>
-                                    <video muted preload="none" class="lazy-video-preview" data-video-src="<?php echo htmlspecialchars($resolved_url); ?>" onloadeddata="this.currentTime = 0.5;">
-                                        <source data-src="<?php echo htmlspecialchars($resolved_url); ?>" type="video/mp4">
-                                    </video>
-                                <?php endif; ?>
-                                
-                                <div class="video-overlay">
-                                    <div class="video-stats">
-                                        <span><i class="fas fa-eye"></i> <?php echo formatNumberShort($video['views_count']); ?></span>
-                                        <span><i class="fas fa-heart"></i> <?php echo formatNumberShort($video['likes_count']); ?></span>
-                                        <span><i class="fas fa-comment"></i> <?php echo formatNumberShort($video['comments_count']); ?></span>
+                <div class="videos-scroll-wrapper" id="perfilVideosScrollWrapper">
+                    <div class="videos-grid" id="perfilVideosGrid">
+                        <?php foreach ($user_videos as $video): ?>
+                            <div class="video-card" data-video-id="<?php echo (int)$video['id']; ?>" onclick="window.location.href='index.php?user_id=<?php echo $profile_user_id; ?>&video_id=<?php echo $video['id']; ?>'">
+                                <div class="video-thumbnail">
+                                    <?php if (!empty($video['thumbnail_path'])): ?>
+                                        <img src="uploads/thumbnails/<?php echo htmlspecialchars($video['thumbnail_path']); ?>" alt="Thumbnail" loading="lazy" decoding="async">
+                                    <?php else: ?>
+                                        <?php $resolved_url = resolve_video_url($video['video_path']); ?>
+                                        <video muted preload="none" class="lazy-video-preview" data-video-src="<?php echo htmlspecialchars($resolved_url); ?>" onloadeddata="this.currentTime = 0.5;">
+                                            <source data-src="<?php echo htmlspecialchars($resolved_url); ?>" type="video/mp4">
+                                        </video>
+                                    <?php endif; ?>
+                                    
+                                    <div class="video-overlay">
+                                        <div class="video-stats">
+                                            <span><i class="fas fa-eye"></i> <?php echo formatNumberShort($video['views_count']); ?></span>
+                                            <span><i class="fas fa-heart"></i> <?php echo formatNumberShort($video['likes_count']); ?></span>
+                                            <span><i class="fas fa-comment"></i> <?php echo formatNumberShort($video['comments_count']); ?></span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            
-                            <div class="video-info">
-                                <h4 class="video-title"><?php echo htmlspecialchars($video['title']); ?></h4>
-                                <p class="video-date"><?php echo date('d/m/Y', strtotime($video['created_at'])); ?></p>
                                 
-                                <?php if ($can_manage_profile_videos): ?>
-                                    <button class="delete-video-btn" 
-                                            data-video-id="<?php echo $video['id']; ?>"
-                                            onclick="event.stopPropagation(); confirmDeleteVideo(<?php echo $video['id']; ?>)"
-                                            title="Apagar vídeo">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                <?php endif; ?>
+                                <div class="video-info">
+                                    <h4 class="video-title"><?php echo htmlspecialchars($video['title']); ?></h4>
+                                    <p class="video-date"><?php echo date('d/m/Y', strtotime($video['created_at'])); ?></p>
+                                    
+                                    <?php if ($can_manage_profile_videos): ?>
+                                        <button class="delete-video-btn" 
+                                                data-video-id="<?php echo $video['id']; ?>"
+                                                onclick="event.stopPropagation(); confirmDeleteVideo(<?php echo $video['id']; ?>)"
+                                                title="Apagar vídeo">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
                             </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-                <div id="videosLoadSentinel" style="height:1px;"></div>
-                <div id="videosLoadStatus" class="follow-loading" style="display:none; padding: 12px 0 2px 0; text-align:center;">
-                    <i class="fas fa-spinner fa-spin"></i> Carregando mais vídeos...
+                        <?php endforeach; ?>
+                    </div>
+                    <div id="videosLoadSentinel" style="height:1px;"></div>
+                    <div id="videosLoadStatus" class="follow-loading" style="display:none; padding: 12px 0 2px 0; text-align:center;">
+                        <i class="fas fa-spinner fa-spin"></i> Carregando mais vídeos...
+                    </div>
                 </div>
             <?php endif; ?>
         </section>
@@ -560,6 +562,8 @@ try {
             return;
         }
 
+        const scrollWrapper = document.getElementById('perfilVideosScrollWrapper');
+
         if ('IntersectionObserver' in window) {
             pagerObserver = new IntersectionObserver((entries) => {
                 entries.forEach((entry) => {
@@ -567,16 +571,16 @@ try {
                         loadMoreVideos();
                     }
                 });
-            }, { root: null, rootMargin: '1100px 0px', threshold: 0 });
+            }, { root: scrollWrapper || null, rootMargin: '200px 0px', threshold: 0 });
 
             pagerObserver.observe(sentinel);
-        } else {
-            window.addEventListener('scroll', () => {
+        } else if (scrollWrapper) {
+            scrollWrapper.addEventListener('scroll', () => {
                 if (!hasMore || loading) {
                     return;
                 }
-                const distanceToBottom = document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
-                if (distanceToBottom < 1200) {
+                const distanceToBottom = scrollWrapper.scrollHeight - (scrollWrapper.scrollTop + scrollWrapper.clientHeight);
+                if (distanceToBottom < 400) {
                     loadMoreVideos();
                 }
             }, { passive: true });

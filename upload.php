@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$error && (!isset($_FILES['video']) || $_FILES['video']['error'] !== UPLOAD_ERR_OK)) {
         $uploadError = $_FILES['video']['error'] ?? -1;
         $error = match($uploadError) {
-            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Arquivo muito grande. Tamanho máximo permitido: 100MB',
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Arquivo muito grande. Tamanho máximo permitido: 150MB',
             UPLOAD_ERR_PARTIAL  => 'Upload interrompido. O arquivo foi enviado parcialmente.',
             UPLOAD_ERR_NO_FILE  => 'Nenhum arquivo selecionado.',
             UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE => 'Erro no servidor ao salvar arquivo temporário.',
@@ -205,52 +205,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("UPDATE users SET videos_count = videos_count + 1 WHERE id = ?")
                 ->execute([$_SESSION['user_id']]);
 
-            // Inserir job na fila
-            $music_track_data = trim($_POST['music_track_data'] ?? '');
-            $music_mode       = in_array($_POST['music_mode'] ?? '', ['mix','replace'], true)
-                                ? $_POST['music_mode']
-                                : 'mix';
-            $music_volume     = max(5, min(100, (int)($_POST['music_volume'] ?? 25))) / 100.0;
-            $music_start      = max(0.0, min(300.0, (float)($_POST['music_start'] ?? 0)));
+            $is_local = (env('APP_ENV', 'development') !== 'production');
+            $job_id = null;
 
-            $pdo->prepare("
-                INSERT INTO upload_jobs
-                    (user_id, video_id, tmp_video_path, original_name, title, description,
-                     hashtags, is_public, music_track_data, music_mode, music_volume, music_start, ad_flow,
-                     status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', NOW())
-            ")->execute([
-                $_SESSION['user_id'],
-                $video_id,
-                $raw_path,
-                $originalName,
-                $title,
-                $description,
-                $hashtags_formatted,
-                $is_public,
-                $music_track_data ?: null,
-                $music_mode,
-                $music_volume,
-                $music_start,
-                $ad_flow,
-            ]);
-
-            $job_id = (int)$pdo->lastInsertId();
-            $pdo->commit();
-            $committed = true; // ← commit bem sucedido; catch NÃO deve apagar o ficheiro
-
-            // ── Tentar lançar worker imediatamente (não-bloqueante) ─────────
-            $worker_script = __DIR__ . '/worker/process_upload_job.php';
-            if (file_exists($worker_script) && function_exists('exec')) {
-                $php_bin = PHP_BINARY ?: 'php';
-                $is_win  = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
-                if ($is_win) {
-                    $cmd = 'start /B "" ' . escapeshellarg($php_bin) . ' ' . escapeshellarg($worker_script) . ' > NUL 2>&1';
-                    pclose(popen($cmd, 'r'));
+            if ($is_local) {
+                // ── Upload Direto Síncrono (Local) ───────────────────────────
+                $final_dir = __DIR__ . '/uploads/videos';
+                if (!is_dir($final_dir)) {
+                    mkdir($final_dir, 0755, true);
+                }
+                
+                $final_filename = uniqid() . '_' . time() . '.' . $safe_ext;
+                $final_path = $final_dir . '/' . $final_filename;
+                
+                if (rename($raw_path, $final_path) || copy($raw_path, $final_path)) {
+                    if ($has_moderation_cols) {
+                        $pdo->prepare("UPDATE videos SET video_path=?, moderation_status='approved' WHERE id=?")->execute([$final_filename, $video_id]);
+                    } else {
+                        $pdo->prepare("UPDATE videos SET video_path=? WHERE id=?")->execute([$final_filename, $video_id]);
+                    }
+                    
+                    hashtag_sync_video_relations($pdo, $video_id, $parsed_hashtags);
+                    
+                    $pdo->commit();
+                    $committed = true;
                 } else {
-                    $cmd = 'nohup ' . escapeshellarg($php_bin) . ' ' . escapeshellarg($worker_script)
-                         . ' > /dev/null 2>&1 &';
-                    exec($cmd);
+                    throw new Exception("Falha ao mover arquivo localmente.");
+                }
+            } else {
+                // Inserir job na fila
+                $music_track_data = trim($_POST['music_track_data'] ?? '');
+                $music_mode       = in_array($_POST['music_mode'] ?? '', ['mix','replace'], true)
+                                    ? $_POST['music_mode']
+                                    : 'mix';
+                $music_volume     = max(5, min(100, (int)($_POST['music_volume'] ?? 25))) / 100.0;
+                $music_start      = max(0.0, min(300.0, (float)($_POST['music_start'] ?? 0)));
+
+                $pdo->prepare("
+                    INSERT INTO upload_jobs
+                        (user_id, video_id, tmp_video_path, original_name, title, description,
+                         hashtags, is_public, music_track_data, music_mode, music_volume, music_start, ad_flow,
+                         status, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', NOW())
+                ")->execute([
+                    $_SESSION['user_id'],
+                    $video_id,
+                    $raw_path,
+                    $originalName,
+                    $title,
+                    $description,
+                    $hashtags_formatted,
+                    $is_public,
+                    $music_track_data ?: null,
+                    $music_mode,
+                    $music_volume,
+                    $music_start,
+                    $ad_flow,
+                ]);
+
+                $job_id = (int)$pdo->lastInsertId();
+                $pdo->commit();
+                $committed = true; // ← commit bem sucedido; catch NÃO deve apagar o ficheiro
+
+                // ── Tentar lançar worker imediatamente (não-bloqueante) ─────────
+                $worker_script = __DIR__ . '/worker/process_upload_job.php';
+                if (file_exists($worker_script) && function_exists('exec')) {
+                    $php_bin = PHP_BINARY ?: 'php';
+                    $is_win  = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+                    if ($is_win) {
+                        $cmd = 'start /B "" ' . escapeshellarg($php_bin) . ' ' . escapeshellarg($worker_script) . ' > NUL 2>&1';
+                        pclose(popen($cmd, 'r'));
+                    } else {
+                        $cmd = 'nohup ' . escapeshellarg($php_bin) . ' ' . escapeshellarg($worker_script)
+                             . ' > /dev/null 2>&1 &';
+                        exec($cmd);
+                    }
                 }
             }
 
@@ -278,18 +307,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($error) {
             echo json_encode(['success' => false, 'error' => $error]);
         } else {
-            echo json_encode([
-                'success'  => true,
-                'job_id'   => $job_id,
-                'video_id' => $video_id,
-                'message'  => 'Vídeo recebido! A processar em background...',
-            ]);
+            if ($job_id !== null) {
+                echo json_encode([
+                    'success'  => true,
+                    'job_id'   => $job_id,
+                    'video_id' => $video_id,
+                    'message'  => 'Vídeo recebido! A processar em background...',
+                ]);
+            } else {
+                echo json_encode([
+                    'success'    => true,
+                    'video_id'   => $video_id,
+                    'is_ad_flow' => $ad_flow === 1,
+                    'message'    => 'Vídeo publicado com sucesso!',
+                ]);
+            }
         }
         exit;
     }
 
     if (!$error) {
-        $success = 'Vídeo recebido! Está a ser processado e estará disponível em breve.';
+        $success = 'Vídeo recebido e publicado com sucesso!';
         header('refresh:3;url=index.php');
     }
 }

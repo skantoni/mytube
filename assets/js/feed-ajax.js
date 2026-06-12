@@ -382,6 +382,12 @@ class FeedManager {
         const videoDiv = document.createElement('div');
         videoDiv.className = 'video-item';
         videoDiv.dataset.videoId = video.id;
+        // Store school info for floating score micro-interactions
+        if (video.school_name) {
+            videoDiv.dataset.schoolName = video.school_name;
+            videoDiv.dataset.schoolShort = video.school_short || video.school_name;
+        }
+        videoDiv.dataset.authorId = video.user.id;
 
         const escapeHtml = (value) => String(value || '')
             .replace(/&/g, '&amp;')
@@ -460,19 +466,6 @@ class FeedManager {
         // Contar vídeos existentes para definir index
         const existingVideos = document.querySelectorAll('.video-item:not(.initial-loading)');
         videoDiv.dataset.index = existingVideos.length;
-        
-        // Build follow button inline (for video info overlay)
-        let followBtnInline = '';
-        if (!window.isGuestMode && video.user.id != window.currentUserId) {
-            followBtnInline = `
-                <button class="follow-btn-inline ${video.user_following ? 'following' : ''}" 
-                        data-user-follow-inline="${video.user.id}"
-                        data-user-id="${video.user.id}"
-                        data-follows-you="${video.author_follows_you ? '1' : '0'}">
-                    ${video.user_following ? 'A seguir' : (video.author_follows_you ? 'Seguir de volta' : 'Seguir')}
-                </button>
-            `;
-        }
         
         // Build action buttons based on guest mode
         let actionButtonsHTML = '';
@@ -605,7 +598,16 @@ class FeedManager {
                                 ${video.user.is_verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}
                             </span>
                         </a>
-                        ${followBtnInline}
+                        ${(() => {
+                            const pts = video.ranking_points || video.user.ranking_points || 0;
+                            const school = video.school_short || video.user.school_short || video.school_name || video.user.school_name || '';
+                            if (!school) return '';
+                            const fmtPts = pts >= 1000 ? (pts / 1000).toFixed(1).replace('.0','') + 'k' : String(pts);
+                            return `<a href="ranking.php" class="ranking-badge" title="Ver Ranking">
+                                <span class="ranking-badge-icon"><svg class="mytube-rank-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:1.2em; height:1.2em; vertical-align:middle; display:inline-block; filter:drop-shadow(0 2px 4px rgba(0,123,255,0.4));"><defs><linearGradient id="mytubeFlame" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4facfe"/><stop offset="100%" stop-color="#00f2fe"/></linearGradient><linearGradient id="mytubeBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#007BFF"/><stop offset="100%" stop-color="#003D82"/></linearGradient></defs><path d="M12 2C12 2 15 5.5 15 8C15 9.65 13.65 11 12 11C10.35 11 9 9.65 9 8C9 5.5 12 2 12 2Z" fill="url(#mytubeFlame)"/><rect x="7" y="13" width="10" height="4" rx="1" fill="url(#mytubeBar)"/><rect x="3" y="19" width="18" height="4" rx="1" fill="url(#mytubeBar)"/></svg></span>
+                                <span class="ranking-badge-text">${fmtPts} pts&nbsp;•&nbsp;${escapeHtml(school)}</span>
+                            </a>`;
+                        })()}
                     </div>
                     ${video.is_boosted ? '<div class="boosted-badge"> Patrocinado</div>' : ''}
                     ${captionBlock}

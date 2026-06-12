@@ -10,7 +10,7 @@
     // STATE
     // ═══════════════════════════════════════
     let currentTab = 'dominant';
-    let currentPeriod = 'all';
+    let currentPeriod = 'week';
     let allSchools = [];
     let dataCache = {};
 
@@ -513,7 +513,7 @@
             const c = top3[i];
             const pic = c.profile_picture_url || 'assets/images/avatars/default.webp';
             html += `
-                <div class="podium-item ${classes[i]}" onclick="goToProfile('${esc(c.username)}')">
+                <div class="podium-item ${classes[i]}" onclick="goToProfile('${escAttr(c.username)}')">
                     <div class="podium-avatar-wrapper">
                         ${crowns[i] ? `<div class="podium-crown">${crowns[i]}</div>` : ''}
                         <img src="${pic}" class="podium-avatar" alt="${esc(c.full_name)}">
@@ -545,7 +545,7 @@
             const pic = c.profile_picture_url || 'assets/images/avatars/' + (c.profile_picture || 'default.webp');
             
             return `
-                <div class="creator-row ${isMe ? 'highlighted' : ''}" onclick="goToProfile('${esc(c.username)}')">
+                <div class="creator-row ${isMe ? 'highlighted' : ''}" onclick="goToProfile('${escAttr(c.username)}')">
                     <div class="creator-position ${posClass}">
                         ${pos <= 3 ? getMedal(pos) : pos}
                     </div>
@@ -597,7 +597,7 @@
                 el.innerHTML = data.schools.map(s => {
                     const topClass = s.position <= 3 ? `top-${s.position}` : '';
                     return `
-                        <div class="school-rank-card ${topClass}" onclick="viewSchoolRanking(${s.id}, '${esc(s.name)}')">
+                        <div class="school-rank-card ${topClass}" onclick="viewSchoolRanking(${s.id}, '${escAttr(s.name)}')">
                             <div class="school-rank-header">
                                 <div class="school-rank-position">${s.position <= 3 ? getMedal(s.position) : s.position}</div>
                                 <div class="school-rank-logo">🏫</div>
@@ -708,7 +708,7 @@
         
         el.innerHTML = schools.map(s => `
             <div class="school-list-item ${s.id == window.userSchoolId ? 'selected' : ''}" 
-                 onclick="selectSchool(${s.id}, '${esc(s.name)}')">
+                 onclick="selectSchool(${s.id}, '${escAttr(s.name)}')">
                 <div class="school-list-icon">🏫</div>
                 <div class="school-list-name">${esc(s.name)}</div>
                 <div class="school-list-short">${esc(s.short_name || '')}</div>
@@ -793,6 +793,11 @@
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    function escAttr(str) {
+        if (!str) return '';
+        return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
     }
 
     function formatNum(num) {
@@ -1016,7 +1021,7 @@
                     html += `
                         <div class="best-mytuber-card best-mytuber-global-card" onclick="goToProfile('${esc(globalWinner.username)}')">
                             <div class="best-mytuber-card-glow"></div>
-                            <div class="best-mytuber-crown-icon">🏆</div>
+                            <div class="best-mytuber-crown-icon"><svg class="mytube-rank-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:1.2em; height:1.2em; vertical-align:middle; display:inline-block; filter:drop-shadow(0 2px 4px rgba(0,123,255,0.4));"><defs><linearGradient id="mytubeFlame" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4facfe"/><stop offset="100%" stop-color="#00f2fe"/></linearGradient><linearGradient id="mytubeBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#007BFF"/><stop offset="100%" stop-color="#003D82"/></linearGradient></defs><path d="M12 2C12 2 15 5.5 15 8C15 9.65 13.65 11 12 11C10.35 11 9 9.65 9 8C9 5.5 12 2 12 2Z" fill="url(#mytubeFlame)"/><rect x="7" y="13" width="10" height="4" rx="1" fill="url(#mytubeBar)"/><rect x="3" y="19" width="18" height="4" rx="1" fill="url(#mytubeBar)"/></svg></div>
                             <div class="best-mytuber-tag">Best MyTuber Global</div>
                             <div class="best-mytuber-avatar-wrapper">
                                 <img src="${esc(pic)}" class="best-mytuber-avatar" alt="${esc(globalWinner.full_name)}">

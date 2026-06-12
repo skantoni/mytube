@@ -703,7 +703,25 @@ if ($guest_mode) {
         }
 
         $placeholders = implode(',', array_fill(0, count($slice_ids), '?'));
-        $stmt = $pdo->prepare("\n            SELECT\n                v.id, v.title, v.description, v.video_path, v.thumbnail_path,\n                v.views_count, v.likes_count, v.comments_count,\n                v.created_at, v.user_id as video_user_id, v.is_boosted, v.hashtags,\n                u.username, u.full_name, u.profile_picture, u.is_verified\n            FROM videos v\n            INNER JOIN users u ON v.user_id = u.id\n            WHERE v.id IN ($placeholders) AND v.is_public = 1 AND v.moderation_status = 'approved'\n        ");
+        $stmt = $pdo->prepare("
+            SELECT
+                v.id, v.title, v.description, v.video_path, v.thumbnail_path,
+                v.views_count, v.likes_count, v.comments_count,
+                v.created_at, v.user_id as video_user_id, v.is_boosted, v.hashtags,
+                u.username, u.full_name, u.profile_picture, u.is_verified, 
+                COALESCE((
+                    SELECT COUNT(DISTINCT v2.id) * 10 + COALESCE(SUM(v2.likes_count), 0) * 2 + COALESCE(SUM(v2.comments_count), 0) * 3 + COALESCE(SUM(v2.views_count), 0) * 1
+                    FROM videos v2 
+                    WHERE v2.user_id = u.id AND v2.is_public = 1 
+                    AND v2.created_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY)
+                ), 0) AS weekly_points,
+                s.name as school_name, s.short_name as school_short
+            FROM videos v
+            INNER JOIN users u ON v.user_id = u.id
+            LEFT JOIN schools s ON u.school_id = s.id
+            WHERE v.id IN ($placeholders) AND v.is_public = 1 AND v.moderation_status = 'approved'
+
+        ");
         $stmt->execute($slice_ids);
         $videos_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -757,6 +775,9 @@ if ($guest_mode) {
                 'user_liked' => false,
                 'user_following' => false,
                 'author_follows_you' => false,
+                'school_name' => $video['school_name'] ?? null,
+                'school_short' => $video['school_short'] ?? null,
+                'ranking_points' => (int)($video['weekly_points'] ?? 0),
                 'user' => [
                     'id' => (int)$video['video_user_id'],
                     'username' => $video['username'] ?? '',
@@ -764,6 +785,9 @@ if ($guest_mode) {
                     'profile_picture' => $video['profile_picture'] ?? 'default.webp',
                     'profile_picture_url' => avatar_url($video['profile_picture'] ?? null),
                     'is_verified' => (bool)$video['is_verified'],
+                    'school_name' => $video['school_name'] ?? null,
+                    'school_short' => $video['school_short'] ?? null,
+                    'ranking_points' => (int)($video['weekly_points'] ?? 0),
                 ],
             ];
         }
@@ -901,7 +925,25 @@ try {
     }
 
     $placeholders = implode(',', array_fill(0, count($slice_ids), '?'));
-    $stmt = $pdo->prepare("\n        SELECT\n            v.id, v.title, v.description, v.video_path, v.thumbnail_path,\n            v.views_count, v.likes_count, v.comments_count,\n            v.created_at, v.user_id as video_user_id, v.is_boosted, v.hashtags,\n            u.username, u.full_name, u.profile_picture, u.is_verified\n        FROM videos v\n        INNER JOIN users u ON v.user_id = u.id\n        WHERE v.id IN ($placeholders) AND v.is_public = 1 AND v.moderation_status = 'approved'\n    ");
+    $stmt = $pdo->prepare("
+        SELECT
+            v.id, v.title, v.description, v.video_path, v.thumbnail_path,
+            v.views_count, v.likes_count, v.comments_count,
+            v.created_at, v.user_id as video_user_id, v.is_boosted, v.hashtags,
+            u.username, u.full_name, u.profile_picture, u.is_verified, 
+            COALESCE((
+                SELECT COUNT(DISTINCT v2.id) * 10 + COALESCE(SUM(v2.likes_count), 0) * 2 + COALESCE(SUM(v2.comments_count), 0) * 3 + COALESCE(SUM(v2.views_count), 0) * 1
+                FROM videos v2 
+                WHERE v2.user_id = u.id AND v2.is_public = 1 
+                AND v2.created_at >= DATE_ADD(DATE(NOW()), INTERVAL -WEEKDAY(NOW()) DAY)
+            ), 0) AS weekly_points,
+            s.name as school_name, s.short_name as school_short
+        FROM videos v
+        INNER JOIN users u ON v.user_id = u.id
+        LEFT JOIN schools s ON u.school_id = s.id
+        WHERE v.id IN ($placeholders) AND v.is_public = 1 AND v.moderation_status = 'approved'
+
+    ");
     $stmt->execute($slice_ids);
     $videos_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -1012,6 +1054,9 @@ try {
             'user_liked' => in_array($video['id'], $user_likes),
             'user_following' => in_array($video['video_user_id'], $user_follows),
             'author_follows_you' => in_array($video['video_user_id'], $author_follows_user),
+            'school_name' => $video['school_name'] ?? null,
+            'school_short' => $video['school_short'] ?? null,
+            'ranking_points' => (int)($video['weekly_points'] ?? 0),
             'user' => [
                 'id' => (int)$video['video_user_id'],
                 'username' => $video['username'] ?? '',
@@ -1019,6 +1064,9 @@ try {
                 'profile_picture' => $video['profile_picture'] ?? 'default.webp',
                 'profile_picture_url' => avatar_url($video['profile_picture'] ?? null),
                 'is_verified' => (bool)$video['is_verified'],
+                'school_name' => $video['school_name'] ?? null,
+                'school_short' => $video['school_short'] ?? null,
+                'ranking_points' => (int)($video['weekly_points'] ?? 0),
             ],
         ];
     }

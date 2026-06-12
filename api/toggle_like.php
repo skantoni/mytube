@@ -89,7 +89,11 @@ try {
                     
                     // Push notification
                     $actorName = $_SESSION['username'] ?? 'Alguém';
-                    sendPushNotification($pdo, (int)$video_owner_id, 'Novo like ❤️', "$actorName curtiu o teu vídeo", "/index.php?v=$video_id");
+                    $destUserStmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+                    $destUserStmt->execute([$video_owner_id]);
+                    $destUsername = $destUserStmt->fetchColumn() ?: 'Usuário';
+                    
+                    sendPushNotification($pdo, (int)$video_owner_id, 'Novo like ❤️', "$destUsername, $actorName curtiu o teu vídeo", "/index.php?v=$video_id");
                 } catch (Exception $e) {
                     // Silently fail
                 }
