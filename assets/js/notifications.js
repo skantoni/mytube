@@ -245,7 +245,7 @@ const NotificationSystem = (function() {
         }
 
         if (dot) {
-            const hasAnyUnread = socialCount > 0 || getChatUnreadCount() > 0;
+            const hasAnyUnread = socialCount > 0;
             dot.style.display = hasAnyUnread ? 'block' : 'none';
         }
     }

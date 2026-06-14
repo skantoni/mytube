@@ -38,9 +38,7 @@
 
         const hasNotificationSystem = typeof window.NotificationSystem !== 'undefined';
         const dot = document.getElementById('notificationDot');
-        if (dot && !hasNotificationSystem) {
-            dot.style.display = safeCount > 0 ? 'block' : 'none';
-        }
+        // dot is now only controlled by notifications.js for general notifications
 
         document.dispatchEvent(new CustomEvent('chat-unread-updated', {
             detail: { unreadCount: safeCount }
@@ -138,6 +136,21 @@
         connectPresence();
     }
     
+    let presenceHeartbeatInterval = null;
+
+    async function fetchPresenceToken() {
+        try {
+            const res = await fetch('api/chat_token.php');
+            if (res.ok) {
+                const json = await res.json();
+                return json.token || null;
+            }
+        } catch (e) {
+            console.error('Erro ao buscar token para presença:', e);
+        }
+        return null;
+    }
+
     async function connectPresence() {
         // Verificar se Socket.IO está carregado
         if (typeof io === 'undefined') {
@@ -145,19 +158,17 @@
             return;
         }
 
-        let token;
-        try {
-            const res = await fetch('api/chat_token.php');
-            if (res.ok) {
-                const json = await res.json();
-                token = json.token;
-            }
-        } catch (e) {
-            console.error('Erro ao buscar token para presença:', e);
+        const token = await fetchPresenceToken();
+
+        if (!token) {
+            // Sem token o middleware do servidor rejeita a ligação — tentar de novo em 5s
+            console.warn('Token de presença não disponível, a tentar novamente em 5s...');
+            setTimeout(connectPresence, 5000);
+            return;
         }
-        
+
         presenceSocket = io(SOCKET_SERVER, {
-            auth: token ? { token } : {},
+            auth: { token },
             transports: ['websocket', 'polling'],
             reconnection: true,
             reconnectionAttempts: 10,
@@ -168,7 +179,7 @@
         presenceSocket.on('connect', () => {
             console.log('🟢 Presença conectada');
             
-            // Autenticar apenas para presença
+            // Autenticar
             presenceSocket.emit('authenticate', {
                 userId: mytubeUserId,
                 username: mytubeUsername || 'user'
@@ -179,14 +190,37 @@
             }
 
             requestUnreadCount();
+
+            // Iniciar heartbeat para manter o last_seen actualizado no servidor
+            // (o servidor espera heartbeat a cada 30s de todos os clientes)
+            if (presenceHeartbeatInterval) clearInterval(presenceHeartbeatInterval);
+            presenceHeartbeatInterval = setInterval(() => {
+                if (presenceSocket && presenceSocket.connected) {
+                    presenceSocket.emit('heartbeat');
+                }
+            }, 30000);
         });
         
         presenceSocket.on('disconnect', () => {
             console.log('🔴 Presença desconectada');
+            if (presenceHeartbeatInterval) {
+                clearInterval(presenceHeartbeatInterval);
+                presenceHeartbeatInterval = null;
+            }
         });
         
         presenceSocket.on('connect_error', (error) => {
-            // Silenciar erros de conexão para não poluir o console
+            // Token expirado → buscar novo e reconectar
+            if (error && (error.message === 'Token inválido ou expirado' || error.message === 'Token de autenticação necessário')) {
+                console.warn('Token de presença expirado, a renovar...');
+                if (presenceHeartbeatInterval) {
+                    clearInterval(presenceHeartbeatInterval);
+                    presenceHeartbeatInterval = null;
+                }
+                presenceSocket.disconnect();
+                presenceSocket = null;
+                setTimeout(connectPresence, 1000);
+            }
         });
         
         // Eventos de status que podem ser úteis em outras páginas
@@ -217,8 +251,9 @@
             } catch (e) {}
         });
 
-        // Notificação de mensagem de grupo — só som (badge do ícone vem via unread_messages_count do servidor)
+        // Notificação de mensagem de grupo — actualizar badge E tocar som
         presenceSocket.on('group_message_notification', () => {
+            requestUnreadCount();
             try {
                 const audio = new Audio('assets/sounds/recive.mp3?v=' + Date.now());
                 audio.play().catch(e => console.log('Audio autoplay prevented:', e));
@@ -242,6 +277,10 @@
     
     // Desconectar ao sair da página
     window.addEventListener('beforeunload', () => {
+        if (presenceHeartbeatInterval) {
+            clearInterval(presenceHeartbeatInterval);
+            presenceHeartbeatInterval = null;
+        }
         if (presenceSocket && presenceSocket.connected) {
             presenceSocket.disconnect();
         }

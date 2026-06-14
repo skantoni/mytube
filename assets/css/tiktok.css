@@ -812,6 +812,40 @@ body * {
     border-radius: 50%;
 }
 
+/* Botão de Chat e Badge */
+.chat-btn {
+    position: relative;
+}
+
+.chat-unread-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #ff3b5c;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border: 2px solid #0f172a;
+    animation: pulse-badge 2s infinite;
+    z-index: 100;
+}
+
+@keyframes pulse-badge {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
 /* Ponto vermelho de notificação */
 .notification-dot {
     position: absolute;
