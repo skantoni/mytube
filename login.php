@@ -279,7 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ── Google Identity Services ────────────────────────────────────────────
     const GOOGLE_CLIENT_ID = document.querySelector('meta[name="google-client-id"]')?.content || '';
 
-    window.onload = function() {
+    function initGoogleAuth() {
         if (typeof google === 'undefined' || !GOOGLE_CLIENT_ID) return;
         
         google.accounts.id.initialize({
@@ -298,9 +298,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             logo_alignment: "left"
         };
 
-        google.accounts.id.renderButton(document.getElementById("googleBtnLogin"), renderOptions);
-        google.accounts.id.renderButton(document.getElementById("googleBtnRegister"), renderOptions);
-    };
+        const loginBtn = document.getElementById("googleBtnLogin");
+        if (loginBtn) google.accounts.id.renderButton(loginBtn, renderOptions);
+        
+        const registerBtn = document.getElementById("googleBtnRegister");
+        if (registerBtn) google.accounts.id.renderButton(registerBtn, renderOptions);
+    }
+
+    if (typeof google !== 'undefined') {
+        initGoogleAuth();
+    } else {
+        const gsiScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+        if (gsiScript) {
+            gsiScript.addEventListener('load', initGoogleAuth);
+        } else {
+            window.addEventListener('load', initGoogleAuth);
+        }
+    }
 
     async function handleGoogleCredential(response) {
         const credential = response.credential;

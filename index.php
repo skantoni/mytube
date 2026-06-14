@@ -81,6 +81,7 @@ if ($start_video_id > 0) {
     <link rel="stylesheet" href="<?php echo asset('assets/css/comments.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset('assets/css/feed.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset('assets/css/splash.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/landing.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <!-- SEO & Social Media Meta Tags -->
@@ -103,28 +104,136 @@ if ($start_video_id > 0) {
         <?php include 'includes/header.php'; ?>
         <!-- Link para o robô do Google encontrar facilmente -->
         <a href="<?php echo SITE_URL; ?>/privacidade.php" style="display:none;">Política de Privacidade</a>
-        <main class="main-content">
-            <section class="hero-section">
-                <div class="hero-content">
-                    <h1 class="hero-title">
-                        Bem-vindo ao <span  class="gradient-text">MyTube</span>
-                    </h1>
-                    <p class="hero-subtitle">
-                        Aqui os criadores competem! Descubra talentos, participe de competições escolares e conecte-se com criadores de Angola.
-                    </p>
-                    <div class="hero-actions">
-                        <a href="login.php?register=1" class="btn btn-primary btn-lg">
-                            <i class="fas fa-user-plus"></i>
-                            Criar Conta Grátis
-                        </a>
-                        <a href="login.php" class="btn btn-secondary btn-lg">
-                            <i class="fas fa-sign-in-alt"></i>
-                            Já tenho conta
-                        </a>
+
+        <main class="main-content landing-page">
+
+            <!-- ===== HERO ===== -->
+            <section class="lp-hero">
+                <div class="lp-hero-container">
+
+                    <!-- Texto -->
+                    <div class="lp-hero-text">
+<!--                         <div class="lp-badge">🇦🇴 A rede social angolana de vídeos</div>
+ -->                        <h1 class="lp-hero-title">
+                            O teu palco digital<br>
+                            <span class="lp-gradient-text">começa aqui.</span>
+                        </h1>
+                        <p class="lp-hero-subtitle">
+                            Cria, partilha e compete.
+                        </p>
+                    </div>
+                    
+                    <!-- Mockup telemóvel -->
+                    <div class="lp-hero-visual" style="flex-direction: column;">
+                        <div class="lp-phone-mockup">
+                            <div class="lp-phone-frame">
+                                <div class="lp-phone-notch"></div>
+                                <div class="lp-phone-screen">
+                                    <video
+                                        src="assets/videos/screenshots/video-feed.mp4"
+                                        class="lp-phone-img"
+                                        autoplay
+                                        loop
+                                        muted
+                                        playsinline
+                                        ></video>
+                                        </div>
+                                </div>
+                                <!-- Cards flutuantes -->
+                                <div class="lp-float-card lp-float-top">
+                                    <i class="fas fa-heart" style="color:#ff3b5c"></i>
+                                <span>+1.2k likes</span>
+                            </div>
+                            <div class="lp-float-card lp-float-bottom">
+                                <svg class="mytube-rank-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:1.2em; height:1.2em; vertical-align:middle; display:inline-block; filter:drop-shadow(0 2px 4px rgba(0,123,255,0.4));"><defs><linearGradient id="mytubeFlame" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4facfe"/><stop offset="100%" stop-color="#00f2fe"/></linearGradient><linearGradient id="mytubeBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#007BFF"/><stop offset="100%" stop-color="#003D82"/></linearGradient></defs><path d="M12 2C12 2 15 5.5 15 8C15 9.65 13.65 11 12 11C10.35 11 9 9.65 9 8C9 5.5 12 2 12 2Z" fill="url(#mytubeFlame)"/><rect x="7" y="13" width="10" height="4" rx="1" fill="url(#mytubeBar)"/><rect x="3" y="19" width="18" height="4" rx="1" fill="url(#mytubeBar)"/></svg>
+                                <span>#1 da Escola</span>
+                            </div>
+                        </div>
+
+                        <div class="lp-cta-group" style="margin-top: 40px; justify-content: center; width: 100%;">
+                            <a href="login.php?register=1" class="lp-btn-primary">
+                                <i class="fas fa-user-plus"></i> Criar Conta Grátis
+                            </a>
+                            <a href="login.php" class="lp-btn-secondary">
+                                <i class="fas fa-sign-in-alt"></i> Já tenho conta
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- ===== FEATURES ===== -->
+            <section class="lp-features">
+                <div class="lp-features-container">
+                    <div class="lp-section-header">
+                        <h2>Tudo numa só plataforma</h2>
+                        <p>O MyTube reúne o melhor dos vídeos curtos com uma competição saudável e uma comunidade angolana unida.</p>
+                    </div>
+                    <div class="lp-features-grid">
+                        <div class="lp-feature-card">
+                            <span class="lp-feature-icon">📱</span>
+                            <h3>Feed de Vídeos Imersivo</h3>
+                            <p>Desliza para descobrir conteúdos criados por angolanos. Curte, comenta e partilha os teus momentos favoritos.</p>
+                        </div>
+                        <div class="lp-feature-card lp-feature-card--highlight">
+                            <span class="lp-feature-icon">
+                                <svg class="mytube-rank-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:1em; height:1em; vertical-align:middle; display:inline-block; filter:drop-shadow(0 4px 8px rgba(0,123,255,0.5));"><defs><linearGradient id="mytubeFlame" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4facfe"/><stop offset="100%" stop-color="#00f2fe"/></linearGradient><linearGradient id="mytubeBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#007BFF"/><stop offset="100%" stop-color="#003D82"/></linearGradient></defs><path d="M12 2C12 2 15 5.5 15 8C15 9.65 13.65 11 12 11C10.35 11 9 9.65 9 8C9 5.5 12 2 12 2Z" fill="url(#mytubeFlame)"/><rect x="7" y="13" width="10" height="4" rx="1" fill="url(#mytubeBar)"/><rect x="3" y="19" width="18" height="4" rx="1" fill="url(#mytubeBar)"/></svg>
+                            </span>
+                            <h3>Rankings Escolares</h3>
+                            <p>Representa a tua escola! Compete de forma saudável e leva o nome da tua instituição ao topo de Angola.</p>
+                        </div>
+                        <div class="lp-feature-card">
+                            <span class="lp-feature-icon">💬</span>
+                            <h3>Chat em Tempo Real</h3>
+                            <p>Conecta-te com outros criadores. Envia mensagens, reage e faz parte de grupos vibrantes da comunidade.</p>
+                        </div>
                     </div>
                 </div>
             </section>
-            
+
+            <!-- ===== SCREENSHOTS ===== -->
+            <section class="lp-screenshots">
+                <div class="lp-screenshots-container">
+                    <div class="lp-section-header">
+                        <h2>Vê antes de entrar</h2>
+                        <p>Uma prévia do que te espera dentro do MyTube</p>
+                    </div>
+                    <div class="lp-screens-row">
+                        <div class="lp-screen-item">
+                            <div class="lp-mini-phone">
+                                <img src="assets/images/screenshots/mobile-feed1.png" alt="Feed de Vídeos" loading="lazy">
+                            </div>
+                            <span>Feed</span>
+                        </div>
+                        <div class="lp-screen-item lp-screen-item--featured">
+                            <div class="lp-mini-phone">
+                                <img src="assets/images/screenshots/mobile-ranking.png" alt="Rankings" loading="lazy">
+                            </div>
+                            <span>Rankings</span>
+                        </div>
+                        <div class="lp-screen-item">
+                            <div class="lp-mini-phone">
+                                <img src="assets/images/screenshots/mobile-chat.png" alt="Chat" loading="lazy">
+                            </div>
+                            <span>Chat</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== FINAL CTA ===== -->
+            <section class="lp-final-cta">
+                <div class="lp-final-cta-content">
+                    <h2>Pronto para mostrar o teu talento?</h2>
+                    <p>Junta-te à comunidade MyTube hoje mesmo. É grátis e sempre será.</p>
+                    <a href="login.php?register=1" class="lp-btn-primary lp-btn-xl">
+                        <i class="fas fa-rocket"></i> Começar Agora — É Grátis
+                    </a>
+                </div>
+            </section>
+
+            <!-- ===== FOOTER ===== -->
             <footer class="landing-footer">
                 <div class="footer-links">
                     <a href="<?php echo SITE_URL; ?>/termos.php">Termos de Uso</a>
@@ -133,6 +242,7 @@ if ($start_video_id > 0) {
                 </div>
                 <p class="footer-copy">&copy; <?php echo date('Y'); ?> MyTube. Todos os direitos reservados.</p>
             </footer>
+
         </main>
     <?php elseif ($guest_explore): ?>
         <!-- Feed para visitantes (modo explorar) -->
