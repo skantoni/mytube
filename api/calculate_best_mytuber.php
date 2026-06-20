@@ -451,7 +451,10 @@ try {
             $global_winner['total_views'], $global_winner['total_comments'],
             $global_winner['new_followers'], $badge_from, $badge_until
         ]);
-        
+        // --- Limpar notificações globais antigas do Best MyTuber ---
+        // Assim as notificações antigas desaparecem da lista de todos os usuários
+        $pdo->exec("DELETE FROM global_notifications WHERE type = 'best_mytuber_global'");
+
         // --- Notificação Global para todos os usuários ---
         $notif_stmt = $pdo->prepare("
             INSERT INTO global_notifications (type, message, reference_id)
