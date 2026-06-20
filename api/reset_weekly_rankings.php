@@ -113,6 +113,14 @@ try {
     ranking_cache_clear_all();
 
     // ═══════════════════════════════════════
+    // 6. Limpar Notificações Antigas do Best MyTuber
+    // ═══════════════════════════════════════
+    // Como a semana de destaque acaba domingo 23:59, 
+    // na segunda-feira as notificações desaparecem.
+    $pdo->exec("DELETE FROM global_notifications WHERE type = 'best_mytuber_global'");
+
+
+    // ═══════════════════════════════════════
     // RESULTADO
     // ═══════════════════════════════════════
     $result = [
