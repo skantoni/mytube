@@ -137,4 +137,12 @@ class UserRepository
         );
         $stmt->execute([$userId]);
     }
+
+    /**
+     * Expose the underlying PDO connection (e.g., for cross-cutting concerns).
+     */
+    public function getPdo(): mixed
+    {
+        return $this->pdo;
+    }
 }

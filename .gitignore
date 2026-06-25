@@ -54,7 +54,6 @@ check_users.php
 # === BACKUPS ===
 *.OLD
 *.BAK
-docs/report/
 
 # === SISTEMA OPERATIVO ===
 .DS_Store
@@ -70,3 +69,7 @@ desktop.ini
 
 # === PHP ===
 .user.ini
+
+
+# === MEUS FILES ===
+meus/

@@ -88,6 +88,16 @@ class AuthService
         $_SESSION['profile_picture'] = $user['profile_picture'];
         $_SESSION['auth_method']     = 'password';
 
+        // ── Registar login no histórico (analytics de retenção) ──────────────
+        try {
+            $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+            $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500);
+            $this->users->getPdo()->prepare(
+                "INSERT IGNORE INTO user_login_history (user_id, logged_in_at, ip_address, user_agent)
+                 VALUES (?, NOW(), ?, ?)"
+            )->execute([(int)$user['id'], $ip, $ua]);
+        } catch (\Exception) { /* login nunca falha por causa disto */ }
+
         // Never expose password hash to callers
         unset($user['password']);
 

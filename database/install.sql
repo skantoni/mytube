@@ -107,6 +107,23 @@ CREATE TABLE IF NOT EXISTS `users` (
   CONSTRAINT `users_ibfk_school` FOREIGN KEY (`school_id`) REFERENCES `schools` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- -------------------------------------------------------------
+-- HISTÓRICO DE SESSÕES (Logins)
+-- -------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS `user_login_history` (
+  `id`           INT          NOT NULL AUTO_INCREMENT,
+  `user_id`      INT          NOT NULL,
+  `logged_in_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ip_address`   VARCHAR(45)  NULL,
+  `user_agent`   VARCHAR(500) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_logged` (`user_id`, `logged_in_at`),
+  KEY `idx_logged_at`   (`logged_in_at`),
+  CONSTRAINT `fk_ulh_user`
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 -- =============================================================
 -- VÍDEOS

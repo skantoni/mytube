@@ -182,10 +182,10 @@ try {
             <span>Analytics</span>
             <span class="ap-soon-chip">em breve</span>
         </li>
-        <li class="ap-nav-item ap-nav-future" title="Em breve">
+        <li class="ap-nav-item" data-section="users" role="button" tabindex="0">
             <i class="fas fa-users"></i>
             <span>Utilizadores</span>
-            <span class="ap-soon-chip">em breve</span>
+            <span class="ap-badge ap-badge-green" id="usrOnlineBadge" style="display:none">0</span>
         </li>
         <li class="ap-nav-item ap-nav-future" title="Em breve">
             <i class="fas fa-flag"></i>
@@ -987,6 +987,214 @@ try {
         </div>
         <?php endif; ?>
     </section>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SECÇÃO: UTILIZADORES
+    ────────────────────────────────────────────────────────────── -->
+    <section class="ap-section" id="section-users">
+        <div class="ap-section-header">
+            <div>
+                <p class="ap-eyebrow">Painel Admin</p>
+                <h1>Utilizadores</h1>
+            </div>
+            <div class="ap-header-actions">
+                <button class="ap-btn ap-btn-secondary" id="usrRefreshBtn" style="gap:6px">
+                    <i class="fas fa-arrows-rotate"></i> Atualizar
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats cards -->
+        <div class="usr-stats-grid">
+            <div class="usr-stat-card">
+                <div class="usr-stat-icon" style="background:rgba(16,185,129,.15);color:#10b981">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="usr-stat-body">
+                    <span class="usr-stat-label">Total</span>
+                    <strong class="usr-stat-value" id="usrStatTotal">—</strong>
+                    <span class="usr-stat-sub">utilizadores</span>
+                </div>
+            </div>
+            <div class="usr-stat-card">
+                <div class="usr-stat-icon" style="background:rgba(16,185,129,.2);color:#34d399">
+                    <i class="fas fa-circle"></i>
+                </div>
+                <div class="usr-stat-body">
+                    <span class="usr-stat-label">Online agora</span>
+                    <strong class="usr-stat-value" id="usrStatOnline">—</strong>
+                    <span class="usr-stat-sub">há &lt;2 min</span>
+                </div>
+            </div>
+            <div class="usr-stat-card">
+                <div class="usr-stat-icon" style="background:rgba(139,92,246,.15);color:#a78bfa">
+                    <i class="fas fa-video"></i>
+                </div>
+                <div class="usr-stat-body">
+                    <span class="usr-stat-label">Com vídeos</span>
+                    <strong class="usr-stat-value" id="usrStatVideos">—</strong>
+                    <span class="usr-stat-sub">criadores</span>
+                </div>
+            </div>
+            <div class="usr-stat-card">
+                <div class="usr-stat-icon" style="background:rgba(59,130,246,.15);color:#60a5fa">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <div class="usr-stat-body">
+                    <span class="usr-stat-label">Novos hoje</span>
+                    <strong class="usr-stat-value" id="usrStatToday">—</strong>
+                    <span class="usr-stat-sub">registos</span>
+                </div>
+            </div>
+            <div class="usr-stat-card">
+                <div class="usr-stat-icon" style="background:rgba(59,130,246,.1);color:#3b82f6">
+                    <i class="fas fa-calendar-week"></i>
+                </div>
+                <div class="usr-stat-body">
+                    <span class="usr-stat-label">Esta semana</span>
+                    <strong class="usr-stat-value" id="usrStatWeek">—</strong>
+                    <span class="usr-stat-sub">novos</span>
+                </div>
+            </div>
+            <div class="usr-stat-card">
+                <div class="usr-stat-icon" style="background:rgba(245,158,11,.15);color:#f59e0b">
+                    <i class="fas fa-repeat"></i>
+                </div>
+                <div class="usr-stat-body">
+                    <span class="usr-stat-label">Taxa de Retenção</span>
+                    <strong class="usr-stat-value" id="usrStatRetention">—</strong>
+                    <span class="usr-stat-sub">voltaram</span>
+                </div>
+            </div>
+            <div class="usr-stat-card">
+                <div class="usr-stat-icon" style="background:rgba(16,185,129,.12);color:#10b981">
+                    <i class="fas fa-rotate-right"></i>
+                </div>
+                <div class="usr-stat-body">
+                    <span class="usr-stat-label">Retidos</span>
+                    <strong class="usr-stat-value" id="usrStatRetained">—</strong>
+                    <span class="usr-stat-sub">utilizadores</span>
+                </div>
+            </div>
+            <div class="usr-stat-card">
+                <div class="usr-stat-icon" style="background:rgba(244,63,94,.15);color:#f43f5e">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <div class="usr-stat-body">
+                    <span class="usr-stat-label">Tempo p/ 2.º login</span>
+                    <strong class="usr-stat-value" id="usrStatAvgReturn">—</strong>
+                    <span class="usr-stat-sub">média</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sub-tabs: Lista | Retenção -->
+        <div class="usr-subtabs">
+            <button class="usr-subtab active" data-subtab="list">
+                <i class="fas fa-list"></i> Lista de Utilizadores
+            </button>
+            <button class="usr-subtab" data-subtab="retention">
+                <i class="fas fa-chart-line"></i> Análise de Retenção
+            </button>
+        </div>
+
+        <!-- ── PANE: Lista ─────────────────────────────────────────── -->
+        <div id="usrListPane">
+            <!-- Toolbar -->
+            <div class="usr-toolbar">
+                <div class="usr-search-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="search" id="usrSearch" class="usr-search"
+                           placeholder="Pesquisar por nome, username ou email…"
+                           autocomplete="off">
+                </div>
+                <div class="usr-filters">
+                    <select id="usrFilterStatus" class="usr-filter-select">
+                        <option value="all">📡 Todos</option>
+                        <option value="online">🟢 Online</option>
+                        <option value="offline">⚫ Offline</option>
+                    </select>
+                    <select id="usrFilterRole" class="usr-filter-select">
+                        <option value="all">👤 Roles</option>
+                        <option value="user">User</option>
+                        <option value="vip">VIP</option>
+                        <option value="moderator">Moderador</option>
+                    </select>
+                    <select id="usrFilterVideos" class="usr-filter-select">
+                        <option value="all">🎬 Vídeos</option>
+                        <option value="yes">Com vídeos</option>
+                        <option value="no">Sem vídeos</option>
+                    </select>
+                    <select id="usrFilterVerified" class="usr-filter-select">
+                        <option value="all">✅ Verificação</option>
+                        <option value="yes">Verificados</option>
+                        <option value="no">Não verif.</option>
+                    </select>
+                    <select id="usrFilterSort" class="usr-filter-select">
+                        <option value="newest">↓ Mais recentes</option>
+                        <option value="oldest">↑ Mais antigos</option>
+                        <option value="most_videos">↓ Mais vídeos</option>
+                        <option value="most_followers">↓ Mais seguidores</option>
+                        <option value="last_seen">↓ Último visto</option>
+                    </select>
+                </div>
+                <span class="usr-results-count" id="usrCount"></span>
+            </div>
+
+            <!-- Table -->
+            <div class="usr-table-wrap">
+                <table class="usr-table">
+                    <thead>
+                        <tr>
+                            <th>Utilizador</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th><i class="fas fa-video"></i> Vídeos</th>
+                            <th><i class="fas fa-users"></i> Seguidores</th>
+                            <th>Último Login</th>
+                            <th>Membro desde</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="usrTbody">
+                        <tr><td colspan="9">
+                            <div class="usr-loading">
+                                <i class="fas fa-spinner"></i>
+                                A carregar utilizadores…
+                            </div>
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="usr-pagination" id="usrPagination"></div>
+        </div>
+
+        <!-- ── PANE: Retenção ──────────────────────────────────────── -->
+        <div id="usrRetentionPane" style="display:none">
+            <div id="usrRetentionContent">
+                <div class="usr-loading">
+                    <i class="fas fa-spinner"></i>
+                    Clica na sub-aba para carregar métricas de retenção.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Drawer overlay -->
+    <div class="usr-drawer-overlay" id="usrDrawerOverlay"></div>
+
+    <!-- Drawer -->
+    <aside class="usr-drawer" id="usrDrawer" role="dialog" aria-modal="true" aria-label="Detalhes do utilizador">
+        <div class="usr-drawer-header" id="usrDrawerHeader">
+            <div class="usr-drawer-loading">
+                <i class="fas fa-spinner"></i>
+            </div>
+        </div>
+        <div class="usr-drawer-body" id="usrDrawerBody"></div>
+    </aside>
 
 </div><!-- /.ap-main -->
 

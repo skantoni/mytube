@@ -161,6 +161,16 @@ try {
     $_SESSION['profile_picture'] = $user['profile_picture'];
     $_SESSION['auth_method']     = 'google';
 
+    // ── Registar login no histórico (analytics de retenção) ──────────────────
+    try {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+        $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500);
+        $pdo->prepare(
+            "INSERT IGNORE INTO user_login_history (user_id, logged_in_at, ip_address, user_agent)
+             VALUES (?, NOW(), ?, ?)"
+        )->execute([(int)$user['id'], $ip, $ua]);
+    } catch (Exception $ignored) { /* login nunca falha por causa disto */ }
+
     // ✅ Regenerar token CSRF para a nova sessão
     csrf_regenerate();
 
