@@ -285,12 +285,22 @@ if ($action === 'detail') {
                 $login_metrics['logins_per_week'] = round($real_logins / $weeks, 2);
             }
 
-            // Activity class
+            // Activity class baseada em histórico de logins
             $days = $login_metrics['days_since_last'] ?? 999;
-            if ($days <= 3)       $login_metrics['activity_class'] = 'active';
-            elseif ($days <= 14)  $login_metrics['activity_class'] = 'casual';
-            elseif ($days <= 60)  $login_metrics['activity_class'] = 'inactive';
-            else                  $login_metrics['activity_class'] = 'churned';
+
+            // OVERRIDE: Se estiver online agora ou visto recentemente (< 1 dia), é Ativo
+            $days_since_seen = $user['last_seen'] ? (int)floor(($now - strtotime($user['last_seen'])) / 86400) : 999;
+            $effective_days = min($days, $days_since_seen);
+
+            if ($user['is_really_online'] || $effective_days === 0) {
+                $login_metrics['activity_class'] = 'active';
+                $login_metrics['days_since_last'] = 0; // Força a exibição amigável "0 dia(s)"
+            } else {
+                if ($effective_days <= 3)       $login_metrics['activity_class'] = 'active';
+                elseif ($effective_days <= 14)  $login_metrics['activity_class'] = 'casual';
+                elseif ($effective_days <= 60)  $login_metrics['activity_class'] = 'inactive';
+                else                            $login_metrics['activity_class'] = 'churned';
+            }
         }
     }
 
