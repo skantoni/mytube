@@ -170,9 +170,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <button type="button" class="back-btn" onclick="backToLogin()">&larr;</button>
                         <h3>Recuperar Senha</h3>
                     </div>
-                    <p class="forgot-description">Insira o e-mail da sua conta para receber um código de verificação.</p>
+                    <p class="forgot-description">Insira o e-mail da sua conta ou nº de WhatsApp para receber um código.</p>
                     <div class="input-group">
-                        <input type="email" id="resetEmail" placeholder="Seu e-mail" required>
+                        <input type="text" id="resetEmail" placeholder="E-mail ou número de WhatsApp" required>
                     </div>
                     <button type="button" class="btn btn-primary" onclick="sendResetCode()" id="btnSendCode">Enviar Código</button>
                 </div>
@@ -233,6 +233,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <small class="field-hint">3-14 caracteres (letras, números, - e _)</small>
                 </div>
                 <!-- WhatsApp -->
+                <div id="waAlertBox" class="alert" style="display:none; margin-bottom:10px;"></div>
+                
                 <div class="input-group whatsapp-input-group">
                     <span class="whatsapp-prefix">🇦🇴 +244</span>
                     <input type="tel" name="reg_whatsapp" id="reg_whatsapp"
@@ -384,12 +386,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ── WhatsApp Verification ──────────────────────────────────────────────────
 
+    function showWaAlert(message, type = 'error') {
+        const alertBox = document.getElementById('waAlertBox');
+        alertBox.textContent = message;
+        alertBox.className = `alert alert-${type}`;
+        alertBox.style.display = 'block';
+        setTimeout(() => { alertBox.style.display = 'none'; }, 5000);
+    }
+
     async function sendWhatsappCode() {
         const phoneInput = document.getElementById('reg_whatsapp');
         const phone = phoneInput.value.replace(/\D/g, '').trim();
 
         if (phone.length < 9) {
-            alert('Por favor, insira um número de WhatsApp válido (ex: 912 345 678).');
+            showWaAlert('Por favor, insira um número de WhatsApp válido (ex: 912 345 678).');
             phoneInput.focus();
             return;
         }
@@ -414,6 +424,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 document.getElementById('waVerifyStep').style.display = 'block';
                 btn.textContent = 'Reenviar';
                 btn.disabled = false;
+                showWaAlert('Código enviado! Verifique o seu WhatsApp.', 'success');
 
                 // Focar no primeiro input do código
                 const firstDigit = document.querySelector('.wa-digit[data-index="0"]');
@@ -436,13 +447,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }, 1000);
             } else {
-                alert(data.message || 'Não foi possível enviar o código.');
+                showWaAlert(data.message || 'Não foi possível enviar o código.');
                 btn.disabled = false;
                 btn.textContent = 'Enviar código';
             }
         } catch (err) {
             console.error('[WhatsApp]', err);
-            alert('Erro de ligação. Tente novamente.');
+            showWaAlert('Erro de ligação. Tente novamente.');
             btn.disabled = false;
             btn.textContent = 'Enviar código';
         }
@@ -453,7 +464,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .map(i => i.value).join('');
 
         if (digits.length !== 6 || !/^\d{6}$/.test(digits)) {
-            alert('Por favor, insira os 6 dígitos do código.');
+            showWaAlert('Por favor, insira os 6 dígitos do código.');
             return;
         }
 
@@ -483,8 +494,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 document.getElementById('reg_whatsapp').readOnly = true;
                 // Desabilitar inputs do código
                 document.querySelectorAll('.wa-digit').forEach(i => i.disabled = true);
+                
+                const alertBox = document.getElementById('waAlertBox');
+                if (alertBox) alertBox.style.display = 'none';
             } else {
-                alert(data.message || 'Código incorreto. Tente novamente.');
+                showWaAlert(data.message || 'Código incorreto. Tente novamente.');
                 btn.disabled = false;
                 btn.textContent = 'Verificar número';
                 // Limpar campos do código
@@ -493,7 +507,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } catch (err) {
             console.error('[WhatsApp verify]', err);
-            alert('Erro de ligação. Tente novamente.');
+            showWaAlert('Erro de ligação. Tente novamente.');
             btn.disabled = false;
             btn.textContent = 'Verificar número';
         }

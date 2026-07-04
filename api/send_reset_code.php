@@ -6,7 +6,6 @@ header('Content-Type: application/json');
 register_shutdown_function(function() {
     $error = error_get_last();
     if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
-        // Limpar qualquer output anterior
         if (ob_get_length()) ob_clean();
         http_response_code(200);
         echo json_encode([
@@ -17,7 +16,6 @@ register_shutdown_function(function() {
     }
 });
 
-// Buffer de saída para capturar erros inesperados
 ob_start();
 
 try {
@@ -31,32 +29,45 @@ try {
         exit;
     }
 
-    // Validar CSRF token
     if (!csrf_verify()) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Token de segurança inválido.']);
         exit;
     }
 
-    $email = trim($_POST['email'] ?? '');
+    $identifier = trim($_POST['email'] ?? '');
 
-    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        echo json_encode(['success' => false, 'message' => 'Por favor, insira um e-mail válido.']);
+    if (empty($identifier)) {
+        echo json_encode(['success' => false, 'message' => 'Por favor, insira um e-mail ou número de WhatsApp.']);
         exit;
     }
 
-    // Verificar se o email existe no sistema
-    $stmt = $pdo->prepare("SELECT id, username, email FROM users WHERE email = ?");
-    $stmt->execute([$email]);
+    $isPhone = false;
+    // Verifica se é número de telefone (só digitos ou +, etc.)
+    if (preg_match('/^[0-9\+\s]+$/', $identifier)) {
+        $isPhone = true;
+        $cleanPhone = preg_replace('/\D/', '', $identifier);
+        if (strlen($cleanPhone) === 9) {
+            $cleanPhone = '244' . $cleanPhone;
+        }
+        $stmt = $pdo->prepare("SELECT id, username, email, whatsapp_number FROM users WHERE whatsapp_number = ?");
+        $stmt->execute([$cleanPhone]);
+    } else {
+        if (!filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => 'Formato de e-mail ou número inválido.']);
+            exit;
+        }
+        $stmt = $pdo->prepare("SELECT id, username, email, whatsapp_number FROM users WHERE email = ?");
+        $stmt->execute([$identifier]);
+    }
+
     $user = $stmt->fetch();
 
     if (!$user) {
-        // Por segurança, não revelamos se o email existe ou não
-        echo json_encode(['success' => true, 'message' => 'Se o e-mail estiver cadastrado, você receberá um código de verificação.']);
+        echo json_encode(['success' => true, 'message' => 'Se os dados estiverem cadastrados, você receberá um código de verificação.']);
         exit;
     }
 
-    // Verificar/criar tabela password_resets se não existir
     try {
         $pdo->query("SELECT 1 FROM password_resets LIMIT 1");
     } catch (Exception $tableErr) {
@@ -73,7 +84,6 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
-    // Rate limiting: máximo 3 códigos por hora por usuário
     $stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM password_resets WHERE user_id = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
     $stmt->execute([$user['id']]);
     $count = $stmt->fetch()['cnt'];
@@ -83,18 +93,42 @@ try {
         exit;
     }
 
-    // Invalidar códigos anteriores deste usuário
     $stmt = $pdo->prepare("UPDATE password_resets SET used = 1 WHERE user_id = ? AND used = 0");
     $stmt->execute([$user['id']]);
 
-    // Gerar código de 6 dígitos
     $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-    // Salvar no banco (expira em 15 minutos)
+    // Guardamos o identificador no campo 'email' por compatibilidade
+    $savedIdentifier = $isPhone ? $user['whatsapp_number'] : $user['email'];
     $stmt = $pdo->prepare("INSERT INTO password_resets (user_id, email, reset_code, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
-    $stmt->execute([$user['id'], $email, $code]);
+    $stmt->execute([$user['id'], $savedIdentifier, $code]);
 
-    // Montar email HTML
+    if ($isPhone) {
+        require_once '../includes/whatsapp_helper.php';
+        $message = "🔒 *MyTube* - Recuperação de Senha\n\n";
+        $message .= "O seu código de verificação é: *$code*\n\n";
+        $message .= "Este código é válido por 15 minutos.\nSe não solicitou a alteração, ignore esta mensagem.";
+        
+        $sent = sendWhatsappMessage($user['whatsapp_number'], $message);
+        
+        if ($sent) {
+            ob_end_clean();
+            echo json_encode([
+                'success' => true,
+                'message' => 'Código de verificação enviado via WhatsApp!'
+            ]);
+        } else {
+            error_log('Falha ao enviar whatsapp de reset.');
+            ob_end_clean();
+            echo json_encode([
+                'success' => false,
+                'message' => 'Não foi possível enviar o código via WhatsApp. Tente mais tarde.'
+            ]);
+        }
+        exit;
+    }
+
+    // Se não for phone (é e-mail):
     $username = htmlspecialchars($user['username']);
     $subject = "MyTube - Código de Recuperação de Senha";
 
@@ -133,8 +167,7 @@ try {
     </html>
     ";
 
-    // Enviar via PHPMailer SMTP
-    $result = sendMail($email, $subject, $htmlMessage);
+    $result = sendMail($identifier, $subject, $htmlMessage);
     $elapsed_ms = (int) round((microtime(true) - $request_started_at) * 1000);
 
     if ($elapsed_ms > 5000) {
@@ -148,9 +181,7 @@ try {
             'message' => 'Código de verificação enviado para o seu e-mail!'
         ]);
     } else {
-        // Log do erro para debug
         error_log('Falha ao enviar email de reset: ' . $result['message']);
-        
         ob_end_clean();
         echo json_encode([
             'success' => false,
@@ -160,20 +191,16 @@ try {
     }
 
 } catch (Exception $e) {
-    // Capturar QUALQUER exceção e retornar JSON válido
     if (ob_get_length()) ob_clean();
     error_log("Erro em send_reset_code.php: " . $e->getMessage());
-    
     echo json_encode([
         'success' => false,
         'message' => 'Erro interno do servidor. Tente novamente mais tarde.',
         'debug_error' => $e->getMessage()
     ]);
 } catch (\Throwable $t) {
-    // Capturar erros do PHP 7+ (TypeError, etc.)
     if (ob_get_length()) ob_clean();
     error_log("Erro fatal em send_reset_code.php: " . $t->getMessage());
-    
     echo json_encode([
         'success' => false,
         'message' => 'Erro interno do servidor. Tente novamente mais tarde.',

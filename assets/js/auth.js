@@ -454,17 +454,12 @@ async function sendResetCode() {
     }
     
     if (!email) {
-        showForgotMessage('Por favor, insira seu e-mail.');
+        showForgotMessage('Por favor, insira seu e-mail ou número de WhatsApp.');
         emailInput.focus();
         return;
     }
     
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        showForgotMessage('Insira um e-mail válido.');
-        emailInput.focus();
-        return;
-    }
+    // Removed strict email regex because it can now be a WhatsApp number
     
     // Loading state
     btn.disabled = true;
