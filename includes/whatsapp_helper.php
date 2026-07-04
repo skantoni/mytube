@@ -18,7 +18,7 @@
  */
 function sendWhatsappMessage(string $phone, string $message): bool
 {
-    $botUrl = 'http://127.0.0.1:3001/send-message';
+    $botUrl = 'http://127.0.0.1:3002/send-message';
 
     $payload = json_encode([
         'phone'   => normalizeWhatsappNumber($phone),
@@ -67,7 +67,7 @@ function sendWhatsappMessage(string $phone, string $message): bool
  */
 function isWhatsappBotOnline(): bool
 {
-    $ch = curl_init('http://127.0.0.1:3001/status');
+    $ch = curl_init('http://127.0.0.1:3002/status');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 3,

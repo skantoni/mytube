@@ -24,7 +24,7 @@ import makeWASocket, {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ── Configuração ─────────────────────────────────────────────────────────────
-const PORT     = 3001;
+const PORT     = 3002;
 const AUTH_DIR = path.join(__dirname, 'auth_info');
 const logger   = pino({ level: 'silent' }); // muda para 'info' para ver logs detalhados
 
