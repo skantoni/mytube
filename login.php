@@ -54,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'instituicao'      => $reg_instituicao,
             'password'         => $_POST['reg_password'] ?? '',
             'confirm_password' => $_POST['reg_confirm_password'] ?? '',
+            'whatsapp_number'  => $_POST['reg_whatsapp'] ?? '',
         ]);
 
         if ($result['success']) {
@@ -142,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <!-- Formulário de Login -->
             <form id="loginForm" method="POST" class="auth-form <?php echo ($error_from !== 'register') ? 'active' : ''; ?>">
                 <div class="input-group">
-                    <input type="text" name="username" placeholder="Nome de usuário ou e-mail" required>
+                    <input type="text" name="username" id="loginIdentifier" placeholder="Username, e-mail ou número de WhatsApp" required autocomplete="username">
                 </div>
                 <div class="input-group password-group">
                     <input type="password" name="password" placeholder="Senha" required>
@@ -228,15 +229,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <form id="registerForm" method="POST" class="auth-form <?php echo ($error_from === 'register') ? 'active' : ''; ?>">
                 <div class="input-group username-group">
                     <span class="username-prefix">@</span>
-                    <input type="text" name="reg_username" placeholder="Nome de usuário (Definitivo)" maxlength="12" pattern="[a-zA-Z0-9_\-]{3,12}" title="3 a 12 caracteres. Apenas letras, números, - e _" autocomplete="off" value="<?php echo htmlspecialchars($reg_username); ?>" required>
-                    <small class="field-hint">3-12 caracteres (letras, números, - e _)</small>
+                    <input type="text" name="reg_username" placeholder="Nome de usuário (Definitivo)" maxlength="14" pattern="[a-zA-Z0-9_\-]{3,14}" title="3 a 14 caracteres. Apenas letras, números, - e _" autocomplete="off" value="<?php echo htmlspecialchars($reg_username); ?>" required>
+                    <small class="field-hint">3-14 caracteres (letras, números, - e _)</small>
                 </div>
-                <div class="input-group">
-                    <input type="email" name="reg_email" placeholder="E-mail" value="<?php echo htmlspecialchars($reg_email); ?>" required>
+                <!-- WhatsApp -->
+                <div class="input-group whatsapp-input-group">
+                    <span class="whatsapp-prefix">🇦🇴 +244</span>
+                    <input type="tel" name="reg_whatsapp" id="reg_whatsapp"
+                           placeholder="9XX XXX XXX"
+                           maxlength="13"
+                           inputmode="numeric"
+                           pattern="[0-9 ]{9,13}"
+                           autocomplete="tel">
+                    <button type="button" class="btn-send-code" id="btnSendWaCode" onclick="sendWhatsappCode()">
+                        Enviar código
+                    </button>
                 </div>
+                <small class="field-hint" style="margin-top:-8px;">Opcional se tiver e-mail. Obrigatório se não tiver.</small>
+
+                <!-- Verificação do código WhatsApp -->
+                <div id="waVerifyStep" style="display:none;">
+                    <p class="wa-verify-label">✅ Código enviado! Insira os 6 dígitos recebidos no WhatsApp:</p>
+                    <div class="code-inputs" id="waCodeInputs">
+                        <input type="text" maxlength="1" class="code-digit wa-digit" data-index="0" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" maxlength="1" class="code-digit wa-digit" data-index="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" maxlength="1" class="code-digit wa-digit" data-index="2" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" maxlength="1" class="code-digit wa-digit" data-index="3" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" maxlength="1" class="code-digit wa-digit" data-index="4" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" maxlength="1" class="code-digit wa-digit" data-index="5" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                    </div>
+                    <button type="button" class="btn btn-secondary" id="btnVerifyWaCode" onclick="verifyWhatsappCode()">Verificar número</button>
+                    <span id="waVerifiedBadge" style="display:none;color:#22c55e;font-weight:600;">✓ Número verificado</span>
+                </div>
+                <!-- Campo oculto que indica que o número foi verificado -->
+                <input type="hidden" name="reg_whatsapp_verified" id="reg_whatsapp_verified" value="0">
+
                 <div class="input-group">
                     <input type="text" name="reg_full_name" placeholder="Nome completo" value="<?php echo htmlspecialchars($reg_full_name); ?>" required>
                 </div>
+                <!-- [OCULTO] Campo e-mail — descomentar para reativar
+                <div class="input-group">
+                    <input type="email" name="reg_email" id="reg_email" placeholder="E-mail (opcional se tiver WhatsApp)" value="<?php echo htmlspecialchars($reg_email); ?>" autocomplete="email">
+                </div>
+                -->
                 <!-- <div class="input-group">
                     <input type="text" name="reg_instituicao" placeholder="Instituição (opcional)" value="<?php echo htmlspecialchars($reg_instituicao); ?>">
                 </div> -->
@@ -346,6 +381,196 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     function getCsrfToken() {
         return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     }
+
+    // ── WhatsApp Verification ──────────────────────────────────────────────────
+
+    async function sendWhatsappCode() {
+        const phoneInput = document.getElementById('reg_whatsapp');
+        const phone = phoneInput.value.replace(/\D/g, '').trim();
+
+        if (phone.length < 9) {
+            alert('Por favor, insira um número de WhatsApp válido (ex: 912 345 678).');
+            phoneInput.focus();
+            return;
+        }
+
+        const btn = document.getElementById('btnSendWaCode');
+        btn.disabled = true;
+        btn.textContent = 'A enviar...';
+
+        try {
+            const formData = new FormData();
+            formData.append('phone', phone);
+
+            const res = await fetch('api/send_whatsapp_verification.php', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRF-Token': getCsrfToken() }
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById('waVerifyStep').style.display = 'block';
+                btn.textContent = 'Reenviar';
+                btn.disabled = false;
+
+                // Focar no primeiro input do código
+                const firstDigit = document.querySelector('.wa-digit[data-index="0"]');
+                if (firstDigit) firstDigit.focus();
+
+                // Iniciar navegação automática entre dígitos
+                setupWaDigitNavigation();
+
+                // Contador de reenvio (60 segundos)
+                let seconds = 60;
+                btn.disabled = true;
+                btn.textContent = `Reenviar (${seconds}s)`;
+                const timer = setInterval(() => {
+                    seconds--;
+                    btn.textContent = `Reenviar (${seconds}s)`;
+                    if (seconds <= 0) {
+                        clearInterval(timer);
+                        btn.disabled = false;
+                        btn.textContent = 'Reenviar';
+                    }
+                }, 1000);
+            } else {
+                alert(data.message || 'Não foi possível enviar o código.');
+                btn.disabled = false;
+                btn.textContent = 'Enviar código';
+            }
+        } catch (err) {
+            console.error('[WhatsApp]', err);
+            alert('Erro de ligação. Tente novamente.');
+            btn.disabled = false;
+            btn.textContent = 'Enviar código';
+        }
+    }
+
+    async function verifyWhatsappCode() {
+        const digits = Array.from(document.querySelectorAll('.wa-digit'))
+            .map(i => i.value).join('');
+
+        if (digits.length !== 6 || !/^\d{6}$/.test(digits)) {
+            alert('Por favor, insira os 6 dígitos do código.');
+            return;
+        }
+
+        const phone = document.getElementById('reg_whatsapp').value.replace(/\D/g, '');
+        const btn   = document.getElementById('btnVerifyWaCode');
+        btn.disabled = true;
+        btn.textContent = 'A verificar...';
+
+        try {
+            const formData = new FormData();
+            formData.append('phone', phone);
+            formData.append('code', digits);
+
+            const res = await fetch('api/verify_whatsapp_code.php', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRF-Token': getCsrfToken() }
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById('reg_whatsapp_verified').value = '1';
+                document.getElementById('btnVerifyWaCode').style.display = 'none';
+                document.getElementById('waVerifiedBadge').style.display = 'inline';
+                document.getElementById('btnSendWaCode').disabled = true;
+                document.getElementById('reg_whatsapp').readOnly = true;
+                // Desabilitar inputs do código
+                document.querySelectorAll('.wa-digit').forEach(i => i.disabled = true);
+            } else {
+                alert(data.message || 'Código incorreto. Tente novamente.');
+                btn.disabled = false;
+                btn.textContent = 'Verificar número';
+                // Limpar campos do código
+                document.querySelectorAll('.wa-digit').forEach(i => i.value = '');
+                document.querySelector('.wa-digit[data-index="0"]')?.focus();
+            }
+        } catch (err) {
+            console.error('[WhatsApp verify]', err);
+            alert('Erro de ligação. Tente novamente.');
+            btn.disabled = false;
+            btn.textContent = 'Verificar número';
+        }
+    }
+
+    function setupWaDigitNavigation() {
+        const inputs = document.querySelectorAll('.wa-digit');
+        inputs.forEach((input, index) => {
+            input.addEventListener('input', () => {
+                if (input.value.length === 1 && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+                // Auto-verificar quando todos os dígitos estiverem preenchidos
+                const allFilled = Array.from(inputs).every(i => i.value.length === 1);
+                if (allFilled) verifyWhatsappCode();
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !input.value && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            });
+        });
+    }
     </script>
+
+    <style>
+    /* ── Estilos do campo WhatsApp ─────────────────────────────────── */
+    .whatsapp-input-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+    }
+    .whatsapp-input-group input[type="tel"] {
+        flex: 1;
+        min-width: 0;
+    }
+    .whatsapp-prefix {
+        font-size: 14px;
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--text-secondary, #888);
+        padding: 0 4px;
+    }
+    .btn-send-code {
+        background: linear-gradient(135deg, #25d366, #128c7e);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: opacity 0.2s;
+    }
+    .btn-send-code:hover:not(:disabled) { opacity: 0.85; }
+    .btn-send-code:disabled { opacity: 0.5; cursor: not-allowed; }
+    .wa-verify-label {
+        font-size: 13px;
+        color: var(--text-secondary, #888);
+        margin: 8px 0 6px;
+    }
+    #waVerifyStep { margin-top: 8px; }
+    #waVerifyStep .code-inputs { margin-bottom: 10px; }
+    .btn-secondary {
+        background: transparent;
+        border: 1px solid var(--border, #444);
+        color: var(--text-primary, #fff);
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
+    .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
 </body>
 </html>

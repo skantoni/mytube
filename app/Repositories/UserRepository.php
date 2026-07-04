@@ -7,18 +7,37 @@ class UserRepository
     public function __construct(private readonly mixed $pdo) {}
 
     /**
-     * Find a user by username (case-sensitive binary match) or by email.
+     * Find a user by username (case-sensitive), email, or WhatsApp number.
+     * Accepts any of the three identifiers — used on the login page.
      *
      * @return array<string,mixed>|null
      */
     public function findByUsernameOrEmail(string $value): ?array
     {
         $stmt = $this->pdo->prepare(
-            "SELECT id, username, email, full_name, password, profile_picture, role, is_verified
+            "SELECT id, username, email, whatsapp_number, full_name, password,
+                    profile_picture, role, is_verified, whatsapp_verified
              FROM users
-             WHERE BINARY username = ? OR email = ?"
+             WHERE BINARY username = ? OR email = ? OR whatsapp_number = ?"
         );
-        $stmt->execute([$value, $value]);
+        $stmt->execute([$value, $value, $value]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    /**
+     * Find a user by WhatsApp number.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function findByWhatsappNumber(string $phone): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT id, username, email, whatsapp_number, full_name, password,
+                    profile_picture, role, is_verified, whatsapp_verified
+             FROM users WHERE whatsapp_number = ?"
+        );
+        $stmt->execute([$phone]);
         $row = $stmt->fetch();
         return $row ?: null;
     }
@@ -31,7 +50,8 @@ class UserRepository
     public function findByUsername(string $username): ?array
     {
         $stmt = $this->pdo->prepare(
-            "SELECT id, username, email, full_name, password, profile_picture, role, is_verified
+            "SELECT id, username, email, whatsapp_number, full_name, password,
+                    profile_picture, role, is_verified, whatsapp_verified
              FROM users WHERE BINARY username = ?"
         );
         $stmt->execute([$username]);
@@ -47,7 +67,8 @@ class UserRepository
     public function findByEmail(string $email): ?array
     {
         $stmt = $this->pdo->prepare(
-            "SELECT id, username, email, full_name, password, profile_picture, role, is_verified
+            "SELECT id, username, email, whatsapp_number, full_name, password,
+                    profile_picture, role, is_verified, whatsapp_verified
              FROM users WHERE email = ?"
         );
         $stmt->execute([$email]);
@@ -76,6 +97,16 @@ class UserRepository
     }
 
     /**
+     * Return true when the WhatsApp number is already registered.
+     */
+    public function whatsappNumberExists(string $phone): bool
+    {
+        $stmt = $this->pdo->prepare("SELECT id FROM users WHERE whatsapp_number = ?");
+        $stmt->execute([$phone]);
+        return (bool)$stmt->fetch();
+    }
+
+    /**
      * Insert a new user and return the new user ID.
      */
     public function create(
@@ -83,14 +114,26 @@ class UserRepository
         string $email,
         string $fullName,
         string $hashedPassword,
-        string $instituicao = ''
+        string $instituicao = '',
+        ?string $whatsappNumber = null
     ): int {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO users (username, email, full_name, password, instituicao)
-             VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO users (username, email, full_name, password, instituicao, whatsapp_number)
+             VALUES (?, ?, ?, ?, ?, ?)"
         );
-        $stmt->execute([$username, $email, $fullName, $hashedPassword, $instituicao]);
+        $stmt->execute([$username, $email, $fullName, $hashedPassword, $instituicao, $whatsappNumber]);
         return (int)$this->pdo->lastInsertId();
+    }
+
+    /**
+     * Associate (or update) the WhatsApp number of an existing user.
+     */
+    public function setWhatsappNumber(int $userId, string $phone): void
+    {
+        $stmt = $this->pdo->prepare(
+            "UPDATE users SET whatsapp_number = ?, whatsapp_verified = 0 WHERE id = ?"
+        );
+        $stmt->execute([$phone, $userId]);
     }
 
     /**

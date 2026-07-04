@@ -6,6 +6,11 @@ use MyTube\Core\Auth;
 use MyTube\Repositories\UserRepository;
 use MyTube\Validators\UserValidator;
 
+// Helper de WhatsApp (normalização de números)
+if (!function_exists('normalizeWhatsappNumber')) {
+    require_once __DIR__ . '/../../includes/whatsapp_helper.php';
+}
+
 class AuthService
 {
     public function __construct(
@@ -16,7 +21,7 @@ class AuthService
     /**
      * Register a new user.
      *
-     * @param array<string,string> $data  Keys: username, email, full_name, password, confirm_password, instituicao
+     * @param array<string,string> $data  Keys: username, email, full_name, password, confirm_password, instituicao, whatsapp_number (optional)
      * @return array{success:bool, errors:string[], user_id:int|null}
      */
     public function register(array $data): array
@@ -27,27 +32,41 @@ class AuthService
             return ['success' => false, 'errors' => $errors, 'user_id' => null];
         }
 
-        $username = trim($data['username']);
-        $email    = trim(strtolower($data['email']));
-        $fullName = trim($data['full_name']);
-        $password = $data['password'];
+        $username    = trim($data['username']);
+        $email       = trim(strtolower($data['email'] ?? ''));
+        $fullName    = trim($data['full_name']);
+        $password    = $data['password'];
         $instituicao = trim($data['instituicao'] ?? '');
+
+        // Normalizar e validar número de WhatsApp (se fornecido)
+        $whatsappRaw    = trim($data['whatsapp_number'] ?? '');
+        $whatsappNumber = null;
+        if ($whatsappRaw !== '') {
+            if (!function_exists('isValidAngolanPhone') || !isValidAngolanPhone($whatsappRaw)) {
+                return ['success' => false, 'errors' => ['Número de WhatsApp inválido.'], 'user_id' => null];
+            }
+            $whatsappNumber = normalizeWhatsappNumber($whatsappRaw);
+
+            if ($this->users->whatsappNumberExists($whatsappNumber)) {
+                return ['success' => false, 'errors' => ['Este número de WhatsApp já está em uso.'], 'user_id' => null];
+            }
+        }
 
         if ($this->users->usernameExists($username)) {
             return ['success' => false, 'errors' => ['Nome de usuário já existe.'], 'user_id' => null];
         }
 
-        if ($this->users->emailExists($email)) {
+        if (!empty($email) && $this->users->emailExists($email)) {
             return ['success' => false, 'errors' => ['Este e-mail já está em uso.'], 'user_id' => null];
         }
 
         try {
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            $userId = $this->users->create($username, $email, $fullName, $hashedPassword, $instituicao);
+            $userId = $this->users->create($username, $email ?: null, $fullName, $hashedPassword, $instituicao, $whatsappNumber);
             return ['success' => true, 'errors' => [], 'user_id' => $userId];
         } catch (\PDOException $e) {
             if ($e->getCode() == 23000) {
-                return ['success' => false, 'errors' => ['Nome de usuário ou e-mail já está em uso.'], 'user_id' => null];
+                return ['success' => false, 'errors' => ['Nome de usuário, e-mail ou número de WhatsApp já está em uso.'], 'user_id' => null];
             }
             error_log('AuthService::register PDOException: ' . $e->getCode());
             return ['success' => false, 'errors' => ['Erro ao criar conta. Tente novamente.'], 'user_id' => null];
