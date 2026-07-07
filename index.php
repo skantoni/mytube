@@ -90,6 +90,8 @@ if ($start_video_id > 0) {
     <link rel="canonical" href="https://www.mytube.social/">
     <?php echo r2_js_config(); ?>
     <?php include __DIR__ . '/includes/favicon.php'; ?>
+    <!-- Google AdSense Verification Code -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7296999127626132" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="splash-screen" id="splashScreen" aria-label="Tela de abertura">
