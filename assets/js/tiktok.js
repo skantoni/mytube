@@ -1044,6 +1044,11 @@ class TikTokPlayer {
     }
 
     likeVideo(videoId, button = null) {
+        if (window.isGuestMode) {
+            if (typeof showGuestLoginModal === 'function') showGuestLoginModal();
+            return;
+        }
+
         // Encontrar o botão antes de tudo
         if (!button) {
             button = document.querySelector(`button[data-video-id="${videoId}"].like-btn`);
@@ -1212,6 +1217,11 @@ class TikTokPlayer {
     }
 
     followUser(userId, button) {
+        if (window.isGuestMode) {
+            if (typeof showGuestLoginModal === 'function') showGuestLoginModal();
+            return;
+        }
+
         // Adicionar estado de loading
         if (button.classList.contains('loading')) return;
         button.classList.add('loading');
@@ -1279,6 +1289,11 @@ class TikTokPlayer {
 
     // Função para seguir via botão inline (estilo Facebook)
     followUserInline(userId, button) {
+        if (window.isGuestMode) {
+            if (typeof showGuestLoginModal === 'function') showGuestLoginModal();
+            return;
+        }
+
         if (button.classList.contains('loading')) return;
         button.classList.add('loading');
         
