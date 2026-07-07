@@ -1,8 +1,15 @@
+# MyTube - robots.txt
+# Permite que todos os motores de busca e rastreadores acedam ao site
+
 User-agent: *
 Allow: /
+Allow: /index.php
 Allow: /login.php
-Allow: /assets/css/
-Allow: /assets/images/
+Allow: /privacidade.php
+Allow: /termos.php
+Allow: /ads.txt
+Allow: /assets/
+Allow: /sitemap.xml
 
 # Bloquear conteúdo privado e técnico
 Disallow: /api/
@@ -12,14 +19,15 @@ Disallow: /logs/
 Disallow: /database/
 Disallow: /includes/
 Disallow: /chat-server/
-Disallow: /install_*.php
-Disallow: /update_*.php
-Disallow: /migrate_*.php
-Disallow: /check_*.php
-Disallow: /test_*.php
-Disallow: /create_*.php
-Disallow: /*.php.OLD
-Disallow: /*.php.BAK
+Disallow: /admin/
+Disallow: /install_
+Disallow: /update_
+Disallow: /migrate_
+Disallow: /check_
+Disallow: /test_
+Disallow: /create_
+Disallow: /fix_
+Disallow: /sessions/
 
 # Sitemap
 Sitemap: https://www.mytube.social/sitemap.xml
