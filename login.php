@@ -232,48 +232,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <input type="text" name="reg_username" placeholder="Nome de usuário (Definitivo)" maxlength="14" pattern="[a-zA-Z0-9_\-]{3,14}" title="3 a 14 caracteres. Apenas letras, números, - e _" autocomplete="off" value="<?php echo htmlspecialchars($reg_username); ?>" required>
                     <small class="field-hint">3-14 caracteres (letras, números, - e _)</small>
                 </div>
-                <!-- WhatsApp -->
-                <div id="waAlertBox" class="alert" style="display:none; margin-bottom:10px;"></div>
-                
-                <div class="input-group whatsapp-input-group">
-                    <span class="whatsapp-prefix">🇦🇴 +244</span>
-                    <input type="tel" name="reg_whatsapp" id="reg_whatsapp"
-                           placeholder="9XX XXX XXX"
-                           maxlength="13"
-                           inputmode="numeric"
-                           pattern="[0-9 ]{9,13}"
-                           autocomplete="tel">
-                    <button type="button" class="btn-send-code" id="btnSendWaCode" onclick="sendWhatsappCode()">
-                        Enviar código
+                <!-- Toggle Número / Email -->
+                <div class="contact-toggle-wrap">
+                    <button type="button" class="contact-toggle-btn active" id="togglePhone" onclick="switchContactMode('phone')">
+                        📱 Número
+                    </button>
+                    <button type="button" class="contact-toggle-btn" id="toggleEmail" onclick="switchContactMode('email')">
+                        ✉️ Email
                     </button>
                 </div>
-                <small class="field-hint" style="margin-top:-8px;">Opcional se tiver e-mail. Obrigatório se não tiver.</small>
 
-                <!-- Verificação do código WhatsApp -->
-                <div id="waVerifyStep" style="display:none;">
-                    <p class="wa-verify-label">✅ Código enviado! Insira os 6 dígitos recebidos no WhatsApp:</p>
-                    <div class="code-inputs" id="waCodeInputs">
-                        <input type="text" maxlength="1" class="code-digit wa-digit" data-index="0" inputmode="numeric" pattern="[0-9]" autocomplete="off">
-                        <input type="text" maxlength="1" class="code-digit wa-digit" data-index="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
-                        <input type="text" maxlength="1" class="code-digit wa-digit" data-index="2" inputmode="numeric" pattern="[0-9]" autocomplete="off">
-                        <input type="text" maxlength="1" class="code-digit wa-digit" data-index="3" inputmode="numeric" pattern="[0-9]" autocomplete="off">
-                        <input type="text" maxlength="1" class="code-digit wa-digit" data-index="4" inputmode="numeric" pattern="[0-9]" autocomplete="off">
-                        <input type="text" maxlength="1" class="code-digit wa-digit" data-index="5" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                <!-- Alerta partilhado -->
+                <div id="waAlertBox" class="alert" style="display:none; margin-bottom:10px;"></div>
+
+                <!-- BLOCO: WhatsApp -->
+                <div id="contactBlockPhone">
+                    <div class="input-group whatsapp-input-group">
+                        <span class="whatsapp-prefix">🇦🇴 +244</span>
+                        <input type="tel" name="reg_whatsapp" id="reg_whatsapp"
+                               placeholder="9XX XXX XXX"
+                               maxlength="13"
+                               inputmode="numeric"
+                               pattern="[0-9 ]{9,13}"
+                               autocomplete="tel">
+                        <button type="button" class="btn-send-code" id="btnSendWaCode" onclick="sendWhatsappCode()">
+                            Enviar código
+                        </button>
                     </div>
-                    <button type="button" class="btn btn-secondary" id="btnVerifyWaCode" onclick="verifyWhatsappCode()">Verificar número</button>
-                    <span id="waVerifiedBadge" style="display:none;color:#22c55e;font-weight:600;">✓ Número verificado</span>
+                    <small class="field-hint" style="margin-top:-8px;">Opcional se tiver e-mail. Obrigatório se não tiver.</small>
+
+                    <!-- Verificação do código WhatsApp -->
+                    <div id="waVerifyStep" style="display:none;">
+                        <p class="wa-verify-label">✅ Código enviado! Insira os 6 dígitos recebidos no WhatsApp:</p>
+                        <div class="code-inputs" id="waCodeInputs">
+                            <input type="text" maxlength="1" class="code-digit wa-digit" data-index="0" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                            <input type="text" maxlength="1" class="code-digit wa-digit" data-index="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                            <input type="text" maxlength="1" class="code-digit wa-digit" data-index="2" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                            <input type="text" maxlength="1" class="code-digit wa-digit" data-index="3" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                            <input type="text" maxlength="1" class="code-digit wa-digit" data-index="4" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                            <input type="text" maxlength="1" class="code-digit wa-digit" data-index="5" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        </div>
+                        <button type="button" class="btn btn-secondary" id="btnVerifyWaCode" onclick="verifyWhatsappCode()">Verificar número</button>
+                        <span id="waVerifiedBadge" style="display:none;color:#22c55e;font-weight:600;">✓ Número verificado</span>
+                    </div>
                 </div>
+
+                <!-- BLOCO: Email -->
+                <div id="contactBlockEmail" style="display:none;">
+                    <div class="input-group">
+                        <div class="email-input-wrap">
+                            <input type="email" name="reg_email" id="regEmailInput"
+                                   placeholder="exemplo@email.com"
+                                   autocomplete="email"
+                                   maxlength="255"
+                                   value="<?php echo htmlspecialchars($reg_email); ?>">
+                            <button type="button" class="btn-send-code" id="btnSendEmailCode" onclick="sendRegEmailCode()">
+                                Enviar código
+                            </button>
+                        </div>
+                        <small class="field-hint">Opcional se tiver WhatsApp. Obrigatório se não tiver.</small>
+                    </div>
+                    <!-- Linha do código de e-mail -->
+                    <div class="email-code-row" id="emailCodeRow" style="display:none;">
+                        <input type="text" id="regEmailCodeInput" name="reg_email_code"
+                               placeholder="Código de 6 dígitos"
+                               maxlength="6" inputmode="numeric"
+                               autocomplete="one-time-code">
+                        <button type="button" class="btn-resend-code" id="btnResendEmailCode"
+                                style="display:none;" onclick="resendRegEmailCode()">Reenviar</button>
+                    </div>
+                    <div id="emailVerifyMsg" class="email-verify-msg" style="display:none;"></div>
+                    <span id="emailVerifiedBadge" class="email-verified-badge" style="display:none;">✓ Email verificado</span>
+                    <input type="hidden" name="reg_email_code_hidden" id="emailCodeHidden" value="">
+                </div>
+
                 <!-- Campo oculto que indica que o número foi verificado -->
                 <input type="hidden" name="reg_whatsapp_verified" id="reg_whatsapp_verified" value="0">
 
                 <div class="input-group">
                     <input type="text" name="reg_full_name" placeholder="Nome completo" value="<?php echo htmlspecialchars($reg_full_name); ?>" required>
                 </div>
-                <!-- [OCULTO] Campo e-mail — descomentar para reativar
-                <div class="input-group">
-                    <input type="email" name="reg_email" id="reg_email" placeholder="E-mail (opcional se tiver WhatsApp)" value="<?php echo htmlspecialchars($reg_email); ?>" autocomplete="email">
-                </div>
-                -->
+                <!-- Campo e-mail movido para o bloco toggle Número/Email acima -->
                 <!-- <div class="input-group">
                     <input type="text" name="reg_instituicao" placeholder="Instituição (opcional)" value="<?php echo htmlspecialchars($reg_instituicao); ?>">
                 </div> -->
@@ -384,7 +423,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     }
 
-    // ── WhatsApp Verification ──────────────────────────────────────────────────
+    // ── Troca entre modo Número (WhatsApp) e Email ────────────────────
+    function switchContactMode(mode) {
+        const phoneBlock = document.getElementById('contactBlockPhone');
+        const emailBlock = document.getElementById('contactBlockEmail');
+        const btnPhone   = document.getElementById('togglePhone');
+        const btnEmail   = document.getElementById('toggleEmail');
+        const alertBox   = document.getElementById('waAlertBox');
+
+        if (alertBox) alertBox.style.display = 'none';
+
+        if (mode === 'phone') {
+            phoneBlock.style.display = 'block';
+            emailBlock.style.display = 'none';
+            btnPhone.classList.add('active');
+            btnEmail.classList.remove('active');
+            // Limpar email ao mudar
+            const emailInput = document.getElementById('regEmailInput');
+            if (emailInput) { emailInput.value = ''; emailInput.readOnly = false; }
+            const codeRow = document.getElementById('emailCodeRow');
+            if (codeRow) codeRow.style.display = 'none';
+            const badge = document.getElementById('emailVerifiedBadge');
+            if (badge) badge.style.display = 'none';
+            const hidden = document.getElementById('emailCodeHidden');
+            if (hidden) hidden.value = '';
+        } else {
+            emailBlock.style.display = 'block';
+            phoneBlock.style.display = 'none';
+            btnEmail.classList.add('active');
+            btnPhone.classList.remove('active');
+            // Limpar WhatsApp ao mudar
+            const waInput = document.getElementById('reg_whatsapp');
+            if (waInput) { waInput.value = ''; waInput.readOnly = false; }
+            const waStep = document.getElementById('waVerifyStep');
+            if (waStep) waStep.style.display = 'none';
+            const waBadge = document.getElementById('waVerifiedBadge');
+            if (waBadge) waBadge.style.display = 'none';
+            const waHidden = document.getElementById('reg_whatsapp_verified');
+            if (waHidden) waHidden.value = '0';
+            const waBtn = document.getElementById('btnSendWaCode');
+            if (waBtn) { waBtn.disabled = false; waBtn.textContent = 'Enviar código'; }
+        }
+    }
+
+
 
     function showWaAlert(message, type = 'error') {
         const alertBox = document.getElementById('waAlertBox');
@@ -534,6 +616,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </script>
 
     <style>
+    /* ── Estilos do campo WhatsApp ─────────────────────────────────── */
+    /* ── Toggle Número / Email ────────────────────────────────────── */
+    .contact-toggle-wrap {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 14px;
+        background: #f1f5f9;
+        border-radius: 10px;
+        padding: 4px;
+    }
+    .contact-toggle-btn {
+        flex: 1;
+        padding: 9px 12px;
+        border: none;
+        background: transparent;
+        color: #64748b;
+        font-size: 0.88rem;
+        font-weight: 600;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.22s, color 0.22s, box-shadow 0.22s;
+        white-space: nowrap;
+    }
+    .contact-toggle-btn.active {
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #06b6d4 100%);
+        color: #fff;
+        box-shadow: 0 3px 10px rgba(30,64,175,0.28);
+    }
+    .contact-toggle-btn:not(.active):hover {
+        color: #1e40af;
+        background: rgba(30,64,175,0.07);
+    }
+
     /* ── Estilos do campo WhatsApp ─────────────────────────────────── */
     .whatsapp-input-group {
         display: flex;
