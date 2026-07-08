@@ -933,33 +933,34 @@ async function resendRegEmailCode() {
     await sendRegEmailCode();
 }
 
-// Auto-fill hidden field and mark verified when 6 digits entered
+// Auto-verifica no servidor quando 6 dígitos forem inseridos
 document.addEventListener('DOMContentLoaded', function() {
     const codeInput = document.getElementById('regEmailCodeInput');
     if (!codeInput) return;
+
+    let _verifyDebounce = null;
 
     codeInput.addEventListener('input', function() {
         this.value = this.value.replace(/[^0-9]/g, '');
         const hidden = document.getElementById('emailCodeHidden');
         if (hidden) hidden.value = this.value;
 
+        // Reset visual enquanto digita
+        this.classList.remove('valid', 'invalid');
+        _regEmailVerified = false;
+        const badge = document.getElementById('emailVerifiedBadge');
+        if (badge) badge.style.display = 'none';
+
         if (this.value.length === 6) {
-            // Visual pre-mark (actual check is server-side on submit)
-            this.classList.remove('invalid');
-            this.classList.add('valid');
-            _regEmailVerified = true;
-            const badge = document.getElementById('emailVerifiedBadge');
-            if (badge) badge.style.display = 'inline-block';
-            _hideRegEmailMsg();
+            // Debounce de 300ms para não spammar o servidor
+            clearTimeout(_verifyDebounce);
+            _verifyDebounce = setTimeout(() => _verifyEmailCodeOnServer(this.value), 300);
         } else {
-            this.classList.remove('valid', 'invalid');
-            _regEmailVerified = false;
-            const badge = document.getElementById('emailVerifiedBadge');
-            if (badge) badge.style.display = 'none';
+            _hideRegEmailMsg();
         }
     });
 
-    // Paste support
+    // Suporte a colar
     codeInput.addEventListener('paste', function(e) {
         setTimeout(() => {
             this.value = this.value.replace(/[^0-9]/g, '').substring(0, 6);
@@ -967,7 +968,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 0);
     });
 
-    // Restore cooldown on page load
+    // Restaurar cooldown ao recarregar a página
     if (_getRegEmailCooldownRemaining() > 0) {
         _startRegEmailCooldown();
         const codeRow = document.getElementById('emailCodeRow');
@@ -978,6 +979,45 @@ document.addEventListener('DOMContentLoaded', function() {
         if (emailInput) emailInput.readOnly = true;
     }
 });
+
+async function _verifyEmailCodeOnServer(code) {
+    const emailInput = document.getElementById('regEmailInput');
+    const codeInput  = document.getElementById('regEmailCodeInput');
+    const badge      = document.getElementById('emailVerifiedBadge');
+    const hidden     = document.getElementById('emailCodeHidden');
+    const email      = emailInput ? emailInput.value.trim() : '';
+
+    if (!email || !code) return;
+
+    try {
+        const fd = new FormData();
+        fd.append('email', email);
+        fd.append('code', code);
+        const res  = await fetchWithTimeout('api/verify_email_code.php', { method: 'POST', body: fd });
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch(e) { data = { success: false, message: 'Erro no servidor.' }; }
+
+        if (data.success) {
+            _regEmailVerified = true;
+            if (hidden) hidden.value = code;
+            if (codeInput) { codeInput.classList.remove('invalid'); codeInput.classList.add('valid'); }
+            if (badge) badge.style.display = 'inline-block';
+            _showRegEmailMsg('✓ E-mail verificado com sucesso!', 'success');
+            setTimeout(_hideRegEmailMsg, 3000);
+        } else {
+            _regEmailVerified = false;
+            if (hidden) hidden.value = '';
+            if (codeInput) { codeInput.classList.remove('valid'); codeInput.classList.add('invalid'); }
+            if (badge) badge.style.display = 'none';
+            _showRegEmailMsg(data.message || 'Código incorreto. Tente novamente.', 'error');
+        }
+    } catch(err) {
+        _showRegEmailMsg('Erro de conexão. Tente novamente.', 'error');
+    }
+}
+
+
 
 // EMAIL_VERIFICATION_DISABLED: Validação de email desabilitada
 // Intercept form submit to validate email verification
