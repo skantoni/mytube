@@ -481,10 +481,18 @@ class FeedManager {
                     <span class="action-count">${this.formatNumber(video.comments_count)}</span>
                 </button>
                 
-                <button class="action-btn share-btn" data-video-id="${video.id}">
-                    <svg class="icon-share" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4l5 4-5 4"/><path d="M18 8H8a4 4 0 0 0-4 4v1"/><path d="M4 18h12a2 2 0 0 0 2-2v-1"/></svg>
-                    <span class="action-count share-count">${this.formatNumber(video.shares_count || 0)}</span>
-                </button>
+                <div class="more-btn-wrapper">
+                    <button class="action-btn more-btn" data-video-id="${video.id}" title="Mais opções">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+                        <span class="action-count"></span>
+                    </button>
+                    <div class="more-menu" id="more-menu-${video.id}">
+                        <button class="more-menu-item" data-action="share" data-video-id="${video.id}">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4l5 4-5 4"/><path d="M18 8H8a4 4 0 0 0-4 4v1"/><path d="M4 18h12a2 2 0 0 0 2-2v-1"/></svg>
+                            Partilhar
+                        </button>
+                    </div>
+                </div>
             `;
         } else {
             let followBtn = '';
@@ -499,32 +507,35 @@ class FeedManager {
                     </button>
                 `;
             }
-            
-            let deleteBtn = '';
-            if (video.user.id == window.currentUserId || window.isAdmin) {
-                deleteBtn = `
-                    <button class="action-btn delete-btn" 
-                            data-video-id="${video.id}"
-                            title="Apagar vídeo">
-                        <svg class="icon-trash" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                        <span class="action-count">Apagar</span>
-                    </button>
-                `;
-            }
 
-            let boostBtn = '';
-            if (window.isAdmin) {
-                const isBoosted = video.is_boosted;
-                boostBtn = `
-                    <button class="action-btn boost-btn ${isBoosted ? 'boosted' : ''}"
-                            data-video-id="${video.id}"
-                            data-boosted="${isBoosted ? '1' : '0'}"
-                            title="${isBoosted ? 'Remover boost' : 'Dar boost'}">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="${isBoosted ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                        <span class="action-count">${isBoosted ? 'Boosted' : 'Boost'}</span>
-                    </button>
-                `;
-            }
+            // Itens do menu ⋯ (contextuais)
+            const isOwner = video.user.id == window.currentUserId;
+
+            // Botão de denúncia (apenas para vídeos de outros utilizadores)
+            const reportItem = !isOwner ? `
+                <button class="more-menu-item" data-action="report" data-video-id="${video.id}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                    Denunciar
+                </button>
+            ` : '';
+
+            // Botão de apagar (dono ou admin)
+            const deleteItem = (isOwner || window.isAdmin) ? `
+                <hr class="more-menu-divider">
+                <button class="more-menu-item danger delete-btn" data-video-id="${video.id}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Apagar vídeo
+                </button>
+            ` : '';
+
+            // Botão de boost (admin)
+            const isBoosted = video.is_boosted;
+            const boostItem = window.isAdmin ? `
+                <button class="more-menu-item boost-btn ${isBoosted ? 'boosted' : ''}" data-video-id="${video.id}" data-boosted="${isBoosted ? '1' : '0'}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="${isBoosted ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    ${isBoosted ? 'Remover Boost' : 'Dar Boost'}
+                </button>
+            ` : '';
             
             actionButtonsHTML = `
                 <button class="action-btn like-btn ${video.user_liked ? 'liked' : ''}" 
@@ -542,14 +553,21 @@ class FeedManager {
                 
                 ${followBtn}
                 
-                <button class="action-btn share-btn" 
-                        data-video-id="${video.id}">
-                    <svg class="icon-share" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4l5 4-5 4"/><path d="M18 8H8a4 4 0 0 0-4 4v1"/><path d="M4 18h12a2 2 0 0 0 2-2v-1"/></svg>
-                    <span class="action-count share-count">${this.formatNumber(video.shares_count || 0)}</span>
-                </button>
-                
-                ${deleteBtn}
-                ${boostBtn}
+                <div class="more-btn-wrapper">
+                    <button class="action-btn more-btn" data-video-id="${video.id}" title="Mais opções">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+                        <span class="action-count"></span>
+                    </button>
+                    <div class="more-menu" id="more-menu-${video.id}">
+                        <button class="more-menu-item" data-action="share" data-video-id="${video.id}">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4l5 4-5 4"/><path d="M18 8H8a4 4 0 0 0-4 4v1"/><path d="M4 18h12a2 2 0 0 0 2-2v-1"/></svg>
+                            Partilhar
+                        </button>
+                        ${reportItem}
+                        ${deleteItem}
+                        ${boostItem}
+                    </div>
+                </div>
             `;
         }
         

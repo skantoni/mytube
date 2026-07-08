@@ -2224,3 +2224,301 @@ body * {
         transform: translateY(-60px) scale(0.9);
     }
 }
+
+/* =============================================
+   MENU DE 3 PONTOS (⋯) — MORE BUTTON
+   ============================================= */
+
+.more-btn {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #fff;
+    line-height: 1;
+}
+
+/* Wrapper para posicionamento relativo do menu */
+.more-btn-wrapper {
+    position: relative;
+}
+
+/* Dropdown do menu de 3 pontos */
+.more-menu {
+    position: absolute;
+    right: calc(100% + 10px);
+    bottom: 0;
+    min-width: 200px;
+    background: rgba(20, 20, 30, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    overflow: hidden;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.92) translateY(8px);
+    transform-origin: bottom right;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.more-menu.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1) translateY(0);
+}
+
+.more-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 18px;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+    font-family: inherit;
+}
+
+.more-menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.more-menu-item:active {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.more-menu-item svg,
+.more-menu-item i {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+
+.more-menu-item.danger {
+    color: #ff4d4d;
+}
+
+.more-menu-item.danger:hover {
+    background: rgba(255, 77, 77, 0.12);
+}
+
+.more-menu-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 0;
+}
+
+/* Overlay invisível para fechar o menu ao clicar fora */
+.more-menu-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 199;
+    display: none;
+}
+
+.more-menu-overlay.active {
+    display: block;
+}
+
+/* =============================================
+   MODAL DE DENÚNCIA
+   ============================================= */
+
+.report-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.report-modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.report-modal {
+    width: 100%;
+    max-width: 480px;
+    background: #1a1a2e;
+    border-radius: 24px 24px 0 0;
+    padding: 0 0 env(safe-area-inset-bottom, 20px);
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.report-modal-overlay.active .report-modal {
+    transform: translateY(0);
+}
+
+.report-modal-handle {
+    width: 40px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 2px;
+    margin: 12px auto 0;
+}
+
+.report-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.report-modal-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.report-modal-close {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    font-size: 20px;
+    padding: 4px;
+    border-radius: 50%;
+    transition: color 0.2s;
+}
+
+.report-modal-close:hover {
+    color: #fff;
+}
+
+.report-modal-subtitle {
+    padding: 12px 20px 6px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.report-reasons {
+    padding: 8px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.report-reason-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.report-reason-label:hover {
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.report-reason-label input[type="radio"] {
+    accent-color: #ff3b5c;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.report-reason-icon {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.report-reason-text {
+    flex: 1;
+}
+
+.report-submit-btn {
+    margin: 4px 20px 20px;
+    width: calc(100% - 40px);
+    padding: 14px;
+    background: linear-gradient(135deg, #ff3b5c, #c0392b);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.15s ease;
+    font-family: inherit;
+}
+
+.report-submit-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.report-submit-btn:active {
+    transform: translateY(0);
+}
+
+.report-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Toast de feedback (sucesso/erro) */
+.report-toast {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 100px);
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(30, 30, 40, 0.95);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 600;
+    backdrop-filter: blur(12px);
+    z-index: 20000;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.report-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.report-toast.success {
+    border-color: rgba(52, 211, 153, 0.4);
+    color: #34d399;
+}
+
+.report-toast.error {
+    border-color: rgba(255, 77, 77, 0.4);
+    color: #ff6b6b;
+}

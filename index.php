@@ -477,7 +477,66 @@ if ($start_video_id > 0) {
             </div>
         </div>
     </div>
-    
+
+    <!-- Modal de Denúncia -->
+    <div class="report-modal-overlay" id="reportModalOverlay">
+        <div class="report-modal" id="reportModal">
+            <div class="report-modal-handle"></div>
+            <div class="report-modal-header">
+                <h3>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                    Denunciar vídeo
+                </h3>
+                <button class="report-modal-close" onclick="window.tikTokPlayer && window.tikTokPlayer.closeReportModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <p class="report-modal-subtitle">Porque queres denunciar este vídeo?</p>
+            <form id="reportForm">
+                <div class="report-reasons">
+                    <label class="report-reason-label">
+                        <input type="radio" name="report_reason" value="nudity" required>
+                        <span class="report-reason-icon">🔞</span>
+                        <span class="report-reason-text">Conteúdo adulto / nudez</span>
+                    </label>
+                    <label class="report-reason-label">
+                        <input type="radio" name="report_reason" value="violence">
+                        <span class="report-reason-icon">⚔️</span>
+                        <span class="report-reason-text">Violência ou conteúdo perturbador</span>
+                    </label>
+                    <label class="report-reason-label">
+                        <input type="radio" name="report_reason" value="copyright">
+                        <span class="report-reason-icon">🎵</span>
+                        <span class="report-reason-text">Violação de direitos de autor</span>
+                    </label>
+                    <label class="report-reason-label">
+                        <input type="radio" name="report_reason" value="drugs">
+                        <span class="report-reason-icon">💊</span>
+                        <span class="report-reason-text">Drogas ou substâncias ilegais</span>
+                    </label>
+                    <label class="report-reason-label">
+                        <input type="radio" name="report_reason" value="hate_speech">
+                        <span class="report-reason-icon">💬</span>
+                        <span class="report-reason-text">Discurso de ódio ou assédio</span>
+                    </label>
+                    <label class="report-reason-label">
+                        <input type="radio" name="report_reason" value="spam">
+                        <span class="report-reason-icon">❌</span>
+                        <span class="report-reason-text">Spam ou conteúdo enganoso</span>
+                    </label>
+                    <label class="report-reason-label">
+                        <input type="radio" name="report_reason" value="other">
+                        <span class="report-reason-icon">🔵</span>
+                        <span class="report-reason-text">Outro motivo</span>
+                    </label>
+                </div>
+                <button type="submit" class="report-submit-btn" id="reportSubmitBtn">
+                    Enviar Denúncia
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal: Compartilhar no Chat -->
     <div class="chat-share-overlay" id="chatShareOverlay" style="display:none;" onclick="if(event.target===this)closeChatShareModal()">
         <div class="chat-share-modal">

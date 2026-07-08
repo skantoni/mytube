@@ -39,6 +39,19 @@ $pending_stmt = $pdo->query("
 ");
 $pending_videos = $pending_stmt->fetchAll();
 
+// ── Reported videos ───────────────────────────────────────────
+$reported_stmt = $pdo->query("
+    SELECT v.id, v.title, v.video_path, v.thumbnail_path,
+           v.reports_count, v.is_hidden, v.created_at,
+           u.id AS user_id, u.username
+    FROM videos v
+    INNER JOIN users u ON v.user_id = u.id
+    WHERE v.reports_count > 0
+    ORDER BY v.reports_count DESC, v.created_at DESC
+    LIMIT 100
+");
+$reported_videos = $reported_stmt->fetchAll();
+
 // ── Boosted videos ────────────────────────────────────────────
 $boosted_stmt = $pdo->query("
     SELECT v.id, v.user_id, v.title, v.description, v.video_path, v.thumbnail_path,
@@ -187,10 +200,12 @@ try {
             <span>Utilizadores</span>
             <span class="ap-badge ap-badge-green" id="usrOnlineBadge" style="display:none">0</span>
         </li>
-        <li class="ap-nav-item ap-nav-future" title="Em breve">
+        <li class="ap-nav-item" data-section="reports" role="button" tabindex="0">
             <i class="fas fa-flag"></i>
             <span>Denúncias</span>
-            <span class="ap-soon-chip">em breve</span>
+            <?php if (count($reported_videos) > 0): ?>
+                <span class="ap-badge ap-badge-orange"><?php echo count($reported_videos); ?></span>
+            <?php endif; ?>
         </li>
         <li class="ap-nav-item ap-nav-future" title="Em breve">
             <i class="fas fa-gear"></i>
@@ -1180,6 +1195,80 @@ try {
                     Clica na sub-aba para carregar métricas de retenção.
                 </div>
             </div>
+        </div>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────
+         SECÇÃO: DENÚNCIAS (REPORTS)
+    ────────────────────────────────────────────────────────── -->
+    <section class="ap-section" id="section-reports">
+        <div class="ap-section-header">
+            <div>
+                <p class="ap-eyebrow">Moderação</p>
+                <h1>Vídeos Denunciados</h1>
+            </div>
+        </div>
+
+        <div class="ap-card">
+            <?php if (empty($reported_videos)): ?>
+                <div style="padding:40px; text-align:center; color:var(--text-dim)">
+                    <i class="fas fa-check-circle" style="font-size:32px; color:var(--primary); margin-bottom:12px; display:block"></i>
+                    Não há vídeos com denúncias no momento.
+                </div>
+            <?php else: ?>
+                <div class="ap-table-wrap">
+                    <table class="ap-table">
+                        <thead>
+                            <tr>
+                                <th>Vídeo</th>
+                                <th>Criador</th>
+                                <th>Denúncias</th>
+                                <th>Estado</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($reported_videos as $vid): ?>
+                            <tr>
+                                <td>
+                                    <div style="display:flex; align-items:center; gap:12px">
+                                        <div style="width:60px; height:80px; border-radius:8px; overflow:hidden; background:#2a2a35; flex-shrink:0">
+                                            <img src="<?php echo htmlspecialchars(asset($vid['thumbnail_path'] ?? '')); ?>" style="width:100%; height:100%; object-fit:cover" alt="Thumb">
+                                        </div>
+                                        <div style="max-width:200px">
+                                            <div style="font-weight:600; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
+                                                <?php echo htmlspecialchars(apShortText($vid['title'] ?: 'Sem título', 40)); ?>
+                                            </div>
+                                            <div style="font-size:0.75rem; color:var(--text-dim); margin-top:4px">
+                                                <i class="fas fa-calendar-alt"></i> <?php echo date('d/m/Y', strtotime($vid['created_at'])); ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>@<?php echo htmlspecialchars($vid['username']); ?></td>
+                                <td>
+                                    <span class="ap-badge <?php echo $vid['reports_count'] >= 3 ? 'ap-badge-orange' : 'ap-badge-green'; ?>">
+                                        <?php echo $vid['reports_count']; ?> denúncia(s)
+                                    </span>
+                                </td>
+                                <td>
+                                    <?php if ($vid['is_hidden']): ?>
+                                        <span class="ap-badge" style="background:rgba(239,68,68,0.15); color:#ef4444">Ocultado</span>
+                                    <?php else: ?>
+                                        <span class="ap-badge ap-badge-green">Visível</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <a href="index.php?v=<?php echo $vid['id']; ?>" target="_blank" class="ap-btn ap-btn-outline" style="padding:4px 10px; font-size:0.8rem">
+                                        <i class="fas fa-external-link-alt"></i> Ver
+                                    </a>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
         </div>
     </section>
 

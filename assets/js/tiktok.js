@@ -280,17 +280,46 @@ class TikTokPlayer {
                 return;
             }
             
-            // 4. BOTÃO DE SHARE
-            if (target.closest('.share-btn')) {
+            // 4. BOTÃO DE MAIS OPÇÕES (⋯)
+            if (target.closest('.more-btn')) {
                 e.preventDefault();
-                const btn = target.closest('.share-btn');
+                e.stopPropagation();
+                const btn = target.closest('.more-btn');
                 const videoId = btn.dataset.videoId;
+                this.toggleMoreMenu(videoId);
+                return;
+            }
+
+            // 4.1 ITEM DO MENU ⋯ — PARTILHAR
+            if (target.closest('.more-menu-item[data-action="share"]')) {
+                e.preventDefault();
+                const item = target.closest('.more-menu-item');
+                const videoId = item.dataset.videoId;
+                this.closeAllMoreMenus();
                 this.openShareMenu(videoId);
+                return;
+            }
+
+            // 4.2 ITEM DO MENU ⋯ — DENUNCIAR
+            if (target.closest('.more-menu-item[data-action="report"]')) {
+                e.preventDefault();
+                const item = target.closest('.more-menu-item');
+                const videoId = item.dataset.videoId;
+                this.closeAllMoreMenus();
+                this.openReportModal(videoId);
                 return;
             }
             
             // 5. BOTÃO DE DELETE
             if (target.closest('.delete-btn')) {
+                this.closeAllMoreMenus();
+                // Deixar video-delete.js processar
+                return;
+            }
+
+            // 5.1 BOTÃO DE BOOST
+            if (target.closest('.boost-btn')) {
+                this.closeAllMoreMenus();
                 // Deixar video-delete.js processar
                 return;
             }
@@ -1495,6 +1524,116 @@ class TikTokPlayer {
         }
     }
 
+    // =============================================
+    // MENU DE 3 PONTOS (⋯)
+    // =============================================
+
+    toggleMoreMenu(videoId) {
+        const menu = document.getElementById(`more-menu-${videoId}`);
+        if (!menu) return;
+
+        const isOpen = menu.classList.contains('active');
+
+        // Fechar todos os menus abertos primeiro
+        this.closeAllMoreMenus();
+
+        if (!isOpen) {
+            menu.classList.add('active');
+
+            // Adicionar event listener ao document para fechar ao clicar fora
+            if (this._closeMoreMenuHandler) {
+                document.removeEventListener('click', this._closeMoreMenuHandler, true);
+            }
+            this._closeMoreMenuHandler = (e) => {
+                if (!menu.contains(e.target) && !e.target.closest('.more-btn')) {
+                    this.closeAllMoreMenus();
+                }
+            };
+            // setTimeout para não capturar o clique atual
+            setTimeout(() => {
+                document.addEventListener('click', this._closeMoreMenuHandler, true);
+            }, 0);
+        }
+    }
+
+    closeAllMoreMenus() {
+        document.querySelectorAll('.more-menu.active').forEach(m => m.classList.remove('active'));
+        if (this._closeMoreMenuHandler) {
+            document.removeEventListener('click', this._closeMoreMenuHandler, true);
+            this._closeMoreMenuHandler = null;
+        }
+    }
+
+    // =============================================
+    // MODAL DE DENÚNCIA
+    // =============================================
+
+    openReportModal(videoId) {
+        let overlay = document.getElementById('reportModalOverlay');
+        if (!overlay) return;
+
+        overlay.dataset.videoId = videoId;
+
+        // Reset form
+        const form = overlay.querySelector('#reportForm');
+        if (form) form.reset();
+
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    closeReportModal() {
+        const overlay = document.getElementById('reportModalOverlay');
+        if (overlay) overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    async submitReport(videoId, reason) {
+        try {
+            const res = await fetch('api/report_video.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ video_id: parseInt(videoId), reason })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                this.closeReportModal();
+                this.showReportToast('✅ Denúncia enviada com sucesso!', 'success');
+            } else {
+                this.showReportToast(data.error || 'Erro ao enviar denúncia.', 'error');
+            }
+        } catch (err) {
+            this.showReportToast('Erro de ligação. Tenta novamente.', 'error');
+        }
+    }
+
+    showReportToast(message, type = 'success') {
+        let toast = document.getElementById('reportToast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'reportToast';
+            toast.className = 'report-toast';
+            document.body.appendChild(toast);
+        }
+
+        toast.textContent = message;
+        toast.className = `report-toast ${type}`;
+
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3500);
+    }
+
     toggleAudio(videoId, button) {
         // Marcar que usuário interagiu
         localStorage.setItem('mytube_user_interacted', 'true');
@@ -1962,6 +2101,36 @@ document.addEventListener('DOMContentLoaded', () => {
             window.tiktokPlayer = new TikTokPlayer();
             window.tiktokPlayer.initialized = false;
         }
+        // Alias para o modal de denúncia aceder ao player
+        window.tikTokPlayer = window.tiktokPlayer;
+    }
+
+    // Setup do formulário de denúncia
+    const reportForm = document.getElementById('reportForm');
+    const reportOverlay = document.getElementById('reportModalOverlay');
+    if (reportForm && reportOverlay) {
+        reportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const selected = reportForm.querySelector('input[name="report_reason"]:checked');
+            if (!selected) return;
+
+            const videoId = reportOverlay.dataset.videoId;
+            const btn = document.getElementById('reportSubmitBtn');
+            if (btn) { btn.disabled = true; btn.textContent = 'A enviar...'; }
+
+            if (window.tiktokPlayer) {
+                await window.tiktokPlayer.submitReport(videoId, selected.value);
+            }
+
+            if (btn) { btn.disabled = false; btn.textContent = 'Enviar Denúncia'; }
+        });
+
+        // Fechar ao clicar no fundo
+        reportOverlay.addEventListener('click', (e) => {
+            if (e.target === reportOverlay && window.tiktokPlayer) {
+                window.tiktokPlayer.closeReportModal();
+            }
+        });
     }
 });
 
