@@ -301,7 +301,7 @@ if ($start_video_id > 0) {
             <div style="background:#1a1a2e; border-radius:16px; padding:32px 24px; max-width:340px; width:90%; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.5);">
                 <i class="fas fa-lock" style="font-size:40px; color:#3b82f6; margin-bottom:16px;"></i>
                 <h3 style="color:#fff; margin-bottom:8px;">Faça login</h3>
-                <p style="color:#aaa; margin-bottom:24px; font-size:14px;">Para interagir com vídeos, você precisa estar logado.</p>
+                <p style="color:#aaa; margin-bottom:24px; font-size:14px;">Para interagir na plataforma, você precisa estar logado.</p>
                 <div style="display:flex; gap:12px; justify-content:center;">
                     <a href="login.php" style="background:linear-gradient(135deg,#3b82f6,#0099ff); color:#fff; padding:10px 24px; border-radius:24px; text-decoration:none; font-weight:600;">Entrar</a>
                     <button onclick="document.getElementById('guestLoginModal').style.display='none'" style="background:#333; color:#fff; padding:10px 24px; border-radius:24px; border:none; cursor:pointer;">Fechar</button>
