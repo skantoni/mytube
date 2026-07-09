@@ -654,6 +654,12 @@ if ($guest_mode) {
         if (!$cache_valid) {
             $initial_ids = fetchGuestBatch($pdo, $seed, [], $batch_size);
 
+            $start_video = isset($_GET['start_video']) ? (int)$_GET['start_video'] : 0;
+            if ($start_video > 0) {
+                $initial_ids = array_values(array_diff($initial_ids, [$start_video]));
+                array_unshift($initial_ids, $start_video);
+            }
+
             if (empty($initial_ids)) {
                 echo json_encode([
                     'success' => true,

@@ -191,6 +191,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="auth-divider"><span>ou</span></div>
 
                 <div id="googleBtnLogin" class="google-signin-btn"></div>
+
+                <a href="index.php?explore=1" class="btn-explore">Explorar MyTube</a>
             </form>
 
             <!-- Fluxo de Esqueceu a Senha -->
@@ -372,6 +374,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="auth-divider"><span>ou</span></div>
 
                 <div id="googleBtnRegister" class="google-signin-btn"></div>
+
+                <a href="index.php?explore=1" class="btn-explore">Explorar MyTube</a>
             </form>
             
             <div class="auth-footer">
@@ -731,6 +735,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     .btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
     .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Botão Explorar ── */
+    .btn-explore {
+        display: block;
+        width: 100%;
+        text-align: center;
+        padding: 12px;
+        background: #f8fafc;
+        color: #475569;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        margin-top: 15px;
+        transition: background 0.2s, color 0.2s;
+        border: 1px solid #e2e8f0;
+        box-sizing: border-box;
+    }
+    .btn-explore:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+    }
     </style>
 </body>
 </html>

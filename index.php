@@ -99,7 +99,7 @@ if ($start_video_id > 0) {
     </div>
 
     <?php 
-    $guest_explore = (!isLoggedIn() && isset($_GET['explore']));
+    $guest_explore = (!isLoggedIn() && (isset($_GET['explore']) || isset($_GET['video_id'])));
     ?>
     <?php if (!isLoggedIn() && !$guest_explore): ?>
         <!-- Se não estiver logado, mostrar página de boas-vindas -->
@@ -378,8 +378,8 @@ if ($start_video_id > 0) {
             window.currentUserId = 0;
             window.feedMode = 'normal';
             window.profileUserId = 0;
-            window.startVideoId = 0;
-            window.highlightCommentId = 0;
+            window.startVideoId = <?php echo $start_video_id; ?>;
+            window.highlightCommentId = <?php echo $highlight_comment_id; ?>;
             
             function showGuestLoginModal() {
                 document.getElementById('guestLoginModal').style.display = 'flex';
