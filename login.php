@@ -70,6 +70,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <script>
+        // Limpar dados do utilizador anterior ao carregar a página de login
+        // (Já que, se chegou aqui, não está logado)
+        (function() {
+            try {
+                // Preservar configurações do dispositivo e cooldowns
+                const keepKeys = [
+                    'resetCodeLastSent', 
+                    'regEmailCodeLastSent', 
+                    'mytube_global_muted', 
+                    'mytube_user_interacted'
+                ];
+                const saved = {};
+                keepKeys.forEach(k => {
+                    const val = localStorage.getItem(k);
+                    if (val !== null) saved[k] = val;
+                });
+                
+                // Limpar tudo (feed_state, emojis recentes, etc)
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Restaurar chaves permitidas
+                Object.keys(saved).forEach(k => {
+                    localStorage.setItem(k, saved[k]);
+                });
+            } catch (e) {
+                console.error('Erro ao limpar storage:', e);
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MyTube - Sua rede social de vídeos</title>
