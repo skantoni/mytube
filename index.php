@@ -251,7 +251,16 @@ if ($start_video_id > 0) {
         <header class="tiktok-header">
             <div onclick="window.location.href='index.php'" class="tiktok-logo">MyTube</div>
             <div class="header-actions">
-                <a href="login.php" class="btn btn-primary" style="padding: 6px 16px; font-size: 14px; border-radius: 20px;">
+                <button class="header-btn" onclick="openSearchModal()" title="Pesquisar">
+                    <i class="fas fa-search"></i>
+                </button>
+                <button class="header-btn chat-btn" onclick="showGuestLoginModal()" title="Chat">
+                    <i class="fas fa-comment"></i>
+                </button>
+                <button class="header-btn profile-btn" onclick="showGuestLoginModal()" title="Perfil">
+                    <img src="assets/images/avatars/default.png" alt="Perfil" class="header-profile-pic">
+                </button>
+                <a href="login.php" class="btn btn-primary" style="padding: 6px 16px; font-size: 14px; border-radius: 20px; margin-left: 8px;">
                     <i class="fas fa-sign-in-alt"></i> Entrar
                 </a>
             </div>
@@ -296,6 +305,28 @@ if ($start_video_id > 0) {
                 <div style="display:flex; gap:12px; justify-content:center;">
                     <a href="login.php" style="background:linear-gradient(135deg,#3b82f6,#0099ff); color:#fff; padding:10px 24px; border-radius:24px; text-decoration:none; font-weight:600;">Entrar</a>
                     <button onclick="document.getElementById('guestLoginModal').style.display='none'" style="background:#333; color:#fff; padding:10px 24px; border-radius:24px; border:none; cursor:pointer;">Fechar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Pesquisa (Guest) -->
+        <div class="search-modal" id="searchModal">
+            <div class="search-modal-content">
+                <div class="search-header">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="searchInput" placeholder="Pesquisar usuários, vídeos ou #hashtags..." autocomplete="off">
+                        <button class="search-clear" id="searchClear" style="display: none;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <button class="search-cancel" onclick="closeSearchModal()">Cancelar</button>
+                </div>
+                <div class="search-results" id="searchResults">
+                    <div class="search-placeholder">
+                        <i class="fas fa-search"></i>
+                        <p>Pesquise por usuários, vídeos ou hashtags</p>
+                    </div>
                 </div>
             </div>
         </div>

@@ -16,8 +16,15 @@ require_once '../includes/config.php';
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Não autenticado']);
+    $action = $_SERVER['REQUEST_METHOD'] === 'POST'
+        ? (trim($_POST['action'] ?? ''))
+        : (trim($_GET['action']  ?? 'get'));
+        
+    if ($action === 'get') {
+        echo json_encode(['success' => true, 'history' => []]);
+    } else {
+        echo json_encode(['success' => true]);
+    }
     exit;
 }
 

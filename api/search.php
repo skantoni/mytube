@@ -4,11 +4,6 @@ require_once '../includes/hashtag_helper.php';
 
 header('Content-Type: application/json');
 
-if (!isLoggedIn()) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Usuário não autenticado']);
-    exit;
-}
 
 $query = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
 $context = isset($_GET['context']) ? trim((string)$_GET['context']) : '';
