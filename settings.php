@@ -31,11 +31,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
 }
 
 // Buscar dados do usuário
-$stmt = $pdo->prepare("SELECT username, full_name, profile_picture, email FROM users WHERE id = ?");
+$stmt = $pdo->prepare("SELECT username, full_name, profile_picture, email, is_premium, premium_expires FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 if (!$user) {
     redirect('login.php');
+}
+
+// Verificar se é premium ativo
+$user_is_premium = !empty($user['is_premium']) && (
+    empty($user['premium_expires']) || strtotime($user['premium_expires']) > time()
+);
+
+// Verificar se tem pedido pendente (com fallback caso tabela ainda não exista)
+$has_pending_premium = false;
+try {
+    $prem_pending = $pdo->prepare("SELECT id FROM premium_requests WHERE user_id = ? AND status = 'pending' LIMIT 1");
+    $prem_pending->execute([$user_id]);
+    $has_pending_premium = (bool)$prem_pending->fetch();
+} catch (Exception $e) {
+    // Tabela ainda não existe (antes da migration)
 }
 ?>
 <!DOCTYPE html>
@@ -204,6 +219,41 @@ if (!$user) {
         .settings-item-icon.purple { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
         .settings-item-icon.orange { background: rgba(249, 115, 22, 0.15); color: #f97316; }
         .settings-item-icon.red    { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .settings-item-icon.gold   { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+
+        /* Item Premium */
+        .settings-item.premium-item {
+            background: linear-gradient(90deg, rgba(245,158,11,0.05), transparent);
+        }
+        .settings-item.premium-item:hover {
+            background: linear-gradient(90deg, rgba(245,158,11,0.1), rgba(255,255,255,0.04));
+        }
+        .premium-badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(245,158,11,0.15);
+            border: 1px solid rgba(245,158,11,0.3);
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #f59e0b;
+            margin-left: 4px;
+        }
+        .pending-badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(59,130,246,0.12);
+            border: 1px solid rgba(59,130,246,0.25);
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #60a5fa;
+            margin-left: 4px;
+        }
 
         .settings-item-text {
             flex: 1;
@@ -807,6 +857,32 @@ if (!$user) {
         <div class="settings-section">
             <div class="settings-section-title">Conta</div>
             <div class="settings-group">
+                <!-- MyTube Premium -->
+                <a href="premium.php" class="settings-item<?php echo $user_is_premium ? ' premium-item' : ''; ?>">
+                    <div class="settings-item-icon gold">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="settings-item-text">
+                        <span>
+                            MyTube Premium
+                            <?php if ($user_is_premium): ?>
+                                <span class="premium-badge-pill">👑 Ativo</span>
+                            <?php elseif ($has_pending_premium): ?>
+                                <span class="pending-badge-pill">⏳ Pendente</span>
+                            <?php endif; ?>
+                        </span>
+                        <small>
+                            <?php if ($user_is_premium): ?>
+                                <?php echo !empty($user['premium_expires']) ? 'Expira em ' . date('d/m/Y', strtotime($user['premium_expires'])) : 'Acesso vitalício'; ?>
+                            <?php elseif ($has_pending_premium): ?>
+                                Pedido em análise
+                            <?php else: ?>
+                                Foto, lives e muito mais
+                            <?php endif; ?>
+                        </small>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                </a>
                 <a href="profile.php" class="settings-item">
                     <div class="settings-item-icon blue">
                         <i class="fas fa-user-edit"></i>
@@ -927,7 +1003,7 @@ if (!$user) {
             </div>
         </div>
 
-        <div class="app-version">MyTube v1.7.8</div>
+        <div class="app-version">MyTube v1.8.3</div>
     </main>
 
     <!-- Modal guia Desktop -->

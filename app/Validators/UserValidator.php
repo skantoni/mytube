@@ -6,7 +6,7 @@ class UserValidator
 {
     /** @var string[] */
     private const RESERVED_USERNAMES = [
-        'admin', 'root', 'mytube', 'suporte', 'support',
+        'admin', 'root', 'suporte', 'support',
         'moderador', 'staff', 'sistema',
     ];
 
