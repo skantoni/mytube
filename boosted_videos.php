@@ -1233,7 +1233,11 @@ try {
                                 <td>
                                     <div style="display:flex; align-items:center; gap:12px">
                                         <div style="width:60px; height:80px; border-radius:8px; overflow:hidden; background:#2a2a35; flex-shrink:0">
-                                            <img src="<?php echo htmlspecialchars(asset($vid['thumbnail_path'] ?? '')); ?>" style="width:100%; height:100%; object-fit:cover" alt="Thumb">
+                                            <?php if (!empty($vid['thumbnail_path']) && file_exists(__DIR__ . '/uploads/thumbnails/' . $vid['thumbnail_path'])): ?>
+                                                <img src="uploads/thumbnails/<?php echo htmlspecialchars($vid['thumbnail_path']); ?>" style="width:100%; height:100%; object-fit:cover" alt="Thumb">
+                                            <?php else: ?>
+                                                <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#64748b;"><i class="fas fa-video"></i></div>
+                                            <?php endif; ?>
                                         </div>
                                         <div style="max-width:200px">
                                             <div style="font-weight:600; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
@@ -1259,9 +1263,26 @@ try {
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <a href="index.php?v=<?php echo $vid['id']; ?>" target="_blank" class="ap-btn ap-btn-outline" style="padding:4px 10px; font-size:0.8rem">
-                                        <i class="fas fa-external-link-alt"></i> Ver
-                                    </a>
+                                    <div style="display:flex; gap:6px; flex-wrap:wrap">
+                                        <a href="index.php?video_id=<?php echo $vid['id']; ?>" target="_blank" class="ap-btn ap-btn-outline" style="padding:4px 10px; font-size:0.8rem" title="Ver vídeo">
+                                            <i class="fas fa-external-link-alt"></i> Ver
+                                        </a>
+                                        <button class="ap-btn ap-btn-approve js-report-action" data-action="resolve" data-id="<?php echo $vid['id']; ?>" style="padding:4px 10px; font-size:0.8rem" title="Marcar como resolvido">
+                                            <i class="fas fa-check"></i> Resolvido
+                                        </button>
+                                        <?php if ($vid['is_hidden']): ?>
+                                            <button class="ap-btn ap-btn-outline js-report-action" data-action="unhide" data-id="<?php echo $vid['id']; ?>" style="padding:4px 10px; font-size:0.8rem" title="Tornar visível">
+                                                <i class="fas fa-eye"></i> Exibir
+                                            </button>
+                                        <?php else: ?>
+                                            <button class="ap-btn ap-btn-warn js-report-action" data-action="hide" data-id="<?php echo $vid['id']; ?>" style="padding:4px 10px; font-size:0.8rem" title="Ocultar vídeo">
+                                                <i class="fas fa-eye-slash"></i> Ocultar
+                                            </button>
+                                        <?php endif; ?>
+                                        <button class="ap-btn ap-btn-reject js-report-action" data-action="delete" data-id="<?php echo $vid['id']; ?>" style="padding:4px 10px; font-size:0.8rem" title="Remover vídeo definitivamente">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -1360,6 +1381,47 @@ document.getElementById('adsTable')?.addEventListener('click', async function(e)
             document.getElementById('adRow' + id)?.remove();
             adToast('Campanha eliminada.');
         } else { adToast('❌ ' + (data.error || 'Erro'), false); btn.disabled = false; }
+    }
+});
+
+// ── Report Management ─────────────────────────────────────────────
+document.getElementById('section-reports')?.addEventListener('click', async function(e) {
+    const btn = e.target.closest('.js-report-action');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+    if (!action || !id) return;
+    
+    if (action === 'delete' && !confirm('Eliminar este vídeo definitivamente?')) return;
+    
+    btn.disabled = true;
+    try {
+        const body = new URLSearchParams({
+            csrf_token: document.querySelector('meta[name="csrf-token"]').content,
+            action: action,
+            video_id: id
+        });
+        const res = await fetch('api/admin_reports.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            adToast('✅ ' + data.message);
+            if (action === 'resolve' || action === 'delete') {
+                btn.closest('tr').remove();
+            } else {
+                setTimeout(() => location.reload(), 1000);
+            }
+        } else {
+            adToast('❌ ' + (data.error || 'Erro'), false);
+            btn.disabled = false;
+        }
+    } catch (err) {
+        adToast('❌ Erro de rede', false);
+        btn.disabled = false;
     }
 });
 </script>
