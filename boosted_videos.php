@@ -1235,6 +1235,10 @@ try {
                                         <div style="width:60px; height:80px; border-radius:8px; overflow:hidden; background:#2a2a35; flex-shrink:0">
                                             <?php if (!empty($vid['thumbnail_path']) && file_exists(__DIR__ . '/uploads/thumbnails/' . $vid['thumbnail_path'])): ?>
                                                 <img src="uploads/thumbnails/<?php echo htmlspecialchars($vid['thumbnail_path']); ?>" style="width:100%; height:100%; object-fit:cover" alt="Thumb">
+                                            <?php elseif (!empty($vid['video_path'])): ?>
+                                                <video preload="metadata" muted autoplay loop playsinline class="video-preview-player" style="width:100%; height:100%; object-fit:cover">
+                                                    <source src="<?php echo htmlspecialchars(resolve_video_url($vid['video_path'])); ?>" type="video/mp4">
+                                                </video>
                                             <?php else: ?>
                                                 <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#64748b;"><i class="fas fa-video"></i></div>
                                             <?php endif; ?>
