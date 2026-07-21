@@ -152,12 +152,15 @@ if ($start_video_id > 0) {
                             </div>
                         </div>
 
-                        <div class="lp-cta-group" style="margin-top: 40px; justify-content: center; width: 100%;">
+                        <div class="lp-cta-group" style="margin-top: 40px; justify-content: center; width: 100%; display: flex; flex-wrap: wrap; gap: 12px;">
                             <a href="login.php?register=1" class="lp-btn-primary">
                                 <i class="fas fa-user-plus"></i> Criar Conta Grátis
                             </a>
-                            <a href="login.php" class="lp-btn-secondary">
-                                <i class="fas fa-sign-in-alt"></i> Já tenho conta
+                            <a href="index.php?explore=1" class="lp-btn-secondary">
+                                <i class="fas fa-compass"></i> Explorar como visitante
+                            </a>
+                            <a href="login.php" class="lp-btn-secondary" style="background:transparent; border:none; text-decoration:underline;">
+                                Já tenho conta
                             </a>
                         </div>
                     </div>
