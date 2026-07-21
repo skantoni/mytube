@@ -238,12 +238,17 @@ if ($start_video_id > 0) {
             <!-- ===== FOOTER ===== -->
             <footer class="landing-footer">
                 <div class="footer-links">
+                    <a href="<?php echo SITE_URL; ?>/sobre.php">Sobre o MyTube</a>
+                    <span class="footer-divider">&bull;</span>
+                    <a href="<?php echo SITE_URL; ?>/contacto.php">Contacto</a>
+                    <span class="footer-divider">&bull;</span>
                     <a href="<?php echo SITE_URL; ?>/termos.php">Termos de Uso</a>
                     <span class="footer-divider">&bull;</span>
                     <a href="<?php echo SITE_URL; ?>/privacidade.php">Política de Privacidade</a>
                 </div>
-                <p class="footer-copy">&copy; <?php echo date('Y'); ?> MyTube. Todos os direitos reservados.</p>
+                <p class="footer-copy">&copy; <?php echo date('Y'); ?> MyTube &bull; Angola. Todos os direitos reservados.</p>
             </footer>
+
 
         </main>
     <?php elseif ($guest_explore): ?>

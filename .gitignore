@@ -73,3 +73,22 @@ desktop.ini
 
 # === MEUS FILES ===
 meus/
+
+# === LIVE STREAMING (em desenvolvimento — NÃO subir para produção) ===
+# Ficheiros PHP do live
+live.php
+live-stream.php
+live-watch.php
+# APIs do live
+api/start_stream.php
+api/end_stream.php
+api/get_live_streams.php
+api/get_stream_info.php
+# Servidor Node.js do live
+live-server/
+# Assets do live
+assets/images/live_hero.png
+# SQL de instalação do live
+database/install_livestream.sql
+# Pasta .agents (configuração local do agente)
+.agents/
