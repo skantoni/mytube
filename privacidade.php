@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/includes/config.php'; ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -10,416 +11,326 @@
     <link rel="icon" href="assets/images/favicon.ico" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Google AdSense -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
     <meta name="google-adsense-account" content="ca-pub-7296999127636132">
     <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
         :root {
-            --primary-blue: #1e40af;
-            --secondary-blue: #3b82f6;
-            --light-blue: #60a5fa;
-            --dark-blue: #1e3a8a;
-            --accent-blue: #06b6d4;
-            --gradient-blue: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #06b6d4 100%);
-            --white: #ffffff;
-            --light-gray: #f8fafc;
-            --gray: #64748b;
-            --dark-gray: #334155;
-            --black: #0f172a;
-            --border-radius: 12px;
-            --shadow-lg: 0 20px 40px rgba(30, 64, 175, 0.15);
+            --blue:    #1e40af;
+            --blue-lt: #3b82f6;
+            --ink:     #111827;
+            --body:    #374151;
+            --muted:   #6b7280;
+            --rule:    #e5e7eb;
+            --bg:      #f9fafb;
+            --white:   #ffffff;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        html { scroll-behavior: smooth; }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #f0f4ff;
-            color: var(--dark-gray);
-            line-height: 1.7;
-            min-height: 100vh;
+            background: var(--bg);
+            color: var(--body);
+            line-height: 1.75;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* ── Header ── */
-        .page-header {
-            background: var(--gradient-blue);
-            padding: 48px 20px 56px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
+        /* ── Topbar ── */
+        .topbar {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(255,255,255,.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--rule);
+            padding: 0 24px;
         }
+        .topbar-inner {
+            max-width: 900px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 56px;
+        }
+        .nav-logo {
+            display: flex; align-items: center; gap: 9px;
+            text-decoration: none; color: var(--ink);
+        }
+        .nav-logo-icon {
+            width: 32px; height: 32px;
+            object-fit: contain;
+        }
+        .nav-logo-name { font-size: 16px; font-weight: 800; letter-spacing: -.3px; }
+        .nav-links { display: flex; gap: 28px; }
+        .nav-links a {
+            font-size: 13.5px; font-weight: 500; color: var(--muted);
+            text-decoration: none; transition: color .15s;
+        }
+        .nav-links a:hover, .nav-links a.active { color: var(--ink); }
+        .nav-btn {
+            font-size: 13px; font-weight: 600;
+            color: var(--white); background: var(--blue);
+            padding: 7px 18px; border-radius: 8px;
+            text-decoration: none; transition: background .15s;
+        }
+        .nav-btn:hover { background: #1e40af; }
 
-        .header-logo {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
+        /* ── Hero ── */
+        .hero {
+            max-width: 900px; margin: 0 auto;
+            padding: 80px 24px 64px;
+            border-bottom: 1px solid var(--rule);
+        }
+        .hero-kicker {
+            display: inline-block;
+            font-size: 12px; font-weight: 700; letter-spacing: .08em;
+            text-transform: uppercase; color: var(--blue);
             margin-bottom: 20px;
         }
-
-        .logo-icon {
-            width: 42px;
-            height: 42px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(4px);
+        .hero h1 {
+            font-size: clamp(34px, 6vw, 48px);
+            font-weight: 800; color: var(--ink);
+            line-height: 1.1; letter-spacing: -1.5px;
+            max-width: 660px;
+        }
+        .hero-lead {
+            margin-top: 24px; max-width: 540px;
+            font-size: 17px; color: var(--muted); line-height: 1.7;
+        }
+        .last-updated {
+            display: inline-block;
+            margin-top: 24px;
+            font-size: 13px; font-weight: 500;
+            color: var(--muted); background: var(--white);
+            padding: 6px 14px; border-radius: 20px;
+            border: 1px solid var(--rule);
         }
 
-        .logo-icon svg {
-            width: 24px;
-            height: 24px;
-            fill: #ffffff;
+        /* ── Conteúdo ── */
+        .page-body {
+            max-width: 900px; margin: 0 auto;
+            padding: 0 24px 80px;
         }
 
-        .logo-text {
-            font-size: 22px;
-            font-weight: 800;
-            color: #ffffff;
-            letter-spacing: -0.5px;
+        .text-section {
+            padding: 60px 0;
+            border-bottom: 1px solid var(--rule);
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            align-items: start;
         }
-
-        .page-header h1 {
-            font-size: clamp(24px, 5vw, 36px);
-            font-weight: 800;
-            color: #ffffff;
-            letter-spacing: -0.5px;
-            position: relative;
+        .text-section:last-of-type {
+            border-bottom: none;
         }
-
-        /* ── Main content ── */
-        .content-wrapper {
-            max-width: 800px;
-            margin: -32px auto 60px;
-            padding: 0 20px;
-            position: relative;
+        
+        .section-content h2 {
+            font-size: clamp(22px, 3.5vw, 28px); font-weight: 800;
+            color: var(--ink); line-height: 1.2; letter-spacing: -.5px;
+            margin-bottom: 20px;
         }
-
-        .terms-card {
-            background: #ffffff;
-            border-radius: 16px;
-            box-shadow: var(--shadow-lg);
-            padding: clamp(28px, 6vw, 56px);
+        .section-content h3 {
+            font-size: 18px; font-weight: 700;
+            color: var(--ink); margin-top: 32px; margin-bottom: 12px;
         }
-
-        .terms-section {
-            margin-bottom: 40px;
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 14px;
+        .section-content p {
+            font-size: 16px; color: var(--body); line-height: 1.8;
             margin-bottom: 16px;
         }
+        .section-content p:last-child { margin-bottom: 0; }
+        .section-content strong { color: var(--ink); font-weight: 600; }
+        .section-content a { color: var(--blue); text-decoration: underline; font-weight: 500; }
 
-        .section-number {
-            width: 36px;
-            height: 36px;
-            min-width: 36px;
-            background: var(--gradient-blue);
-            color: #ffffff;
-            font-size: 14px;
-            font-weight: 700;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .clean-list {
+            list-style: none; margin-top: 20px; margin-bottom: 20px;
         }
-
-        .section-header h2 {
-            font-size: clamp(16px, 3vw, 20px);
-            font-weight: 700;
-            color: var(--dark-blue);
+        .clean-list li {
+            padding: 14px 0;
+            border-top: 1px solid var(--rule);
+            display: flex; gap: 16px; align-items: flex-start;
+            font-size: 15px; color: var(--body);
         }
-
-        p {
-            margin-bottom: 15px;
-            color: #475569;
+        .clean-list li:last-child { border-bottom: 1px solid var(--rule); }
+        .list-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--blue); margin-top: 9px; flex-shrink: 0;
         }
+        .list-title { font-weight: 600; color: var(--ink); display: block; margin-bottom: 2px; }
 
-        ul {
-            list-style: none;
-            margin: 15px 0;
-        }
-
-        li {
-            position: relative;
-            padding-left: 25px;
-            margin-bottom: 10px;
-            color: #475569;
-        }
-
-        li::before {
-            content: "✓";
-            position: absolute;
-            left: 0;
-            color: var(--secondary-blue);
-            font-weight: bold;
-        }
-
-        .last-updated {
-            display: inline-flex;
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-radius: 20px;
-            padding: 4px 14px;
-            font-size: 12px;
-            color: #166534;
-            margin-bottom: 28px;
-        }
-
-        .highlight-box {
-            background: #f8fafc;
-            border-left: 4px solid var(--secondary-blue);
-            padding: 20px;
-            margin: 20px 0;
+        /* ── Callout / Highlight ── */
+        .highlight {
+            background: rgba(59, 130, 246, 0.05);
+            border-left: 3px solid var(--blue-lt);
+            padding: 20px 24px;
+            margin: 24px 0;
             border-radius: 0 8px 8px 0;
         }
+        .highlight p { margin: 0; font-size: 15px; color: #1e3a8a; }
 
-        /* Destaque especial para secção de publicidade */
-        .highlight-box.adsense {
-            border-left-color: #f59e0b;
-            background: #fffbeb;
+        /* ── Footer ── */
+        .site-footer {
+            border-top: 1px solid var(--rule);
+            padding: 32px 24px;
+            max-width: 900px; margin: 0 auto;
         }
-
-        .highlight-box.warning {
-            border-left-color: #ef4444;
-            background: #fef2f2;
+        .footer-inner {
+            display: flex; flex-wrap: wrap;
+            align-items: center; justify-content: space-between; gap: 16px;
         }
-
-        .page-footer {
-            text-align: center;
-            padding-bottom: 40px;
-            color: var(--gray);
-            font-size: 14px;
-        }
-
-        .page-footer a {
-            color: var(--secondary-blue);
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .footer-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px 20px;
-            justify-content: center;
-            margin-bottom: 10px;
-        }
-
-        a.inline-link {
-            color: var(--secondary-blue);
-            text-decoration: none;
-            font-weight: 600;
-        }
-        a.inline-link:hover { text-decoration: underline; }
+        .footer-copy { font-size: 13px; color: var(--muted); }
+        .footer-nav { display: flex; flex-wrap: wrap; gap: 6px 20px; }
+        .footer-nav a { font-size: 13px; color: var(--muted); text-decoration: none; }
+        .footer-nav a:hover { color: var(--ink); }
     </style>
 </head>
 <body>
 
-    <div class="page-header">
-        <a href="/" class="header-logo">
-            <div class="logo-icon">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M8 5v14l11-7z"/>
-                </svg>
-            </div>
-            <span class="logo-text">MyTube</span>
+<!-- Navegação -->
+<nav class="topbar">
+    <div class="topbar-inner">
+        <a href="index.php" class="nav-logo">
+            <img src="assets/images/logo_icon.png" alt="MyTube Logo" class="nav-logo-icon">
+            <span class="nav-logo-name">MyTube</span>
         </a>
-        <h1>Política de Privacidade</h1>
+        <div class="nav-links">
+            <a href="index.php">Início</a>
+            <a href="sobre.php">Sobre</a>
+            <a href="contacto.php">Contacto</a>
+        </div>
+        <a href="login.php?register=1" class="nav-btn">Criar conta</a>
     </div>
+</nav>
 
-    <div class="content-wrapper">
-        <div class="terms-card">
-            <div class="last-updated">Atualizado em: Julho de 2026</div>
+<!-- Hero -->
+<header class="hero">
+    <span class="hero-kicker">Legal e Transparência</span>
+    <h1>Política de Privacidade</h1>
+    <p class="hero-lead">
+        Sabe exactamente que informações recolhemos sobre ti, porque o fazemos, e como podes controlar os teus dados na plataforma.
+    </p>
+    <div class="last-updated">Última atualização: Julho de 2026</div>
+</header>
 
-            <!-- 1. Introdução -->
-            <div class="terms-section">
-                <div class="section-header">
-                    <div class="section-number">1</div>
-                    <h2>Introdução</h2>
-                </div>
-                <p>O <strong>MyTube</strong> (disponível em <a href="https://mytube.social" class="inline-link">mytube.social</a>) respeita a sua privacidade e está empenhado em proteger os dados pessoais que partilha connosco. Esta Política de Privacidade descreve como recolhemos, usamos, partilhamos e protegemos as suas informações ao utilizar a nossa plataforma, incluindo o uso de <strong>cookies</strong> e tecnologias de publicidade de terceiros.</p>
-                <p>Ao utilizar o MyTube, concorda com os termos descritos nesta política. Se não concordar, pedimos que não utilize os nossos serviços.</p>
-            </div>
+<!-- Corpo -->
+<main class="page-body">
 
-            <!-- 2. Dados que Recolhemos -->
-            <div class="terms-section">
-                <div class="section-header">
-                    <div class="section-number">2</div>
-                    <h2>Dados que Recolhemos</h2>
-                </div>
-                <p>Recolhemos informações necessárias para o funcionamento da plataforma, tais como:</p>
-                <ul>
-                    <li><strong>Informações de Registo:</strong> Nome, e-mail e nome de utilizador.</li>
-                    <li><strong>Autenticação Google:</strong> Se optar pelo login com Google, recebemos o seu ID único, e-mail e foto de perfil autorizada.</li>
-                    <li><strong>Conteúdo:</strong> Vídeos e comentários que publica.</li>
-                    <li><strong>Interação:</strong> Seguidores, gostos e histórico de visualização.</li>
-                    <li><strong>Dados técnicos:</strong> Endereço IP, tipo de navegador, sistema operativo e páginas visitadas — recolhidos automaticamente para fins de segurança e melhoria do serviço.</li>
-                </ul>
-            </div>
-
-            <!-- 3. Cookies e Tecnologias de Rastreamento -->
-            <div class="terms-section">
-                <div class="section-header">
-                    <div class="section-number">3</div>
-                    <h2>Cookies e Tecnologias de Rastreamento</h2>
-                </div>
-                <p>O MyTube e os seus parceiros de publicidade utilizam <strong>cookies</strong> e tecnologias semelhantes (como web beacons e pixels) para:</p>
-                <ul>
-                    <li>Manter a sua sessão de login ativa de forma segura.</li>
-                    <li>Recordar as suas preferências na plataforma.</li>
-                    <li>Analisar o tráfego e o comportamento dos utilizadores (de forma agregada e anónima).</li>
-                    <li>Exibir publicidade personalizada através de parceiros de terceiros.</li>
-                    <li>Prevenir fraudes e garantir a segurança da plataforma.</li>
-                </ul>
-                <div class="highlight-box">
-                    <p><strong>O que são cookies?</strong> Cookies são pequenos ficheiros de texto guardados no seu dispositivo quando visita um website. Permitem que o site "se lembre" de si entre visitas. Pode gerir ou desativar cookies nas definições do seu navegador, mas algumas funcionalidades do MyTube podem não funcionar corretamente sem eles.</p>
-                </div>
-            </div>
-
-            <!-- 4. Publicidade — Google AdSense -->
-            <div class="terms-section">
-                <div class="section-header">
-                    <div class="section-number">4</div>
-                    <h2>Publicidade — Google AdSense</h2>
-                </div>
-                <p>O MyTube utiliza o <strong>Google AdSense</strong> (Publisher ID: <code>ca-pub-7296999127636132</code>) para exibir anúncios na plataforma. O AdSense é um serviço de publicidade fornecido pela Google LLC que nos permite financiar o serviço gratuitamente para todos os utilizadores.</p>
-
-                <div class="highlight-box adsense">
-                    <p><strong>⚠️ Como funciona a publicidade personalizada:</strong> O Google AdSense pode utilizar cookies e dados sobre as suas visitas ao MyTube e a outros websites para exibir anúncios relevantes com base nos seus interesses. Isto é chamado de publicidade baseada em interesses ou publicidade comportamental.</p>
-                </div>
-
-                <p>Ao visitar o MyTube, o Google pode:</p>
-                <ul>
-                    <li>Colocar cookies de publicidade no seu dispositivo.</li>
-                    <li>Utilizar o seu endereço IP e informações sobre o seu navegador.</li>
-                    <li>Recolher dados sobre as páginas que visita para personalizar anúncios.</li>
-                    <li>Medir o desempenho dos anúncios exibidos.</li>
-                </ul>
-
-                <p>O MyTube <strong>não tem controlo direto</strong> sobre os cookies colocados pelo Google AdSense — estes são geridos pela Google de acordo com a sua própria política de privacidade.</p>
-
-                <p>Para mais informações sobre como a Google utiliza os dados recolhidos:</p>
-                <ul>
-                    <li><a href="https://policies.google.com/privacy" target="_blank" class="inline-link">Política de Privacidade da Google</a></li>
-                    <li><a href="https://policies.google.com/technologies/ads" target="_blank" class="inline-link">Como a Google usa cookies em publicidade</a></li>
-                </ul>
-
-                <div class="highlight-box">
-                    <p><strong>Opt-out de anúncios personalizados:</strong> Pode desativar a publicidade personalizada da Google em: <a href="https://www.google.com/settings/ads" target="_blank" class="inline-link">google.com/settings/ads</a>. Também pode utilizar o <a href="https://optout.aboutads.info/" target="_blank" class="inline-link">Digital Advertising Alliance opt-out</a>. Note que mesmo após o opt-out, continuará a ver anúncios — apenas não serão personalizados com base nos seus interesses.</p>
-                </div>
-            </div>
-
-            <!-- 5. Uso das Informações -->
-            <div class="terms-section">
-                <div class="section-header">
-                    <div class="section-number">5</div>
-                    <h2>Uso das Informações</h2>
-                </div>
-                <p>As suas informações são utilizadas para:</p>
-                <ul>
-                    <li>Personalizar a sua experiência na plataforma.</li>
-                    <li>Gerir o sistema de ranking e competições.</li>
-                    <li>Enviar notificações sobre interações (seguidores, comentários).</li>
-                    <li>Garantir a segurança da conta e prevenir fraudes.</li>
-                    <li>Exibir publicidade relevante através do Google AdSense para financiar a plataforma.</li>
-                    <li>Melhorar os nossos serviços com base em análises de utilização.</li>
-                    <li>Cumprir obrigações legais quando aplicável.</li>
-                </ul>
-            </div>
-
-            <!-- 6. Partilha de Dados -->
-            <div class="terms-section">
-                <div class="section-header">
-                    <div class="section-number">6</div>
-                    <h2>Partilha de Dados com Terceiros</h2>
-                </div>
-                <p>Partilhamos informações com terceiros nas seguintes situações:</p>
-                <ul>
-                    <li>Quando exigido por lei ou autoridades judiciais.</li>
-                    <li>Para proteger os direitos e segurança da plataforma e utilizadores.</li>
-                    <li>Com serviços de infraestrutura (ex: Cloudflare R2 para armazenamento de vídeos) estritamente necessários para o serviço.</li>
-                    <li>Com o <strong>Google AdSense</strong> para fins de publicidade, conforme descrito na secção 4 desta política.</li>
-                </ul>
-                <p>O MyTube <strong>não vende os seus dados pessoais</strong> a terceiros para fins que não estejam descritos nesta política.</p>
-            </div>
-
-            <!-- 7. Os Seus Direitos -->
-            <div class="terms-section">
-                <div class="section-header">
-                    <div class="section-number">7</div>
-                    <h2>Os Seus Direitos</h2>
-                </div>
-                <p>Como utilizador, tem o direito de:</p>
-                <ul>
-                    <li>Aceder e atualizar os seus dados nas definições de perfil.</li>
-                    <li>Solicitar a eliminação total da sua conta e dados associados.</li>
-                    <li>Revogar o acesso de aplicações de terceiros (como o Google) através das definições da sua conta Google.</li>
-                    <li>Desativar anúncios personalizados através das <a href="https://www.google.com/settings/ads" target="_blank" class="inline-link">definições de anúncios da Google</a>.</li>
-                    <li>Gerir cookies nas definições do seu navegador.</li>
-                </ul>
-            </div>
-
-            <!-- 8. Retenção de Dados -->
-            <div class="terms-section">
-                <div class="section-header">
-                    <div class="section-number">8</div>
-                    <h2>Retenção de Dados</h2>
-                </div>
-                <p>Mantemos os seus dados enquanto a sua conta estiver ativa. Após a eliminação da conta, os dados pessoais são removidos dos nossos servidores num prazo de 30 dias, exceto quando obrigados por lei a retê-los por mais tempo.</p>
-            </div>
-
-            <!-- 9. Segurança -->
-            <div class="terms-section">
-                <div class="section-header">
-                    <div class="section-number">9</div>
-                    <h2>Segurança dos Dados</h2>
-                </div>
-                <p>Implementamos medidas técnicas e organizacionais para proteger os seus dados contra acesso não autorizado, alteração, divulgação ou destruição. Estas medidas incluem:</p>
-                <ul>
-                    <li>Transmissão de dados encriptada via HTTPS/TLS.</li>
-                    <li>Proteção contra CSRF (Cross-Site Request Forgery).</li>
-                    <li>Armazenamento seguro de passwords com hash.</li>
-                    <li>Rate limiting para prevenir abusos.</li>
-                </ul>
-                <p>Nenhum sistema é 100% seguro. Em caso de violação de dados que afete os seus direitos, será notificado de acordo com a legislação aplicável.</p>
-            </div>
-
-            <!-- 10. Contacto -->
-            <div class="terms-section">
-                <div class="section-header">
-                    <div class="section-number">10</div>
-                    <h2>Contacto</h2>
-                </div>
-                <p>Se tiver dúvidas sobre esta Política de Privacidade, questões sobre os seus dados, ou quiser exercer algum dos seus direitos, pode contactar-nos através de:</p>
-                <ul>
-                    <li><strong>Email:</strong> <a href="mailto:mytubeao@gmail.com" class="inline-link">mytubeao@gmail.com</a></li>
-                    <li><strong>Formulário:</strong> <a href="/contacto.php" class="inline-link">mytube.social/contacto.php</a></li>
-                </ul>
-                <p>Respondemos a todos os pedidos relacionados com privacidade em até <strong>15 dias úteis</strong>.</p>
-            </div>
-
+    <div class="text-section">
+        <div class="section-content">
+            <h2>1. Os dados que recolhemos</h2>
+            <p>
+                Quando usas o MyTube (em <a href="https://mytube.social">mytube.social</a>), precisamos de algumas informações para que a plataforma funcione correctamente:
+            </p>
+            <ul class="clean-list">
+                <li>
+                    <span class="list-dot"></span>
+                    <span>
+                        <span class="list-title">Informações de Registo</span>
+                        O teu nome, email e nome de utilizador. Se usares o login do Google, recebemos apenas o teu email e foto de perfil.
+                    </span>
+                </li>
+                <li>
+                    <span class="list-dot"></span>
+                    <span>
+                        <span class="list-title">O teu conteúdo</span>
+                        Os vídeos que publicas, os comentários que fazes e as tuas interações (gostos, quem segues).
+                    </span>
+                </li>
+                <li>
+                    <span class="list-dot"></span>
+                    <span>
+                        <span class="list-title">Dados Técnicos</span>
+                        Como endereço IP, tipo de dispositivo e navegador. Estes dados são usados anonimamente para garantir a segurança da tua conta e detectar spam.
+                    </span>
+                </li>
+            </ul>
         </div>
     </div>
 
-    <div class="page-footer">
-        <div class="footer-links">
-            <a href="/">Início</a>
-            <a href="/sobre.php">Sobre o MyTube</a>
-            <a href="/contacto.php">Contacto</a>
-            <a href="/termos.php">Termos de Uso</a>
+    <div class="text-section">
+        <div class="section-content">
+            <h2>2. Cookies e Rastreamento</h2>
+            <p>
+                Usamos cookies — pequenos ficheiros de texto guardados no teu dispositivo — para funções essenciais e analíticas:
+            </p>
+            <ul class="clean-list">
+                <li>
+                    <span class="list-dot"></span>
+                    <span>
+                        <span class="list-title">Essenciais</span>
+                        Para te manteres com sessão iniciada e proteger a tua conta.
+                    </span>
+                </li>
+                <li>
+                    <span class="list-dot"></span>
+                    <span>
+                        <span class="list-title">Publicidade e Analítica</span>
+                        Para ajudar parceiros externos a exibir anúncios relevantes e medir o desempenho do site.
+                    </span>
+                </li>
+            </ul>
         </div>
-        <p>&copy; <?php echo date('Y'); ?> MyTube &bull; <a href="mailto:mytubeao@gmail.com">mytubeao@gmail.com</a></p>
     </div>
 
+    <div class="text-section">
+        <div class="section-content">
+            <h2>3. Publicidade (Google AdSense)</h2>
+            <p>
+                O MyTube é 100% gratuito. Para cobrir os custos de servidores e desenvolvimento, usamos o <strong>Google AdSense</strong> para exibir anúncios publicitários.
+            </p>
+            <div class="highlight">
+                <p>
+                    <strong>Como funciona:</strong> O Google e os seus parceiros usam cookies para apresentar anúncios com base nas tuas visitas anteriores ao MyTube e a outros websites (publicidade personalizada).
+                </p>
+            </div>
+            <p>
+                Nós não partilhamos o teu nome, email ou dados de registo diretamente com os anunciantes. O Google gere os cookies de acordo com a sua <a href="https://policies.google.com/privacy" target="_blank">Política de Privacidade</a>.
+            </p>
+            <h3>Como fazer opt-out de anúncios personalizados</h3>
+            <p>
+                Se não quiseres ver anúncios baseados nos teus interesses, podes desativar essa função diretamente no Google visitando as <a href="https://www.google.com/settings/ads" target="_blank">Definições de Anúncios da Google</a>. Podes também visitar o site <a href="https://optout.aboutads.info/" target="_blank">AboutAds</a> para recusar cookies de terceiros.
+            </p>
+        </div>
+    </div>
+
+    <div class="text-section">
+        <div class="section-content">
+            <h2>4. Segurança e Eliminação de Dados</h2>
+            <p>
+                Os teus dados são armazenados de forma segura e não são vendidos a terceiros. Protegemos as tuas palavras-passe com criptografia avançada.
+            </p>
+            <p>
+                Tu controlas a tua presença no MyTube. Podes alterar os teus dados no teu perfil a qualquer momento ou solicitar a eliminação completa e permanente da tua conta enviando um pedido para a nossa equipa de suporte.
+            </p>
+        </div>
+    </div>
+
+    <div class="text-section">
+        <div class="section-content">
+            <h2>5. Contacto</h2>
+            <p>
+                Se tiveres dúvidas sobre como tratamos os teus dados ou quiseres exercer os teus direitos de privacidade, estamos totalmente disponíveis:
+            </p>
+            <p>
+                Email: <a href="mailto:mytubeao@gmail.com">mytubeao@gmail.com</a><br>
+                Ou através da nossa <a href="contacto.php">página de Contacto</a>.
+            </p>
+        </div>
+    </div>
+
+</main>
+
+<!-- Footer -->
+<footer class="site-footer" style="max-width:100%;border-top:1px solid var(--rule);">
+    <div class="footer-inner" style="max-width:900px;margin:0 auto;">
+        <span class="footer-copy">&copy; <?php echo date('Y'); ?> MyTube &mdash; Angola</span>
+        <nav class="footer-nav">
+            <a href="index.php">Início</a>
+            <a href="sobre.php">Sobre</a>
+            <a href="contacto.php">Contacto</a>
+            <a href="termos.php">Termos</a>
+            <a href="privacidade.php" class="active">Privacidade</a>
+        </nav>
+    </div>
+</footer>
+
+<?php require_once 'includes/cookie_banner.php'; ?>
 </body>
 </html>

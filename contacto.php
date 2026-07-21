@@ -432,5 +432,6 @@
 })();
 </script>
 
+<?php require_once 'includes/cookie_banner.php'; ?>
 </body>
 </html>

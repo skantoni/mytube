@@ -812,5 +812,7 @@ if ($start_video_id > 0) {
             }
         })();
     </script>
+
+    <?php require_once 'includes/cookie_banner.php'; ?>
 </body>
 </html>
