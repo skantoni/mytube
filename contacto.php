@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/includes/config.php'; ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -224,8 +225,6 @@
     </style>
 </head>
 <body>
-
-<?php require_once __DIR__ . '/includes/config.php'; ?>
 
 <!-- Topbar -->
 <nav class="topbar">
