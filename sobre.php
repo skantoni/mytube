@@ -314,16 +314,12 @@
             <div class="section-num">03</div>
         </div>
         <div class="section-content">
-            <h2>Gratuito não significa sem custos</h2>
+            <h2>Compromisso com a Privacidade</h2>
             <p>
-                Manter servidores, armazenamento de vídeos e desenvolvimento activo tem custos reais.
-                Para que o MyTube continue gratuito para todos, utilizamos publicidade do
-                <strong>Google AdSense</strong> como modelo de financiamento.
+                O MyTube é uma plataforma gratuita e aberta, e acreditamos que a confiança da comunidade é o nosso maior pilar.
             </p>
             <p>
-                Não vendemos os teus dados. Não cobramos subscrições. A publicidade que vês é o
-                que nos permite manter a plataforma a funcionar 24 horas por dia, 365 dias por ano —
-                sem pedir nada em troca.
+                Não vendemos os teus dados pessoais nem cobramos subscrições. A plataforma pode apresentar anúncios para se manter sustentável, mas fazemo-lo sempre com o máximo respeito pela tua privacidade e controlo das tuas informações.
             </p>
             <p>
                 Podes saber mais sobre como tratamos os teus dados na nossa
