@@ -60,7 +60,7 @@
 
 <div id="cookie-banner">
     <p>
-        Usamos cookies para melhorar a tua experiência e personalizar os anúncios (Google AdSense). 
+        Usamos cookies para melhorar a tua experiência na plataforma e personalizar conteúdos. 
         Ao continuares, concordas com a nossa <a href="privacidade.php">Política de Privacidade</a>.
     </p>
     <button class="cookie-btn" onclick="acceptCookies()">Aceitar e Continuar</button>
