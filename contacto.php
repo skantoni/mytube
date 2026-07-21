@@ -232,18 +232,18 @@
 <!-- Topbar -->
 <nav class="topbar">
     <div class="topbar-inner">
-        <a href="/" class="nav-logo">
+        <a href="index.php" class="nav-logo">
             <div class="nav-logo-icon">
                 <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
             </div>
             <span class="nav-logo-name">MyTube</span>
         </a>
         <div class="nav-links">
-            <a href="/">Início</a>
-            <a href="/sobre.php">Sobre</a>
-            <a href="/contacto.php" class="active">Contacto</a>
+            <a href="index.php">Início</a>
+            <a href="sobre.php">Sobre</a>
+            <a href="contacto.php" class="active">Contacto</a>
         </div>
-        <a href="/login.php?register=1" class="nav-btn">Criar conta</a>
+        <a href="login.php?register=1" class="nav-btn">Criar conta</a>
     </div>
 </nav>
 
@@ -346,10 +346,10 @@
     <div class="footer-inner">
         <span class="footer-copy">&copy; <?php echo date('Y'); ?> MyTube &mdash; Angola</span>
         <nav class="footer-nav">
-            <a href="/">Início</a>
-            <a href="/sobre.php">Sobre</a>
-            <a href="/termos.php">Termos</a>
-            <a href="/privacidade.php">Privacidade</a>
+            <a href="index.php">Início</a>
+            <a href="sobre.php">Sobre</a>
+            <a href="termos.php">Termos</a>
+            <a href="privacidade.php">Privacidade</a>
         </nav>
     </div>
 </footer>
@@ -414,7 +414,7 @@
         const csrf = document.querySelector('input[name="csrf_token"]')?.value || '';
 
         try {
-            const res  = await fetch('/api/contacto_enviar.php', {
+            const res  = await fetch('api/contacto_enviar.php', {
                 method: 'POST',
                 headers: { 'X-CSRF-Token': csrf },
                 body: new FormData(form)

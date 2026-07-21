@@ -208,18 +208,18 @@
 <!-- Navegação -->
 <nav class="topbar">
     <div class="topbar-inner">
-        <a href="/" class="nav-logo">
+        <a href="index.php" class="nav-logo">
             <div class="nav-logo-icon">
                 <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
             </div>
             <span class="nav-logo-name">MyTube</span>
         </a>
         <div class="nav-links">
-            <a href="/" >Início</a>
-            <a href="/sobre.php" class="active">Sobre</a>
-            <a href="/contacto.php">Contacto</a>
+            <a href="index.php" >Início</a>
+            <a href="sobre.php" class="active">Sobre</a>
+            <a href="contacto.php">Contacto</a>
         </div>
-        <a href="/login.php?register=1" class="nav-btn">Criar conta</a>
+        <a href="login.php?register=1" class="nav-btn">Criar conta</a>
     </div>
 </nav>
 
@@ -231,7 +231,7 @@
         O MyTube nasceu da vontade simples de criar um espaço onde jovens angolanos possam partilhar
         o seu talento sem depender de plataformas feitas para outras realidades.
     </p>
-    <a href="/login.php?register=1" class="hero-cta">
+    <a href="login.php?register=1" class="hero-cta">
         <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
         Entra na comunidade
     </a>
@@ -330,7 +330,7 @@
             </p>
             <p>
                 Podes saber mais sobre como tratamos os teus dados na nossa
-                <a href="/privacidade.php" style="color:var(--blue);font-weight:600;text-decoration:none;">Política de Privacidade</a>.
+                <a href="privacidade.php" style="color:var(--blue);font-weight:600;text-decoration:none;">Política de Privacidade</a>.
             </p>
         </div>
     </div>
@@ -342,7 +342,7 @@
             o que a comunidade angolana precisa. Se tens questões, sugestões ou queres trabalhar
             connosco, <strong>fala directamente connosco</strong>.
         </p>
-        <a href="/contacto.php" class="callout-link">
+        <a href="contacto.php" class="callout-link">
             Entrar em contacto
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
         </a>
@@ -355,11 +355,11 @@
     <div class="footer-inner" style="max-width:900px;margin:0 auto;">
         <span class="footer-copy">&copy; <?php echo date('Y'); ?> MyTube &mdash; Angola</span>
         <nav class="footer-nav">
-            <a href="/">Início</a>
-            <a href="/sobre.php">Sobre</a>
-            <a href="/contacto.php">Contacto</a>
-            <a href="/termos.php">Termos</a>
-            <a href="/privacidade.php">Privacidade</a>
+            <a href="index.php">Início</a>
+            <a href="sobre.php">Sobre</a>
+            <a href="contacto.php">Contacto</a>
+            <a href="termos.php">Termos</a>
+            <a href="privacidade.php">Privacidade</a>
         </nav>
     </div>
 </footer>
