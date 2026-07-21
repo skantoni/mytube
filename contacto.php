@@ -16,7 +16,7 @@
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --blue:    #1d4ed8;
+            --blue:    #1e40af;
             --blue-lt: #3b82f6;
             --ink:     #111827;
             --body:    #374151;
@@ -58,10 +58,8 @@
         }
         .nav-logo-icon {
             width: 32px; height: 32px;
-            background: var(--blue); border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
+            object-fit: contain;
         }
-        .nav-logo-icon svg { width: 18px; height: 18px; fill: #fff; }
         .nav-logo-name { font-size: 16px; font-weight: 800; letter-spacing: -.3px; }
         .nav-links { display: flex; gap: 28px; }
         .nav-links a {
@@ -233,9 +231,7 @@
 <nav class="topbar">
     <div class="topbar-inner">
         <a href="index.php" class="nav-logo">
-            <div class="nav-logo-icon">
-                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            </div>
+            <img src="assets/images/logo_icon.png" alt="MyTube Logo" class="nav-logo-icon">
             <span class="nav-logo-name">MyTube</span>
         </a>
         <div class="nav-links">
