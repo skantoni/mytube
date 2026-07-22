@@ -92,3 +92,7 @@ assets/images/live_hero.png
 database/install_livestream.sql
 # Pasta .agents (configuração local do agente)
 .agents/
+
+
+# ===== OUTROS =====
+.freebuff/

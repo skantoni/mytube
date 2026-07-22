@@ -31,11 +31,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
 }
 
 // Buscar dados do usuário
-$stmt = $pdo->prepare("SELECT username, full_name, profile_picture, email, is_premium, premium_expires FROM users WHERE id = ?");
+$stmt = $pdo->prepare("SELECT username, full_name, profile_picture, email FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 if (!$user) {
     redirect('login.php');
+}
+
+// Tentar buscar colunas premium (com fallback caso a migration não tenha sido rodada)
+$user['is_premium'] = 0;
+$user['premium_expires'] = null;
+try {
+    $stmt_prem = $pdo->prepare("SELECT is_premium, premium_expires FROM users WHERE id = ?");
+    $stmt_prem->execute([$user_id]);
+    $prem_data = $stmt_prem->fetch();
+    if ($prem_data) {
+        $user['is_premium'] = $prem_data['is_premium'];
+        $user['premium_expires'] = $prem_data['premium_expires'];
+    }
+} catch (Exception $e) {
+    // Colunas ainda não existem
 }
 
 // Verificar se é premium ativo
