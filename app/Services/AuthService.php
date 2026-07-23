@@ -82,6 +82,14 @@ class AuthService
     {
         $user = $this->users->findByUsernameOrEmail($usernameOrEmail);
 
+        // Se não encontrou e o input parece ser um telemóvel, tenta a versão normalizada
+        if ($user === null && preg_match('/^[\+0-9\s]+$/', $usernameOrEmail)) {
+            $normalized = normalizeWhatsappNumber($usernameOrEmail);
+            if ($normalized !== $usernameOrEmail) {
+                $user = $this->users->findByUsernameOrEmail($normalized);
+            }
+        }
+
         // Always run password_verify to prevent timing attacks
         if ($user === null) {
             password_verify($password, password_hash('dummy', PASSWORD_DEFAULT));
