@@ -281,12 +281,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <!-- BLOCO: WhatsApp -->
                 <div id="contactBlockPhone">
                     <div class="input-group whatsapp-input-group">
-                        <span class="whatsapp-prefix">🇦🇴 +244</span>
                         <input type="tel" name="reg_whatsapp" id="reg_whatsapp"
-                               placeholder="9XX XXX XXX"
-                               maxlength="13"
-                               inputmode="numeric"
-                               pattern="[0-9 ]{9,13}"
+                               placeholder="+244 9XX XXX XXX ou 9XX XXX XXX"
+                               maxlength="16"
+                               inputmode="tel"
+                               pattern="[\+0-9\s]+"
                                autocomplete="tel">
                     </div>
                     <small class="field-hint" style="margin-top:-8px;">Opcional se tiver e-mail. Obrigatório se não tiver.</small>
