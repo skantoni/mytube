@@ -111,7 +111,7 @@ class UserRepository
      */
     public function create(
         string $username,
-        string $email,
+        ?string $email,
         string $fullName,
         string $hashedPassword,
         string $instituicao = '',

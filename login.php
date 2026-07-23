@@ -288,26 +288,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                inputmode="numeric"
                                pattern="[0-9 ]{9,13}"
                                autocomplete="tel">
-                        <button type="button" class="btn-send-code" id="btnSendWaCode" onclick="sendWhatsappCode()">
-                            Enviar código
-                        </button>
                     </div>
                     <small class="field-hint" style="margin-top:-8px;">Opcional se tiver e-mail. Obrigatório se não tiver.</small>
-
-                    <!-- Verificação do código WhatsApp -->
-                    <div id="waVerifyStep" style="display:none;">
-                        <p class="wa-verify-label">✅ Código enviado! Insira os 6 dígitos recebidos no WhatsApp:</p>
-                        <div class="code-inputs" id="waCodeInputs">
-                            <input type="text" maxlength="1" class="code-digit wa-digit" data-index="0" inputmode="numeric" pattern="[0-9]" autocomplete="off">
-                            <input type="text" maxlength="1" class="code-digit wa-digit" data-index="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
-                            <input type="text" maxlength="1" class="code-digit wa-digit" data-index="2" inputmode="numeric" pattern="[0-9]" autocomplete="off">
-                            <input type="text" maxlength="1" class="code-digit wa-digit" data-index="3" inputmode="numeric" pattern="[0-9]" autocomplete="off">
-                            <input type="text" maxlength="1" class="code-digit wa-digit" data-index="4" inputmode="numeric" pattern="[0-9]" autocomplete="off">
-                            <input type="text" maxlength="1" class="code-digit wa-digit" data-index="5" inputmode="numeric" pattern="[0-9]" autocomplete="off">
-                        </div>
-                        <button type="button" class="btn btn-secondary" id="btnVerifyWaCode" onclick="verifyWhatsappCode()">Verificar número</button>
-                        <span id="waVerifiedBadge" style="display:none;color:#22c55e;font-weight:600;">✓ Número verificado</span>
-                    </div>
                 </div>
 
                 <!-- BLOCO: Email -->
@@ -339,8 +321,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <input type="hidden" name="reg_email_code_hidden" id="emailCodeHidden" value="">
                 </div>
 
-                <!-- Campo oculto que indica que o número foi verificado -->
-                <input type="hidden" name="reg_whatsapp_verified" id="reg_whatsapp_verified" value="0">
 
                 <div class="input-group">
                     <input type="text" name="reg_full_name" placeholder="Nome completo" value="<?php echo htmlspecialchars($reg_full_name); ?>" required>
@@ -511,143 +491,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setTimeout(() => { alertBox.style.display = 'none'; }, 5000);
     }
 
-    async function sendWhatsappCode() {
-        const phoneInput = document.getElementById('reg_whatsapp');
-        const phone = phoneInput.value.replace(/\D/g, '').trim();
-
-        if (phone.length < 9) {
-            showWaAlert('Por favor, insira um número de WhatsApp válido (ex: 912 345 678).');
-            phoneInput.focus();
-            return;
-        }
-
-        const btn = document.getElementById('btnSendWaCode');
-        btn.disabled = true;
-        btn.textContent = 'A enviar...';
-
-        try {
-            const formData = new FormData();
-            formData.append('phone', phone);
-
-            const res = await fetch('api/send_whatsapp_verification.php', {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-CSRF-Token': getCsrfToken() }
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-                document.getElementById('waVerifyStep').style.display = 'block';
-                btn.textContent = 'Reenviar';
-                btn.disabled = false;
-                showWaAlert('Código enviado! Verifique o seu WhatsApp.', 'success');
-
-                // Focar no primeiro input do código
-                const firstDigit = document.querySelector('.wa-digit[data-index="0"]');
-                if (firstDigit) firstDigit.focus();
-
-                // Iniciar navegação automática entre dígitos
-                setupWaDigitNavigation();
-
-                // Contador de reenvio (60 segundos)
-                let seconds = 60;
-                btn.disabled = true;
-                btn.textContent = `Reenviar (${seconds}s)`;
-                const timer = setInterval(() => {
-                    seconds--;
-                    btn.textContent = `Reenviar (${seconds}s)`;
-                    if (seconds <= 0) {
-                        clearInterval(timer);
-                        btn.disabled = false;
-                        btn.textContent = 'Reenviar';
-                    }
-                }, 1000);
-            } else {
-                showWaAlert(data.message || 'Não foi possível enviar o código.');
-                btn.disabled = false;
-                btn.textContent = 'Enviar código';
-            }
-        } catch (err) {
-            console.error('[WhatsApp]', err);
-            showWaAlert('Erro de ligação. Tente novamente.');
-            btn.disabled = false;
-            btn.textContent = 'Enviar código';
-        }
-    }
-
-    async function verifyWhatsappCode() {
-        const digits = Array.from(document.querySelectorAll('.wa-digit'))
-            .map(i => i.value).join('');
-
-        if (digits.length !== 6 || !/^\d{6}$/.test(digits)) {
-            showWaAlert('Por favor, insira os 6 dígitos do código.');
-            return;
-        }
-
-        const phone = document.getElementById('reg_whatsapp').value.replace(/\D/g, '');
-        const btn   = document.getElementById('btnVerifyWaCode');
-        btn.disabled = true;
-        btn.textContent = 'A verificar...';
-
-        try {
-            const formData = new FormData();
-            formData.append('phone', phone);
-            formData.append('code', digits);
-
-            const res = await fetch('api/verify_whatsapp_code.php', {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-CSRF-Token': getCsrfToken() }
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-                document.getElementById('reg_whatsapp_verified').value = '1';
-                document.getElementById('btnVerifyWaCode').style.display = 'none';
-                document.getElementById('waVerifiedBadge').style.display = 'inline';
-                document.getElementById('btnSendWaCode').disabled = true;
-                document.getElementById('reg_whatsapp').readOnly = true;
-                // Desabilitar inputs do código
-                document.querySelectorAll('.wa-digit').forEach(i => i.disabled = true);
-                
-                const alertBox = document.getElementById('waAlertBox');
-                if (alertBox) alertBox.style.display = 'none';
-            } else {
-                showWaAlert(data.message || 'Código incorreto. Tente novamente.');
-                btn.disabled = false;
-                btn.textContent = 'Verificar número';
-                // Limpar campos do código
-                document.querySelectorAll('.wa-digit').forEach(i => i.value = '');
-                document.querySelector('.wa-digit[data-index="0"]')?.focus();
-            }
-        } catch (err) {
-            console.error('[WhatsApp verify]', err);
-            showWaAlert('Erro de ligação. Tente novamente.');
-            btn.disabled = false;
-            btn.textContent = 'Verificar número';
-        }
-    }
-
-    function setupWaDigitNavigation() {
-        const inputs = document.querySelectorAll('.wa-digit');
-        inputs.forEach((input, index) => {
-            input.addEventListener('input', () => {
-                if (input.value.length === 1 && index < inputs.length - 1) {
-                    inputs[index + 1].focus();
-                }
-                // Auto-verificar quando todos os dígitos estiverem preenchidos
-                const allFilled = Array.from(inputs).every(i => i.value.length === 1);
-                if (allFilled) verifyWhatsappCode();
-            });
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Backspace' && !input.value && index > 0) {
-                    inputs[index - 1].focus();
-                }
-            });
-        });
-    }
     </script>
 
     <style>
