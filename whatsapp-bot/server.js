@@ -44,7 +44,7 @@ function normalizePhoneToJid(phone) {
 function askPhoneNumber() {
     return new Promise((resolve) => {
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-        rl.question('\n📱 Insira o número do seu WhatsApp (só dígitos, ex: 933751074 ou 244933751074): ', (answer) => {
+        rl.question('\n📱 Insira o número do seu WhatsApp (só dígitos, ex: 900000000 ou 244900000000): ', (answer) => {
             rl.close();
             resolve(answer.trim());
         });
@@ -156,7 +156,7 @@ app.use((req, res, next) => {
 
 /**
  * POST /send-message
- * Body JSON: { "phone": "244933751074", "message": "Seu código é 123456" }
+ * Body JSON: { "phone": "244900000000", "message": "Seu código é 123456" }
  */
 app.post('/send-message', async (req, res) => {
     const { phone, message } = req.body;
