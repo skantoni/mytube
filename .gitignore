@@ -28,10 +28,13 @@ aws.phar
 composer.phar
 vendor/
 chat-server/node_modules/
+live-server/node_modules/
 
 # === CONFIGURAÇÕES DE PRODUÇÃO (contêm credenciais reais) ===
 chat-server/.env
 chat-server/.env.production
+live-server/.env
+live-server/.env.production
 # (manter os .example que servem de template)
 
 # === CACHE & LOGS ===
@@ -44,6 +47,8 @@ logs/*
 !logs/.gitkeep
 chat-server/logs/*
 !chat-server/logs/.gitkeep
+live-server/logs/*
+!live-server/logs/.gitkeep
 
 # === FICHEIROS DE TESTE / DEBUG ===
 test_r2.php
@@ -65,6 +70,7 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+.agents
 *~
 
 # === PHP ===
@@ -74,24 +80,7 @@ desktop.ini
 # === MEUS FILES ===
 meus/
 
-# === LIVE STREAMING (em desenvolvimento — NÃO subir para produção) ===
-# Ficheiros PHP do live
-live.php
-live-stream.php
-live-watch.php
-# APIs do live
-api/start_stream.php
-api/end_stream.php
-api/get_live_streams.php
-api/get_stream_info.php
-# Servidor Node.js do live
-live-server/
-# Assets do live
-assets/images/live_hero.png
-# SQL de instalação do live
-database/install_livestream.sql
-# Pasta .agents (configuração local do agente)
-.agents/
+
 
 
 # ===== OUTROS =====

@@ -53,6 +53,11 @@ echo r2_js_config();
                     <span>Upload</span>
                 </a>
 
+                <a href="live.php" class="nav-item" style="color: #ff3b30;">
+                    <i class="fas fa-broadcast-tower"></i>
+                    <span>Ao Vivo</span>
+                </a>
+
                 <a href="chat.php" class="nav-item">
                     <i class="fas fa-comments"></i>
                     <span>Chat</span>
@@ -94,6 +99,11 @@ echo r2_js_config();
                 <a href="index.php?explore=1" class="nav-item">
                     <i class="fas fa-compass"></i>
                     <span>Explorar</span>
+                </a>
+
+                <a href="live.php" class="nav-item" style="color: #ff3b30;">
+                    <i class="fas fa-broadcast-tower"></i>
+                    <span>Ao Vivo</span>
                 </a>
 
                 <a href="login.php" class="btn btn-primary">
@@ -148,6 +158,11 @@ echo r2_js_config();
             <a href="profile.php?user=<?php echo htmlspecialchars($user_data['username'], ENT_QUOTES, 'UTF-8'); ?>" class="sidebar-item">
                 <i class="fas fa-user"></i>
                 <span>Meu Perfil</span>
+            </a>
+
+            <a href="live.php" class="sidebar-item">
+                <i class="fas fa-broadcast-tower" style="color: #ff3b30;"></i>
+                <span>Ao Vivo</span>
             </a>
 
             <a href="explore.php" class="sidebar-item">

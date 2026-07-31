@@ -262,6 +262,9 @@ if ($start_video_id > 0) {
                 <button class="header-btn" onclick="openSearchModal()" title="Pesquisar">
                     <i class="fas fa-search"></i>
                 </button>
+                <a href="live.php" class="header-btn" title="Ao Vivo" style="color:#ff3b30;">
+                    <i class="fas fa-broadcast-tower"></i>
+                </a>
                 <button class="header-btn chat-btn" onclick="showGuestLoginModal()" title="Chat">
                     <i class="fas fa-comment"></i>
                 </button>
@@ -444,6 +447,9 @@ if ($start_video_id > 0) {
                 <button class="header-btn" onclick="openSearchModal()" title="Pesquisar">
                     <i class="fas fa-search"></i>
                 </button>
+                <a href="live.php" class="header-btn" title="Ao Vivo" style="color:#ff3b30;">
+                    <i class="fas fa-broadcast-tower"></i>
+                </a>
                 <button class="header-btn chat-btn" onclick="window.location.href='chat.php'" title="Chat">
                     <i class="fas fa-comment"></i>
                     <span class="chat-unread-badge" id="chatUnreadBadge" style="display: none;">0</span>
