@@ -220,21 +220,44 @@ try {
         }
 
         .settings-item-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1rem;
+            font-size: 1.1rem;
             flex-shrink: 0;
+            color: #94a3b8;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
         }
-        .settings-item-icon.blue   { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
-        .settings-item-icon.green  { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-        .settings-item-icon.purple { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
-        .settings-item-icon.orange { background: rgba(249, 115, 22, 0.15); color: #f97316; }
-        .settings-item-icon.red    { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-        .settings-item-icon.gold   { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .settings-item:hover .settings-item-icon {
+            color: #e2e8f0;
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .settings-item-icon.gold { 
+            color: #eab308; 
+            background: rgba(234, 179, 8, 0.05);
+            border-color: rgba(234, 179, 8, 0.1);
+        }
+        .settings-item:hover .settings-item-icon.gold {
+            background: rgba(234, 179, 8, 0.1);
+            color: #fde047;
+        }
+
+        .settings-item-icon.red { 
+            color: #ef4444; 
+            background: rgba(239, 68, 68, 0.05);
+            border-color: rgba(239, 68, 68, 0.1);
+        }
+        .settings-item:hover .settings-item-icon.red {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+        }
 
         /* Item Premium */
         .settings-item.premium-item {
@@ -939,7 +962,7 @@ try {
                     <i class="fas fa-chevron-right"></i>
                 </div>
                 <a href="anuncios.php" class="settings-item" id="settingsAdsLink">
-                    <div class="settings-item-icon" style="background:linear-gradient(135deg,rgba(99,102,241,.18),rgba(245,158,11,.12));color:#a78bfa;">
+                    <div class="settings-item-icon">
                         <i class="fas fa-rocket"></i>
                     </div>
                     <div class="settings-item-text">
