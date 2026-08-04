@@ -354,6 +354,7 @@ io.on('connection', async (socket) => {
         const stream = activeStreams.get(client.streamId);
         if (!stream || stream.streamerId !== userId) return;
 
+        if (!data) return; // ← Proteção contra crash se o chunk vier vazio
         const buf = Buffer.from(data);
 
         // Guardar os primeiros 2 chunks como init segment (cabeçalho EBML + Tracks)
