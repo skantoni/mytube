@@ -523,9 +523,10 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
 
     function initLiveFeed() {
         socket = io(LIVE_SERVER_URL, {
-            transports: ['websocket']
+            path: '/live-socket/',
+            transports: ['websocket'],
+            auth: { token: null } // Visitante
         });
-
         socket.on('connect', () => {
             socket.emit('join_live_feed');
         });

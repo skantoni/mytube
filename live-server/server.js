@@ -51,6 +51,7 @@ app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json());
 
 const io = new Server(server, {
+    path: '/live-socket/',
     cors: {
         origin: corsOrigin,
         methods: ['GET', 'POST'],

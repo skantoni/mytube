@@ -656,6 +656,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             setupMediaSource();
 
             socket = io(LIVE_SERVER_URL, {
+                path: '/live-socket/',
                 auth: { token: IS_LOGGED ? token : undefined },
                 transports: ['websocket']
             });

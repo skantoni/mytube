@@ -730,7 +730,11 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             streamId  = data.stream_id;
             streamKey = data.stream_key;
 
-            socket = io(LIVE_SERVER_URL, { auth: { token: LIVE_JWT }, transports: ['websocket'] });
+            socket = io(LIVE_SERVER_URL, { 
+                path: '/live-socket/',
+                auth: { token: LIVE_JWT }, 
+                transports: ['websocket'] 
+            });
 
             socket.on('connect', () => { socket.emit('go_live', { streamId, streamKey }); });
             socket.on('go_live_success', () => { startBroadcast(); });
