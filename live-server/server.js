@@ -268,8 +268,8 @@ io.on('connection', async (socket) => {
     });
 
 
-    // ─── STREAMER: Iniciar Transmissão ───────────────────────
-    socket.on('go_live', async ({ streamId, streamKey }) => {
+    // ─── STREAMER: Iniciar Transmissão (chat/eventos — vídeo via LiveKit) ───
+    socket.on('go_live', async ({ streamId }) => {
         try {
             const stream = await getStreamById(streamId);
 
@@ -283,16 +283,14 @@ io.on('connection', async (socket) => {
                 return;
             }
 
-            if (stream.stream_key !== streamKey) {
-                socket.emit('error', { message: 'Chave de stream inválida' });
-                return;
-            }
+            // Nota: autenticação de vídeo é feita pelo LiveKit.
+            // Este handler trata apenas chat e eventos de ciclo de vida.
 
             // Criar sala da stream
             const roomName = `stream_${streamId}`;
             socket.join(roomName);
 
-            // Registar no estado
+            // Registar no estado (sem ring buffer — vídeo é via LiveKit)
             activeStreams.set(streamId, {
                 streamId,
                 streamerId: userId,
@@ -301,10 +299,7 @@ io.on('connection', async (socket) => {
                 title: stream.title,
                 viewers: new Set(),
                 peakViewers: 0,
-                startedAt: Date.now(),
-                initSegment: null,       // ← Header WebM (primeiros 2 chunks)
-                initSegmentCount: 0,
-                recentChunks: []         // ← Ring buffer: últimos 40 chunks (~20s de vídeo)
+                startedAt: Date.now()
             });
 
             // Atualizar socket
