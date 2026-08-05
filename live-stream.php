@@ -674,6 +674,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     </div>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
     <script>
     const LIVE_SERVER_URL = '<?php echo $live_server_url; ?>';
     const CSRF_TOKEN      = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -682,10 +683,11 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     const MY_AVATAR       = <?php echo json_encode(avatar_url($me['profile_picture'])); ?>;
     const LIVE_JWT        = <?php echo json_encode($live_jwt); ?>;
 
-    let socket = null, mediaStream = null, mediaRecorder = null;
-    let streamId = null, streamKey = null;
+    let socket = null, livekitRoom = null, mediaStream = null;
+    let streamId = null;
     let timerInterval = null, streamSeconds = 0, msgCount = 0;
     let isMicMuted = false, isCamOff = false, cameraActivated = false;
+    let localVideoTrack = null, localAudioTrack = null;
 
     // Ativar câmera
     async function activateCamera() {
@@ -719,6 +721,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A iniciar...';
 
         try {
+            // 1. Registar a stream na base de dados
             const res = await fetch('api/start_stream.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
@@ -726,25 +729,56 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             });
             const data = await res.json();
             if (!data.success) throw new Error(data.error || 'Erro ao criar stream');
+            streamId = data.stream_id;
 
-            streamId  = data.stream_id;
-            streamKey = data.stream_key;
-
-            socket = io(LIVE_SERVER_URL, { 
-                path: '/live-socket/',
-                auth: { token: LIVE_JWT }, 
-                transports: ['websocket'] 
+            // 2. Obter token LiveKit para publisher
+            const tkRes = await fetch('api/livekit_token.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+                body: JSON.stringify({ stream_id: streamId, role: 'publisher' })
             });
+            const tkData = await tkRes.json();
+            if (!tkData.success) throw new Error(tkData.error || 'Erro ao obter token LiveKit');
 
-            socket.on('connect', () => { socket.emit('go_live', { streamId, streamKey }); });
-            socket.on('go_live_success', () => { startBroadcast(); });
+            // 3. Conectar ao Socket.IO (apenas para chat e contagem de viewers)
+            socket = io(LIVE_SERVER_URL, {
+                path: '/live-socket/',
+                auth: { token: LIVE_JWT },
+                transports: ['websocket']
+            });
+            socket.on('connect', () => { socket.emit('go_live', { streamId }); });
             socket.on('viewer_count', ({ count }) => {
                 document.getElementById('viewerCount').textContent = count;
             });
             socket.on('live_chat_message', (msg) => { addChatMsg(msg); });
             socket.on('system_message', ({ message }) => { addSysMsg(message); });
             socket.on('error', ({ message }) => { toast('❌ ' + message, 'error'); });
-            socket.on('disconnect', () => { toast('Ligação perdida com o servidor', 'error'); });
+            socket.on('disconnect', () => { toast('Ligação ao chat perdida', 'error'); });
+
+            // 4. Conectar ao LiveKit e publicar câmara + microfone
+            livekitRoom = new LivekitClient.Room({
+                adaptiveStream: true,
+                dynacast: true,
+            });
+
+            livekitRoom.on(LivekitClient.RoomEvent.Disconnected, () => {
+                toast('LiveKit desligado', 'error');
+            });
+
+            await livekitRoom.connect(tkData.livekit_url, tkData.token);
+
+            // Publicar vídeo e áudio a partir do stream já capturado
+            const tracks = await LivekitClient.createLocalTracks({
+                audio: true,
+                video: { width: 1280, height: 720 },
+            });
+            for (const track of tracks) {
+                await livekitRoom.localParticipant.publishTrack(track);
+                if (track.kind === LivekitClient.Track.Kind.Video) localVideoTrack = track;
+                if (track.kind === LivekitClient.Track.Kind.Audio) localAudioTrack = track;
+            }
+
+            startBroadcast();
 
         } catch (err) {
             toast(err.message, 'error');
@@ -757,40 +791,17 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         document.getElementById('setupPanel').style.display = 'none';
         document.getElementById('liveView').classList.add('active');
 
+        // Mostrar o preview da câmara local no elemento de vídeo
         const liveVideo = document.getElementById('liveVideo');
-        liveVideo.srcObject = mediaStream;
+        if (localVideoTrack) {
+            localVideoTrack.attach(liveVideo);
+        } else if (mediaStream) {
+            liveVideo.srcObject = mediaStream; // fallback
+        }
 
         streamSeconds = 0;
         timerInterval = setInterval(updateTimer, 1000);
-
-        const mimeType = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '';
-        
-        // Função que cria e inicia um novo MediaRecorder
-        // Reiniciando a cada 2 segundos forçamos um novo keyframe (I-frame),
-        // garantindo que o ring buffer no servidor sempre tem um ponto de entrada válido
-        function startRecorder() {
-            mediaRecorder = new MediaRecorder(mediaStream, {
-                mimeType,
-                videoBitsPerSecond: 1_500_000
-            });
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data?.size > 0 && socket?.connected) {
-                    e.data.arrayBuffer().then(buf => socket.emit('stream_chunk', buf));
-                }
-            };
-            mediaRecorder.onstop = () => {
-                // Reiniciar imediatamente para continuar o stream sem interrupcão
-                if (socket?.connected) startRecorder();
-            };
-            mediaRecorder.start();
-            // Parar e reiniciar a cada 2 segundos (força keyframe no início de cada segmento)
-            setTimeout(() => {
-                if (mediaRecorder?.state === 'recording') mediaRecorder.stop();
-            }, 2000);
-        }
-        
-        startRecorder();
-        toast('🔴 Estás ao vivo!', 'success');
+        toast('🔴 Estás ao vivo via WebRTC!', 'success');
     }
 
     function updateTimer() {
@@ -804,18 +815,26 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     function pad(n) { return String(n).padStart(2,'0'); }
 
     function toggleMic() {
-        if (!mediaStream) return;
         isMicMuted = !isMicMuted;
-        mediaStream.getAudioTracks().forEach(t => { t.enabled = !isMicMuted; });
+        // Usar LiveKit para mutar/desmutar (reflete para os viewers)
+        if (localAudioTrack) {
+            isMicMuted ? localAudioTrack.mute() : localAudioTrack.unmute();
+        } else if (mediaStream) {
+            mediaStream.getAudioTracks().forEach(t => { t.enabled = !isMicMuted; });
+        }
         const btn = document.getElementById('btnMuteMic');
         btn.innerHTML = `<i class="fas fa-${isMicMuted ? 'microphone-slash' : 'microphone'}"></i>`;
         btn.classList.toggle('muted', isMicMuted);
     }
 
     function toggleCam() {
-        if (!mediaStream) return;
         isCamOff = !isCamOff;
-        mediaStream.getVideoTracks().forEach(t => { t.enabled = !isCamOff; });
+        // Usar LiveKit para ligar/desligar câmara (reflete para os viewers)
+        if (localVideoTrack) {
+            isCamOff ? localVideoTrack.mute() : localVideoTrack.unmute();
+        } else if (mediaStream) {
+            mediaStream.getVideoTracks().forEach(t => { t.enabled = !isCamOff; });
+        }
         const btn = document.getElementById('btnToggleCam');
         btn.innerHTML = `<i class="fas fa-${isCamOff ? 'video-slash' : 'video'}"></i>`;
         btn.classList.toggle('muted', isCamOff);
@@ -823,10 +842,21 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
 
     async function endStream() {
         if (!confirm('Tens a certeza que queres terminar o stream?')) return;
-        if (mediaRecorder?.state !== 'inactive') mediaRecorder?.stop();
+
+        // 1. Desligar do LiveKit (para de enviar vídeo/áudio)
+        if (livekitRoom) {
+            await livekitRoom.disconnect();
+            livekitRoom = null;
+        }
+
+        // 2. Notificar o chat-server e desligar
         if (socket) { socket.emit('end_stream'); socket.disconnect(); }
+
+        // 3. Parar câmara local
         if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
         clearInterval(timerInterval);
+
+        // 4. Marcar como terminada na DB
         try {
             await fetch('api/end_stream.php', {
                 method: 'POST',
@@ -834,9 +864,8 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 body: JSON.stringify({ stream_id: streamId })
             });
         } catch(e) {}
-        
+
         streamId = null; // Evita o aviso de saída do beforeunload
-        
         toast('Stream terminada. Obrigado!', 'success');
         setTimeout(() => { window.location.href = 'live.php'; }, 2000);
     }

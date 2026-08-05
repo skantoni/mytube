@@ -631,6 +631,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     </main>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
     <script>
     const LIVE_SERVER_URL    = '<?php echo $live_server_url; ?>';
     const STREAM_ID          = <?php echo $stream_id; ?>;
@@ -640,8 +641,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     const CSRF_TOKEN         = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const IS_LOGGED          = <?php echo isLoggedIn() ? 'true' : 'false'; ?>;
 
-    let socket = null, mediaSource = null, sourceBuffer = null;
-    let chunkQueue = [], isSourceBufferUpdating = false;
+    let socket = null, livekitRoom = null;
     let isFollowing = <?php echo json_encode($is_following); ?>;
 
     if (IS_LIVE) initViewer();
@@ -649,141 +649,78 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     async function initViewer() {
         const spinner = document.getElementById('bufferSpinner');
         try {
+            // 1. Obter token LiveKit para subscriber
+            const tkRes = await fetch('api/livekit_token.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': CSRF_TOKEN
+                },
+                body: JSON.stringify({ stream_id: STREAM_ID, role: 'subscriber' })
+            });
+            const tkData = await tkRes.json();
+            if (!tkData.success) throw new Error(tkData.error || 'Erro ao obter token');
+
+            // 2. Conectar ao LiveKit como subscriber
+            livekitRoom = new LivekitClient.Room({
+                adaptiveStream: true,
+            });
+
+            livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+                if (spinner) spinner.style.display = 'none';
+                const video = document.getElementById('livePlayer');
+                if (track.kind === LivekitClient.Track.Kind.Video ||
+                    track.kind === LivekitClient.Track.Kind.Audio) {
+                    track.attach(video);
+                    video.play().catch(() => {});
+                }
+            });
+
+            livekitRoom.on(LivekitClient.RoomEvent.Disconnected, () => {
+                showStreamOffline('Ligação terminada.');
+            });
+
+            livekitRoom.on(LivekitClient.RoomEvent.ParticipantDisconnected, () => {
+                // Se o streamer saiu, mostrar offline
+                if (livekitRoom.remoteParticipants.size === 0) {
+                    showStreamOffline('O streamer terminou a live.');
+                }
+            });
+
+            await livekitRoom.connect(tkData.livekit_url, tkData.token);
+
+            // 3. Conectar ao Socket.IO apenas para chat e eventos
             const tokenRes  = await fetch('api/chat_token.php');
             const tokenData = await tokenRes.json();
-            const token     = tokenData.token;
-
-            setupMediaSource();
 
             socket = io(LIVE_SERVER_URL, {
                 path: '/live-socket/',
-                auth: { token: IS_LOGGED ? token : undefined },
+                auth: { token: IS_LOGGED ? tokenData.token : undefined },
                 transports: ['websocket']
             });
 
             socket.on('connect', () => { socket.emit('join_stream', { streamId: STREAM_ID }); });
-            socket.on('join_stream_success', ({ viewerCount }) => {
-                updateViewerCount(viewerCount);
-                if (spinner) spinner.style.display = 'none';
-            });
+            socket.on('join_stream_success', ({ viewerCount }) => { updateViewerCount(viewerCount); });
             socket.on('stream_not_found', () => { showStreamOffline(); });
-            
-            // 🎬 Receber init segment (chunks iniciais acumulados pelo servidor)
-            // Necessário para o decoder WebM arrancar quando o viewer entra a meio
-            socket.on('stream_init', (data) => {
-                console.log('🎬 Init segment recebido, tamanho:', data.byteLength || data.length);
-                receiveChunk(data);
-            });
-            
-            socket.on('stream_chunk', (data) => {
-                if (spinner) spinner.style.display = 'none';
-                receiveChunk(data);
-            });
             socket.on('viewer_count', ({ count }) => { updateViewerCount(count); });
             socket.on('live_chat_message', (msg) => { addChatMessage(msg); });
             socket.on('system_message', ({ message }) => { addSystemMessage(message); });
             socket.on('stream_ended', ({ message }) => {
                 showStreamOffline(message);
+                if (livekitRoom) livekitRoom.disconnect();
                 if (socket) socket.disconnect();
             });
-            socket.on('disconnect', () => { showToast('Ligação perdida', 'error'); });
+            socket.on('disconnect', () => { showToast('Ligação ao chat perdida', 'error'); });
 
-            setTimeout(() => { if (spinner) spinner.style.display = 'none'; }, 5000);
+            setTimeout(() => { if (spinner) spinner.style.display = 'none'; }, 8000);
+
         } catch (err) {
             console.error('Erro ao iniciar viewer:', err);
             if (spinner) spinner.style.display = 'none';
+            showToast('Erro ao conectar à live', 'error');
         }
     }
 
-    function setupMediaSource() {
-        const video = document.getElementById('livePlayer');
-        if (!video || !window.MediaSource) return;
-        mediaSource = new MediaSource();
-        video.src = URL.createObjectURL(mediaSource);
-        mediaSource.addEventListener('sourceopen', () => {
-            const mimeType = getSupportedMimeType();
-            if (!mimeType || !MediaSource.isTypeSupported(mimeType)) return;
-            try {
-                sourceBuffer = mediaSource.addSourceBuffer(mimeType);
-                sourceBuffer.mode = 'sequence';
-                sourceBuffer.addEventListener('updateend', () => {
-                    isSourceBufferUpdating = false;
-                    processChunkQueue();
-                });
-            } catch (e) { console.warn('MSE error:', e); }
-        });
-    }
-
-    function receiveChunk(data) {
-        // Garantir que é sempre ArrayBuffer
-        if (data instanceof ArrayBuffer) {
-            chunkQueue.push(data);
-        } else if (data instanceof Uint8Array) {
-            chunkQueue.push(data.buffer);
-        } else {
-            // Blob ou outro formato
-            new Response(data).arrayBuffer().then(buf => {
-                chunkQueue.push(buf);
-                processChunkQueue();
-            });
-            return;
-        }
-        processChunkQueue();
-    }
-
-    function processChunkQueue() {
-        if (!sourceBuffer || isSourceBufferUpdating || chunkQueue.length === 0) return;
-        if (mediaSource?.readyState !== 'open') return;
-        
-        // Limpar buffer antigo sem perder chunks
-        if (sourceBuffer.buffered.length > 0) {
-            const end   = sourceBuffer.buffered.end(0);
-            const start = sourceBuffer.buffered.start(0);
-            if (end - start > 30 && !sourceBuffer.updating) {
-                try {
-                    isSourceBufferUpdating = true;
-                    sourceBuffer.remove(start, end - 15);
-                    // Não descartamos o chunk — ele volta a ser processado no próximo updateend
-                    return;
-                } catch(e) {
-                    isSourceBufferUpdating = false;
-                }
-            }
-        }
-        
-        const chunk = chunkQueue.shift();
-        if (!chunk) return;
-        
-        try {
-            isSourceBufferUpdating = true;
-            sourceBuffer.appendBuffer(chunk instanceof ArrayBuffer ? chunk : new Uint8Array(chunk));
-            
-            const video = document.getElementById('livePlayer');
-            if (video && sourceBuffer.buffered.length > 0) {
-                const liveEdge = sourceBuffer.buffered.end(0);
-                // Manter o viewer a no máximo 2s do live edge
-                if (liveEdge - video.currentTime > 2.5) {
-                    video.currentTime = liveEdge - 0.5;
-                }
-                // Auto-play se parado
-                if (video.paused && liveEdge > 0.5) {
-                    video.play().catch(() => {});
-                }
-            }
-        } catch (e) {
-            console.warn('MSE appendBuffer error:', e);
-            isSourceBufferUpdating = false;
-            // Se codec mismatch, limpar tudo
-            if (e.name === 'QuotaExceededError') {
-                chunkQueue = [];
-            }
-        }
-    }
-
-    function getSupportedMimeType() {
-        const types = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm;codecs=h264,opus','video/webm'];
-        return types.find(t => MediaSource.isTypeSupported(t)) || 'video/webm';
-    }
 
     function showStreamOffline(message) {
         const wrapper = document.getElementById('videoWrapper');
