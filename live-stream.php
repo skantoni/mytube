@@ -588,19 +588,18 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                           placeholder="Conta aos teus seguidores o que vais fazer..."></textarea>
             </div>
 
-            <!-- Categoria -->
             <div class="form-group">
                 <label class="form-label" for="streamCategory">Categoria</label>
-                <select id="streamCategory" class="form-select">
+                <select id="streamCategory" class="form-select" style="font-family: 'Font Awesome 6 Free', 'Inter', sans-serif; font-weight: 900;">
                     <option value="">Sem categoria</option>
-                    <option value="Gaming">🎮 Gaming</option>
-                    <option value="Música">🎵 Música</option>
-                    <option value="Conversa">💬 Conversa / Q&A</option>
-                    <option value="Educação">📚 Educação</option>
-                    <option value="Desporto">⚽ Desporto</option>
-                    <option value="Arte">🎨 Arte</option>
-                    <option value="Tecnologia">💻 Tecnologia</option>
-                    <option value="Entretenimento">🎭 Entretenimento</option>
+                    <option value="Gaming">&#xf11b; Gaming</option>
+                    <option value="Música">&#xf001; Música</option>
+                    <option value="Conversa">&#xf086; Conversa / Q&A</option>
+                    <option value="Educação">&#xf02d; Educação</option>
+                    <option value="Desporto">&#xf1e3; Desporto</option>
+                    <option value="Arte">&#xf53f; Arte</option>
+                    <option value="Tecnologia">&#xf109; Tecnologia</option>
+                    <option value="Entretenimento">&#xf630; Entretenimento</option>
                 </select>
             </div>
 
