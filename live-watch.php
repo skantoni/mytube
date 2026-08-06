@@ -173,7 +173,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         /* ── Layout ── */
         .watch-layout {
             padding-top: var(--header-h);
-            min-height: 100vh;
+            height: 100dvh;
             display: grid;
             grid-template-columns: 1fr 360px;
             grid-template-rows: 1fr;
@@ -184,6 +184,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 display: flex;
                 flex-direction: column;
                 height: 100dvh;
+                min-height: 0; /* Override any previous min-height */
                 grid-template-columns: unset;
                 overflow: hidden;
             }
