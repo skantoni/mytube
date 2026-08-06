@@ -472,7 +472,7 @@ io.on('connection', async (socket) => {
 
             // Anunciar no chat que alguém entrou (mensagem de sistema)
             socket.to(roomName).emit('system_message', {
-                message: `@${full_name} entrou no live`,
+                message: `@${stream.full_name} entrou no live!`,
                 type: 'join'
             });
 
