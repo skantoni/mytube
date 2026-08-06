@@ -100,10 +100,14 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             background: var(--bg);
             color: var(--text);
             font-family: 'Inter', -apple-system, sans-serif;
-            height: 100%;
-            height: 100dvh;
             -webkit-font-smoothing: antialiased;
-            overflow: hidden;
+        }
+        @media (max-width: 900px) {
+            html, body {
+                height: 100%;
+                height: 100dvh;
+                overflow: hidden;
+            }
         }
 
         /* ── Header ── */
@@ -169,7 +173,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         /* ── Layout ── */
         .watch-layout {
             padding-top: var(--header-h);
-            height: 100dvh;
+            min-height: 100vh;
             display: grid;
             grid-template-columns: 1fr 360px;
             grid-template-rows: 1fr;
@@ -177,9 +181,11 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         }
         @media (max-width: 900px) {
             .watch-layout {
-                grid-template-columns: 1fr;
-                grid-template-rows: auto 1fr;
+                display: flex;
+                flex-direction: column;
                 height: 100dvh;
+                grid-template-columns: unset;
+                overflow: hidden;
             }
         }
 
@@ -189,6 +195,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             flex-direction: column;
             background: #000;
             overflow: hidden;
+            flex-shrink: 0;
         }
         .video-wrapper {
             position: relative;
@@ -199,6 +206,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             flex-shrink: 0;
         }
         @media (min-width: 901px) {
+            .player-section { flex-shrink: 1; overflow: hidden; }
             .video-wrapper {
                 aspect-ratio: unset;
                 height: calc(100vh - var(--header-h) - 160px);
