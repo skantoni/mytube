@@ -410,7 +410,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
 
     <!-- Header imersivo -->
     <header class="live-header">
-        <button class="live-header-back" onclick="history.back()" title="Voltar">
+        <button class="live-header-back" onclick="window.location.href='index.php' " title="Voltar">
             <i class="fas fa-arrow-left"></i>
         </button>
         <div class="live-header-title">

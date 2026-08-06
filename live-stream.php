@@ -738,7 +738,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                     <span style="margin-left:auto;font-size:12px;color:var(--text-muted);font-weight:500;" id="msgCountDisplay">0 msgs</span>
                 </div>
                 <div class="chat-messages" id="chatMessages">
-                    <div class="system-msg">💬 O chat aparece aqui quando estiveres ao vivo</div>
+                    <div class="system-msg" id="chatEmptyState">💬 O chat aparece aqui quando estiveres ao vivo</div>
                 </div>
                 <div class="chat-input-row">
                     <input type="text" class="chat-input" id="chatInput"
@@ -983,6 +983,8 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
 
     function addChatMsg(msg) {
         const c = document.getElementById('chatMessages');
+        const emptyMsg = document.getElementById('chatEmptyState');
+        if (emptyMsg) emptyMsg.remove();
         const isMine = msg.userId === MY_USER_ID;
         msgCount++;
         document.getElementById('msgCountDisplay').textContent = msgCount + ' msgs';

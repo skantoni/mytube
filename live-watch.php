@@ -611,7 +611,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
 
             <div class="chat-messages" id="chatMessages">
                 <?php if (empty($chat_history)): ?>
-                    <div class="system-msg">💬 Sê o primeiro a comentar!</div>
+                    <div class="system-msg" id="chatEmptyState">💬 Sê o primeiro a comentar!</div>
                 <?php else: ?>
                     <?php 
                     $my_username = $_SESSION['username'] ?? '';
@@ -809,6 +809,8 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
 
     function addChatMessage(msg) {
         const c = document.getElementById('chatMessages');
+        const emptyMsg = document.getElementById('chatEmptyState');
+        if (emptyMsg) emptyMsg.remove();
         const isStreamer = msg.username === STREAMER_USERNAME;
         const isMine = msg.username === CURRENT_USERNAME;
         const div = document.createElement('div');
