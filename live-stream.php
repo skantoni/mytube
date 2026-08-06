@@ -485,7 +485,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             font-family: inherit;
             outline: none;
         }
-        .chat-input:focus { border-color: rgba(59, 130, 246, 0.4); }
+        .chat-input:focus { border-color: rgba(59, 130, 246, 0.6); }
         .chat-send-btn {
             width: 40px; height: 40px;
             border-radius: 50%;
@@ -498,7 +498,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             transition: background 0.2s;
             flex-shrink: 0;
         }
-        .chat-send-btn:hover { background: #ff1a40; }
+        .chat-send-btn:hover { background: #2563eb; }
 
         /* Mobile chat toggle */
         @media (max-width: 899px) {
@@ -746,7 +746,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                            maxlength="500"
                            onkeydown="if(event.key==='Enter') sendChat()">
                     <button class="chat-send-btn" onclick="sendChat()">
-                        <i class="fas fa-paper-plane"></i>
+                        <i class="fas fa-arrow-up"></i>
                     </button>
                 </div>
             </div>

@@ -436,7 +436,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             font-size: 14px; font-family: inherit;
             outline: none;
         }
-        .chat-input:focus { border-color: rgba(255,45,85,0.5); }
+        .chat-input:focus { border-color: rgba(59,130,246,0.6); }
         .chat-input:disabled { opacity: 0.4; cursor: not-allowed; }
         .chat-send-btn {
             width: 40px; height: 40px;
@@ -448,7 +448,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             transition: background 0.2s;
             flex-shrink: 0;
         }
-        .chat-send-btn:hover { background: #ff1a40; }
+        .chat-send-btn:hover { background: #2563eb; }
         .chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .login-prompt {
             text-align: center;
@@ -645,7 +645,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                                onkeydown="if(event.key==='Enter') sendChat()">
                         <button class="chat-send-btn" onclick="sendChat()"
                                 <?php echo !$is_live ? 'disabled' : ''; ?>>
-                            <i class="fas fa-paper-plane"></i>
+                            <i class="fas fa-arrow-up"></i>
                         </button>
                     </div>
                 </div>
