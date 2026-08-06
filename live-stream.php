@@ -246,7 +246,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         .custom-select-trigger:hover { border-color: rgba(255,255,255,0.2); background: var(--surface2); }
         .custom-select-trigger i.fa-chevron-down { font-size: 14px; color: var(--text-muted); transition: transform 0.2s; }
         .custom-select.open .custom-select-trigger i.fa-chevron-down { transform: rotate(180deg); }
-        .custom-options { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-top: 6px; z-index: 100; max-height: 250px; overflow-y: auto; opacity: 0; visibility: hidden; transition: all 0.2s; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .custom-options { position: absolute; bottom: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 6px; z-index: 100; max-height: 250px; overflow-y: auto; opacity: 0; visibility: hidden; transition: all 0.2s; box-shadow: 0 -10px 25px rgba(0,0,0,0.5); }
         .custom-select.open .custom-options { opacity: 1; visibility: visible; }
         .custom-option { padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; color: var(--text); font-size: 14px; font-weight: 500; transition: background 0.2s; }
         .custom-option:hover { background: var(--surface2); }
