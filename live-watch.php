@@ -467,6 +467,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 border-left: none;
                 border-top: 1px solid var(--border);
                 flex: 1;
+                height: auto;
                 min-height: 0;
                 position: static;
                 overflow: hidden;
@@ -683,6 +684,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             gap: 6px;
             margin-bottom: 6px;
             animation: fs-msg-in 0.25s ease;
+            transition: opacity 0.5s ease;
         }
         @keyframes fs-msg-in {
             from { opacity: 0; transform: translateY(8px); }
@@ -1321,6 +1323,14 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         overlay.appendChild(el);
         // Limitar a 20 mensagens no overlay
         while (overlay.children.length > 20) overlay.removeChild(overlay.firstChild);
+
+        // Desaparecer após 8 segundos
+        setTimeout(() => {
+            if (overlay.contains(el)) {
+                el.style.opacity = '0';
+                setTimeout(() => { if (overlay.contains(el)) el.remove(); }, 500);
+            }
+        }, 8000);
     }
 
     function addSystemMessage(text) {
