@@ -557,7 +557,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             <div class="stream-info">
                 <div class="stream-title-row">
                     <div class="mic-muted-indicator" id="micMutedIndicator" style="display: none;">
-                        <i class="fas fa-microphone-slash"></i> Microfone desligado
+                        <i class="fas fa-microphone-slash"></i> Áudio da live desligado
                     </div>
                     <div style="flex: 1;" id="micMutedSpacer"></div>
                     <?php if (!empty($stream['category'])): ?>
