@@ -571,6 +571,212 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         }
         .login-prompt a { color: #4facfe; text-decoration: none; }
 
+        /* ── Fullscreen overlay (modo imersivo mobile) ── */
+        .video-fullscreen-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 5000;
+        }
+        .video-fullscreen-overlay.active { display: block; }
+        #livePlayerFs {
+            width: 100%; height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        /* Camera off overlay fs */
+        .fs-cam-off {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.85);
+            z-index: 4;
+            color: var(--text-muted);
+            gap: 12px;
+        }
+        .fs-cam-off.visible { display: flex; }
+        .fs-cam-off i { font-size: 48px; color: rgba(255,255,255,0.3); }
+        .fs-cam-off p { font-size: 16px; font-weight: 500; }
+        /* UI layer (toggle ao clicar) */
+        .fs-ui {
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            pointer-events: none; /* deixa cliques passarem para o toggle tap */
+            transition: opacity 0.25s ease;
+        }
+        .fs-ui.hidden { opacity: 0; }
+        .fs-ui > * { pointer-events: auto; } /* filhos clicáveis */
+        /* Barra superior */
+        .fs-top-bar {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            padding: 14px 16px 30px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .fs-back-btn {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff; font-size: 15px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .fs-stream-title {
+            flex: 1; min-width: 0;
+            font-size: 14px; font-weight: 700;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .fs-live-badge {
+            background: var(--live-red);
+            color: #fff;
+            font-size: 10px; font-weight: 800;
+            padding: 3px 8px; border-radius: 5px;
+            letter-spacing: 0.8px;
+            display: flex; align-items: center; gap: 4px;
+            flex-shrink: 0;
+        }
+        .fs-viewers {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: 12px; font-weight: 600;
+            display: flex; align-items: center; gap: 5px;
+            flex-shrink: 0;
+        }
+        /* Mic muted */
+        .fs-mic-muted {
+            position: absolute;
+            top: 70px; left: 16px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 13px; font-weight: 600;
+            color: #ff2d55;
+            display: none; align-items: center; gap: 6px;
+        }
+        .fs-mic-muted.visible { display: flex; }
+        /* Chat overlay TikTok-style */
+        .fs-chat-overlay {
+            position: absolute;
+            bottom: 90px; left: 0;
+            width: 70%;
+            max-height: 45%;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            padding: 0 12px 8px;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .fs-chat-msg {
+            display: flex;
+            align-items: flex-end;
+            gap: 6px;
+            margin-bottom: 6px;
+            animation: fs-msg-in 0.25s ease;
+        }
+        @keyframes fs-msg-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .fs-chat-avatar {
+            width: 22px; height: 22px;
+            border-radius: 50%; object-fit: cover;
+            flex-shrink: 0;
+        }
+        .fs-chat-bubble {
+            background: rgba(0,0,0,0.45);
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+            border-radius: 14px;
+            padding: 5px 10px;
+            max-width: 100%;
+        }
+        .fs-chat-name {
+            font-size: 11px; font-weight: 700;
+            color: #4facfe;
+            margin-bottom: 1px;
+        }
+        .fs-chat-name.streamer { color: var(--live-red); }
+        .fs-chat-text {
+            font-size: 12px; line-height: 1.35;
+            color: rgba(255,255,255,0.95);
+            word-break: break-word;
+        }
+        /* Input row no FS */
+        .fs-input-row {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 12px 12px max(12px, env(safe-area-inset-bottom));
+            background: linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%);
+            display: flex; gap: 8px;
+            align-items: center;
+        }
+        .fs-chat-input {
+            flex: 1;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 100px;
+            padding: 9px 16px;
+            color: #fff;
+            font-size: 14px; font-family: inherit;
+            outline: none;
+        }
+        .fs-chat-input::placeholder { color: rgba(255,255,255,0.5); }
+        .fs-chat-input:focus { border-color: rgba(59,130,246,0.6); }
+        .fs-send-btn {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: var(--live-red);
+            border: none; color: #fff;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        /* Botões laterais direita */
+        .fs-side-actions {
+            position: absolute;
+            bottom: 100px; right: 14px;
+            display: flex; flex-direction: column;
+            align-items: center; gap: 18px;
+        }
+        .fs-action-btn {
+            display: flex; flex-direction: column;
+            align-items: center; gap: 4px;
+            cursor: pointer;
+            background: none; border: none; color: #fff;
+            user-select: none;
+        }
+        .fs-action-icon {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.55);
+            border: 1.5px solid rgba(255,255,255,0.15);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            transition: transform 0.15s;
+        }
+        .fs-action-btn:active .fs-action-icon { transform: scale(0.85); }
+        .fs-action-icon.heart-icon { color: #ff4d6d; border-color: rgba(255,77,109,0.3); }
+        .fs-action-label { font-size: 10px; color: rgba(255,255,255,0.7); }
+        /* Tap area (camada de clique transparente) */
+        .fs-tap-area {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            background: transparent;
+        }
+
         /* ── Toast ── */
         .toast-container {
             position: fixed;
@@ -660,13 +866,77 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 <!-- Overlay de ecrã inteiro mobile -->
                 <div class="video-fullscreen-overlay" id="videoFsOverlay">
                     <video id="livePlayerFs" autoplay playsinline></video>
-                    <button class="btn-close-fullscreen" onclick="closeFullscreen()" title="Fechar">
-                        <i class="fas fa-times"></i>
-                    </button>
-                    <button class="btn-heart-fs" id="btnHeartFs" onclick="sendHeart(event)" title="Coração">
-                        <i class="fas fa-heart"></i>
-                    </button>
-                </div>
+
+                    <!-- Camera off overlay -->
+                    <div class="fs-cam-off" id="fsCamOff">
+                        <i class="fas fa-video-slash"></i>
+                        <p>A câmara está desligada</p>
+                    </div>
+
+                    <!-- Tap area: clique para toggle UI -->
+                    <div class="fs-tap-area" id="fsTapArea" onclick="toggleFsUI()"></div>
+
+                    <!-- UI layer (desaparece ao clicar) -->
+                    <div class="fs-ui" id="fsUI">
+
+                        <!-- Barra superior -->
+                        <div class="fs-top-bar">
+                            <button class="fs-back-btn" onclick="closeFullscreen()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <span class="fs-stream-title"><?php echo htmlspecialchars($stream['title']); ?></span>
+                            <?php if ($is_live): ?>
+                            <div class="fs-live-badge">
+                                <div class="live-dot-sm"></div>
+                                AO VIVO
+                            </div>
+                            <?php endif; ?>
+                            <div class="fs-viewers">
+                                <i class="fas fa-eye" style="color:var(--live-red);font-size:10px;"></i>
+                                <span id="viewerCountFs"><?php echo (int)$stream['viewers_count']; ?></span>
+                            </div>
+                        </div>
+
+                        <!-- Mic muted indicator -->
+                        <div class="fs-mic-muted" id="fsMicMuted">
+                            <i class="fas fa-microphone-slash"></i> Áudio desligado
+                        </div>
+
+                        <!-- Botões laterais -->
+                        <div class="fs-side-actions">
+                            <button class="fs-action-btn" onclick="sendHeart(event)">
+                                <div class="fs-action-icon heart-icon">
+                                    <i class="fas fa-heart"></i>
+                                </div>
+                                <span class="fs-action-label">Gosto</span>
+                            </button>
+                            <button class="fs-action-btn" onclick="shareStream()">
+                                <div class="fs-action-icon">
+                                    <i class="fas fa-share-alt"></i>
+                                </div>
+                                <span class="fs-action-label">Partilhar</span>
+                            </button>
+                        </div>
+
+                        <!-- Input do chat -->
+                        <div class="fs-input-row" id="fsInputRow">
+                            <?php if (isLoggedIn()): ?>
+                            <input type="text" class="fs-chat-input" id="fsChatInput"
+                                   placeholder="Mete dica..."
+                                   maxlength="500"
+                                   onkeydown="if(event.key==='Enter') sendChatFs()">
+                            <button class="fs-send-btn" onclick="sendChatFs()">
+                                <i class="fas fa-arrow-up"></i>
+                            </button>
+                            <?php endif; ?>
+                        </div>
+
+                    </div><!-- /fs-ui -->
+
+                    <!-- Chat overlay TikTok (sempre visivel) -->
+                    <div class="fs-chat-overlay" id="fsChatOverlay"></div>
+
+                </div><!-- /videoFsOverlay -->
             <?php else: ?>
                 <div class="offline-screen">
                     <i class="fas fa-satellite-dish"></i>
@@ -923,12 +1193,6 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         if (input) { input.disabled = true; input.placeholder = 'Stream terminada'; }
     }
 
-    function updateViewerCount(count) {
-        ['viewerCount','chatViewerCount','viewerCountOverlay'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = count;
-        });
-    }
 
     function sendChat() {
         const input = document.getElementById('chatInput');
@@ -939,15 +1203,36 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     }
 
     /* ── Ecrã inteiro (mobile) ── */
+    let fsUIVisible = true;
+    let fsUITimer = null;
+
+    function updateViewerCount(count) {
+        ['viewerCount','chatViewerCount','viewerCountOverlay','viewerCountFs'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = count;
+        });
+    }
+
     function openFullscreen() {
         const overlay = document.getElementById('videoFsOverlay');
         const srcVideo = document.getElementById('livePlayer');
         const fsVideo  = document.getElementById('livePlayerFs');
-        // Partilhar o mesmo srcObject
         fsVideo.srcObject = srcVideo.srcObject;
         fsVideo.play().catch(() => {});
+        // Sincronizar estado câmara/mic
+        const camOff = document.getElementById('cameraOffOverlay');
+        const fsCamOff = document.getElementById('fsCamOff');
+        if (camOff && fsCamOff) {
+            fsCamOff.classList.toggle('visible', camOff.style.display !== 'none');
+        }
+        const micInd = document.getElementById('micMutedIndicator');
+        const fsMic  = document.getElementById('fsMicMuted');
+        if (micInd && fsMic) {
+            fsMic.classList.toggle('visible', micInd.style.display !== 'none');
+        }
         overlay.classList.add('active');
-        // Tentar orientação landscape no mobile
+        fsUIVisible = true;
+        document.getElementById('fsUI').classList.remove('hidden');
         try { screen.orientation.lock('landscape').catch(() => {}); } catch(e) {}
     }
 
@@ -956,6 +1241,21 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         overlay.classList.remove('active');
         document.getElementById('livePlayerFs').srcObject = null;
         try { screen.orientation.unlock(); } catch(e) {}
+    }
+
+    function toggleFsUI() {
+        // Não toggle se o user clicou no input ou botoes
+        const ui = document.getElementById('fsUI');
+        fsUIVisible = !fsUIVisible;
+        ui.classList.toggle('hidden', !fsUIVisible);
+    }
+
+    function sendChatFs() {
+        const input = document.getElementById('fsChatInput');
+        const msg = input?.value.trim();
+        if (!msg || !socket?.connected) return;
+        socket.emit('live_chat_message', { streamId: STREAM_ID, message: msg });
+        input.value = '';
     }
 
     /* ── Efeito de corações a voar ── */
@@ -991,9 +1291,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         const isMine = msg.username === CURRENT_USERNAME;
         const div = document.createElement('div');
         div.className = 'chat-msg' + (isMine ? ' msg-mine' : '');
-        
         const avatarUrl = msg.profilePicture ? 'assets/images/avatars/' + msg.profilePicture : 'assets/images/avatars/default.webp';
-        
         div.innerHTML = `
             <img src="${esc(avatarUrl)}" class="chat-msg-avatar" alt="">
             <div class="chat-msg-body" style="${isMine ? 'text-align:right;' : ''}">
@@ -1004,6 +1302,25 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             </div>`;
         c.appendChild(div);
         c.scrollTop = c.scrollHeight;
+        // Adicionar também ao chat do fullscreen
+        addFsChatMessage(msg, isStreamer);
+    }
+
+    function addFsChatMessage(msg, isStreamer) {
+        const overlay = document.getElementById('fsChatOverlay');
+        if (!overlay) return;
+        const avatarUrl = msg.profilePicture ? 'assets/images/avatars/' + msg.profilePicture : 'assets/images/avatars/default.webp';
+        const el = document.createElement('div');
+        el.className = 'fs-chat-msg';
+        el.innerHTML = `
+            <img src="${esc(avatarUrl)}" class="fs-chat-avatar" alt="">
+            <div class="fs-chat-bubble">
+                <div class="fs-chat-name${isStreamer?' streamer':''}">${esc(msg.username)}${isStreamer?' 🔴':''}</div>
+                <div class="fs-chat-text">${esc(msg.message)}</div>
+            </div>`;
+        overlay.appendChild(el);
+        // Limitar a 20 mensagens no overlay
+        while (overlay.children.length > 20) overlay.removeChild(overlay.firstChild);
     }
 
     function addSystemMessage(text) {
