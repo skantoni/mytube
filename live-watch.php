@@ -181,12 +181,8 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         }
         @media (max-width: 900px) {
             .watch-layout {
-                display: flex;
-                flex-direction: column;
-                height: 100dvh;
-                min-height: 0; /* Override any previous min-height */
-                grid-template-columns: unset;
-                overflow: hidden;
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
             }
         }
 
@@ -196,7 +192,6 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             flex-direction: column;
             background: #000;
             overflow: hidden;
-            flex-shrink: 0;
         }
         .video-wrapper {
             position: relative;
@@ -204,7 +199,6 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             aspect-ratio: 16/9;
             background: #000;
             overflow: hidden;
-            flex-shrink: 0;
         }
         @media (min-width: 901px) {
             .player-section { flex-shrink: 1; overflow: hidden; }
@@ -470,11 +464,8 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             .chat-panel {
                 border-left: none;
                 border-top: 1px solid var(--border);
-                flex: 1;
-                height: auto;
-                min-height: 0;
                 position: static;
-                overflow: hidden;
+                height: 100%;
             }
         }
         .chat-header {
