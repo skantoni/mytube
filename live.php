@@ -159,7 +159,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
 
         /* ── PAGE BODY ── */
         .live-page {
-            padding: calc(var(--header-h) + 24px) 16px 40px;
+            padding: 32px 16px 40px;
             max-width: 1400px;
             margin: 0 auto;
         }
@@ -167,17 +167,22 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         /* ── HERO ── */
         .live-hero {
             background: linear-gradient(90deg, rgba(10,10,26,0.95) 0%, rgba(10,10,26,0.7) 50%, rgba(10,10,26,0.4) 100%), url('assets/images/live_hero.png') center/cover no-repeat;
-            border: 1px solid rgba(59, 130, 246, 0.5); /* rgba(255,45,85,0.2); */
-            border-radius: 20px;
-            padding: 40px 32px;
-            margin-bottom: 32px;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+            padding: calc(var(--header-h) + 40px) 16px 40px;
             position: relative;
             overflow: hidden;
             display: flex;
             align-items: center;
+            justify-content: center;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+        }
+        .live-hero-inner {
+            width: 100%;
+            max-width: 1400px;
+            display: flex;
+            align-items: center;
             justify-content: space-between;
             gap: 24px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
         }
         .live-hero::before {
             content: '';
@@ -395,7 +400,8 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         }
 
         @media (max-width: 480px) {
-            .live-hero { flex-direction: column; padding: 28px 20px; }
+            .live-hero { padding: calc(var(--header-h) + 28px) 20px 28px; }
+            .live-hero-inner { flex-direction: column; align-items: flex-start; }
             .live-hero-icon { display: none; }
         }
     </style>
@@ -424,10 +430,9 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         <?php endif; ?>
     </header>
 
-    <main class="live-page">
-
-        <!-- Hero -->
-        <div class="live-hero">
+    <!-- Hero -->
+    <div class="live-hero">
+        <div class="live-hero-inner">
             <div class="live-hero-text">
                 <h2>Streams<br><span>Ao Vivo 🔴</span></h2>
                 <p>Vê os teus criadores favoritos em tempo real. Interage no chat e nunca percas um momento.</p>
@@ -444,6 +449,9 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 <?php endif; ?>
             </div>
         </div>
+    </div>
+
+    <main class="live-page">
 
         <!-- Streams Grid -->
         <div class="section-header">
