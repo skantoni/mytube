@@ -100,8 +100,10 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             background: var(--bg);
             color: var(--text);
             font-family: 'Inter', -apple-system, sans-serif;
-            min-height: 100vh;
+            height: 100%;
+            height: 100dvh;
             -webkit-font-smoothing: antialiased;
+            overflow: hidden;
         }
 
         /* ── Header ── */
@@ -167,15 +169,17 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         /* ── Layout ── */
         .watch-layout {
             padding-top: var(--header-h);
-            min-height: 100vh;
+            height: 100dvh;
             display: grid;
             grid-template-columns: 1fr 360px;
             grid-template-rows: 1fr;
+            overflow: hidden;
         }
         @media (max-width: 900px) {
             .watch-layout {
                 grid-template-columns: 1fr;
                 grid-template-rows: auto 1fr;
+                height: 100dvh;
             }
         }
 
@@ -192,6 +196,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             aspect-ratio: 16/9;
             background: #000;
             overflow: hidden;
+            flex-shrink: 0;
         }
         @media (min-width: 901px) {
             .video-wrapper {
@@ -199,6 +204,103 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 height: calc(100vh - var(--header-h) - 160px);
             }
         }
+        /* Botão maximizar vídeo */
+        .btn-expand-video {
+            position: absolute;
+            bottom: 10px; right: 10px;
+            width: 36px; height: 36px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.6);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .btn-expand-video:hover { background: rgba(0,0,0,0.85); }
+        /* Botão coração */
+        .btn-heart {
+            position: absolute;
+            bottom: 10px; right: 54px;
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.6);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #ff4d6d;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.15s;
+            z-index: 10;
+            user-select: none;
+        }
+        .btn-heart:active { transform: scale(0.85); }
+        /* Balões de coração flutuantes */
+        .floating-heart {
+            position: fixed;
+            pointer-events: none;
+            font-size: 22px;
+            z-index: 9999;
+            animation: float-up 1.4s ease-out forwards;
+            user-select: none;
+        }
+        @keyframes float-up {
+            0%   { opacity: 1; transform: translateY(0) scale(1) rotate(var(--rot)); }
+            60%  { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-200px) scale(1.3) rotate(calc(var(--rot) * 2)); }
+        }
+        /* Modo ecrã inteiro no mobile */
+        .video-fullscreen-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 5000;
+            flex-direction: column;
+        }
+        .video-fullscreen-overlay.active {
+            display: flex;
+        }
+        .video-fullscreen-overlay video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .btn-close-fullscreen {
+            position: absolute;
+            top: 16px; right: 16px;
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.7);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10;
+        }
+        .btn-heart-fs {
+            position: absolute;
+            bottom: 40px; right: 20px;
+            width: 52px; height: 52px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.55);
+            border: 1.5px solid rgba(255,77,109,0.4);
+            color: #ff4d6d;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.15s;
+            z-index: 10;
+            user-select: none;
+        }
+        .btn-heart-fs:active { transform: scale(0.85); }
         #livePlayer {
             width: 100%; height: 100%;
             object-fit: cover;
@@ -347,7 +449,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             flex-direction: column;
             background: #0a0a0f;
             border-left: 1px solid var(--border);
-            height: calc(100vh - var(--header-h));
+            height: calc(100dvh - var(--header-h));
             overflow: hidden;
             position: sticky;
             top: var(--header-h);
@@ -356,8 +458,10 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             .chat-panel {
                 border-left: none;
                 border-top: 1px solid var(--border);
-                height: 380px;
+                flex: 1;
+                min-height: 0;
                 position: static;
+                overflow: hidden;
             }
         }
         .chat-header {
@@ -422,6 +526,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         }
         .chat-input-area {
             padding: 12px;
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
             border-top: 1px solid var(--border);
             flex-shrink: 0;
         }
@@ -535,6 +640,24 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                         <i class="fas fa-video-slash"></i>
                         <p>A câmara está desligada</p>
                     </div>
+                    <!-- Botões de acção sobre o vídeo -->
+                    <button class="btn-heart" id="btnHeart" onclick="sendHeart(event)" title="Coração">
+                        <i class="fas fa-heart"></i>
+                    </button>
+                    <button class="btn-expand-video" id="btnExpand" onclick="openFullscreen()" title="Maximizar">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                </div>
+
+                <!-- Overlay de ecrã inteiro mobile -->
+                <div class="video-fullscreen-overlay" id="videoFsOverlay">
+                    <video id="livePlayerFs" autoplay playsinline></video>
+                    <button class="btn-close-fullscreen" onclick="closeFullscreen()" title="Fechar">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <button class="btn-heart-fs" id="btnHeartFs" onclick="sendHeart(event)" title="Coração">
+                        <i class="fas fa-heart"></i>
+                    </button>
                 </div>
             <?php else: ?>
                 <div class="offline-screen">
@@ -805,6 +928,51 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         if (!msg || !socket?.connected) return;
         socket.emit('live_chat_message', { streamId: STREAM_ID, message: msg });
         input.value = '';
+    }
+
+    /* ── Ecrã inteiro (mobile) ── */
+    function openFullscreen() {
+        const overlay = document.getElementById('videoFsOverlay');
+        const srcVideo = document.getElementById('livePlayer');
+        const fsVideo  = document.getElementById('livePlayerFs');
+        // Partilhar o mesmo srcObject
+        fsVideo.srcObject = srcVideo.srcObject;
+        fsVideo.play().catch(() => {});
+        overlay.classList.add('active');
+        // Tentar orientação landscape no mobile
+        try { screen.orientation.lock('landscape').catch(() => {}); } catch(e) {}
+    }
+
+    function closeFullscreen() {
+        const overlay = document.getElementById('videoFsOverlay');
+        overlay.classList.remove('active');
+        document.getElementById('livePlayerFs').srcObject = null;
+        try { screen.orientation.unlock(); } catch(e) {}
+    }
+
+    /* ── Efeito de corações a voar ── */
+    const HEARTS = ['❤️','🧡','💛','💜','💙','💖','💗'];
+    function sendHeart(e) {
+        const btn = e.currentTarget;
+        const rect = btn.getBoundingClientRect();
+        // Animar o botão
+        btn.style.transform = 'scale(1.35)';
+        setTimeout(() => { btn.style.transform = ''; }, 180);
+        // Lançar 3-5 corações com offsets aleatórios
+        const count = 3 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < count; i++) {
+            setTimeout(() => {
+                const el = document.createElement('span');
+                el.className = 'floating-heart';
+                el.textContent = HEARTS[Math.floor(Math.random() * HEARTS.length)];
+                const offsetX = (Math.random() - 0.5) * 60;
+                el.style.left = (rect.left + rect.width / 2 + offsetX) + 'px';
+                el.style.top  = (rect.top - 10) + 'px';
+                el.style.setProperty('--rot', (Math.random() * 30 - 15) + 'deg');
+                document.body.appendChild(el);
+                el.addEventListener('animationend', () => el.remove());
+            }, i * 80);
+        }
     }
 
     function addChatMessage(msg) {
