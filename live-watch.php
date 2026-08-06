@@ -251,18 +251,40 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         .offline-screen h2 { font-size: 22px; font-weight: 700; }
         .offline-screen p { color: var(--text-muted); text-align: center; }
 
+        .camera-off-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.85);
+            z-index: 4;
+            color: var(--text-muted);
+            gap: 12px;
+        }
+        .camera-off-overlay i {
+            font-size: 48px;
+            color: rgba(255,255,255,0.3);
+        }
+        .camera-off-overlay p {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
         /* Stream info below video */
         .stream-info {
             padding: 16px;
             border-bottom: 1px solid var(--border);
         }
         .stream-title-row {
-            display: flex; align-items: flex-start;
+            display: flex; align-items: center;
             gap: 10px; margin-bottom: 14px;
         }
-        .stream-title {
+        .mic-muted-indicator {
             flex: 1;
-            font-size: 17px; font-weight: 700; line-height: 1.3;
+            font-size: 14px; font-weight: 600; color: #ff2d55;
+            display: flex; align-items: center; gap: 6px;
         }
         .category-tag {
             background: var(--surface);
@@ -509,6 +531,10 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                     <div class="buffer-spinner" id="bufferSpinner">
                         <div class="spinner"></div>
                     </div>
+                    <div class="camera-off-overlay" id="cameraOffOverlay" style="display: none;">
+                        <i class="fas fa-video-slash"></i>
+                        <p>A câmara está desligada</p>
+                    </div>
                 </div>
             <?php else: ?>
                 <div class="offline-screen">
@@ -530,7 +556,10 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             <!-- Info da stream -->
             <div class="stream-info">
                 <div class="stream-title-row">
-                    <h1 class="stream-title"><?php echo htmlspecialchars($stream['title']); ?></h1>
+                    <div class="mic-muted-indicator" id="micMutedIndicator" style="display: none;">
+                        <i class="fas fa-microphone-slash"></i> Microfone desligado
+                    </div>
+                    <div style="flex: 1;" id="micMutedSpacer"></div>
                     <?php if (!empty($stream['category'])): ?>
                         <span class="category-tag"><?php echo htmlspecialchars($stream['category']); ?></span>
                     <?php endif; ?>
@@ -673,6 +702,31 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                     track.kind === LivekitClient.Track.Kind.Audio) {
                     track.attach(video);
                     video.play().catch(() => {});
+                }
+                
+                if (track.kind === LivekitClient.Track.Kind.Video) {
+                    document.getElementById('cameraOffOverlay').style.display = publication.isMuted ? 'flex' : 'none';
+                } else if (track.kind === LivekitClient.Track.Kind.Audio) {
+                    document.getElementById('micMutedIndicator').style.display = publication.isMuted ? 'flex' : 'none';
+                    document.getElementById('micMutedSpacer').style.display = publication.isMuted ? 'none' : 'block';
+                }
+            });
+
+            livekitRoom.on(LivekitClient.RoomEvent.TrackMuted, (publication, participant) => {
+                if (publication.kind === LivekitClient.Track.Kind.Video) {
+                    document.getElementById('cameraOffOverlay').style.display = 'flex';
+                } else if (publication.kind === LivekitClient.Track.Kind.Audio) {
+                    document.getElementById('micMutedIndicator').style.display = 'flex';
+                    document.getElementById('micMutedSpacer').style.display = 'none';
+                }
+            });
+
+            livekitRoom.on(LivekitClient.RoomEvent.TrackUnmuted, (publication, participant) => {
+                if (publication.kind === LivekitClient.Track.Kind.Video) {
+                    document.getElementById('cameraOffOverlay').style.display = 'none';
+                } else if (publication.kind === LivekitClient.Track.Kind.Audio) {
+                    document.getElementById('micMutedIndicator').style.display = 'none';
+                    document.getElementById('micMutedSpacer').style.display = 'block';
                 }
             });
 
