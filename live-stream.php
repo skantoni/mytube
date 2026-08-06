@@ -235,7 +235,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             transition: border-color 0.2s;
         }
         .form-input:focus, .form-textarea:focus, .form-select:focus {
-            border-color: rgba(255,45,85,0.5);
+            border-color: rgba(59, 130, 246, 0.5);
         }
         .form-textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
         .form-select option { background: #1a1a2e; }
@@ -485,7 +485,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             font-family: inherit;
             outline: none;
         }
-        .chat-input:focus { border-color: rgba(255,45,85,0.4); }
+        .chat-input:focus { border-color: rgba(59, 130, 246, 0.4); }
         .chat-send-btn {
             width: 40px; height: 40px;
             border-radius: 50%;
