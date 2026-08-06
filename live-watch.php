@@ -387,6 +387,9 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             padding: 16px;
             border-bottom: 1px solid var(--border);
         }
+        @media (max-width: 900px) {
+            .stream-info { display: none; }
+        }
         .stream-title-row {
             display: flex; align-items: center;
             gap: 10px; margin-bottom: 14px;
@@ -684,7 +687,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             gap: 6px;
             margin-bottom: 6px;
             animation: fs-msg-in 0.25s ease;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.8s ease;
         }
         @keyframes fs-msg-in {
             from { opacity: 0; transform: translateY(8px); }
@@ -1324,13 +1327,13 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         // Limitar a 20 mensagens no overlay
         while (overlay.children.length > 20) overlay.removeChild(overlay.firstChild);
 
-        // Desaparecer após 8 segundos
+        // Desaparecer após 10 segundos
         setTimeout(() => {
             if (overlay.contains(el)) {
                 el.style.opacity = '0';
                 setTimeout(() => { if (overlay.contains(el)) el.remove(); }, 500);
             }
-        }, 8000);
+        }, 1000);
     }
 
     function addSystemMessage(text) {
