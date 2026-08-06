@@ -246,12 +246,12 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         .custom-select-trigger:hover { border-color: rgba(255,255,255,0.2); background: var(--surface2); }
         .custom-select-trigger i.fa-chevron-down { font-size: 14px; color: var(--text-muted); transition: transform 0.2s; }
         .custom-select.open .custom-select-trigger i.fa-chevron-down { transform: rotate(180deg); }
-        .custom-options { position: absolute; bottom: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 6px; z-index: 100; max-height: 250px; overflow-y: auto; opacity: 0; visibility: hidden; transition: all 0.2s; box-shadow: 0 -10px 25px rgba(0,0,0,0.5); }
+        .custom-options { position: absolute; bottom: 100%; left: 0; right: 0; background: #121212; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 6px; z-index: 100; max-height: 250px; overflow-y: auto; opacity: 0; visibility: hidden; transition: all 0.2s; box-shadow: 0 -10px 25px rgba(0,0,0,0.8); }
         .custom-select.open .custom-options { opacity: 1; visibility: visible; }
         .custom-option { padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; color: var(--text); font-size: 14px; font-weight: 500; transition: background 0.2s; }
-        .custom-option:hover { background: var(--surface2); }
-        .custom-option i { width: 20px; text-align: center; color: var(--text-muted); font-size: 16px; }
-        .custom-option:hover i { color: #fff; }
+        .custom-option:hover { background: rgba(255, 255, 255, 0.05); }
+        .custom-option i { width: 20px; text-align: center; color: #3b82f6; font-size: 16px; }
+        .custom-option:hover i { color: #60a5fa; }
 
         /* ── SETUP ACTIONS ── */
         .setup-actions {
@@ -605,7 +605,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 <label class="form-label">Categoria</label>
                 <div class="custom-select" id="categorySelect">
                     <div class="custom-select-trigger" onclick="toggleDropdown()">
-                        <span id="selectedCategoryText"><i class="fas fa-layer-group" style="width:20px;color:var(--text-muted);"></i> Sem categoria</span>
+                        <span id="selectedCategoryText"><i class="fas fa-layer-group" style="width:20px;color:#3b82f6;"></i> Sem categoria</span>
                         <i class="fas fa-chevron-down"></i>
                     </div>
                     <div class="custom-options">
@@ -733,7 +733,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     
     function selectCat(value, text, icon) {
         document.getElementById('streamCategory').value = value;
-        document.getElementById('selectedCategoryText').innerHTML = `<i class="fas ${icon}" style="width:20px;color:var(--text-muted);"></i> ${text}`;
+        document.getElementById('selectedCategoryText').innerHTML = `<i class="fas ${icon}" style="width:20px;color:#3b82f6;"></i> ${text}`;
         document.getElementById('categorySelect').classList.remove('open');
     }
 
