@@ -541,6 +541,38 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             from { opacity: 0; transform: translateX(20px); }
             to { opacity: 1; transform: translateX(0); }
         }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.8);
+            -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10000;
+        }
+        .modal-content {
+            background: #121212; border: 1px solid var(--border);
+            border-radius: 16px; padding: 24px;
+            width: 90%; max-width: 360px; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: modal-in 0.2s ease-out;
+        }
+        .modal-content h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .modal-content p { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+        .modal-actions { display: flex; gap: 12px; }
+        .modal-actions button {
+            flex: 1; padding: 12px; border-radius: 100px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            border: none; transition: all 0.2s;
+        }
+        .modal-btn-cancel { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+        .modal-btn-cancel:hover { background: rgba(255,255,255,0.1); }
+        .modal-btn-confirm { background: #cc0033; color: #fff; }
+        .modal-btn-confirm:hover { background: #ff1a40; }
+        @keyframes modal-in {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -563,6 +595,18 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
 
     <!-- Toasts -->
     <div class="toast-wrap" id="toastWrap"></div>
+
+    <!-- Modal Confirmar Término -->
+    <div class="modal-overlay" id="endStreamModal" style="display: none;">
+        <div class="modal-content">
+            <h3>Terminar Stream</h3>
+            <p>Tens a certeza que queres terminar o stream?</p>
+            <div class="modal-actions">
+                <button class="modal-btn-cancel" onclick="document.getElementById('endStreamModal').style.display='none'">Cancelar</button>
+                <button class="modal-btn-confirm" onclick="executeEndStream()">Terminar</button>
+            </div>
+        </div>
+    </div>
 
     <div class="streamer-page">
 
@@ -895,8 +939,12 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         btn.classList.toggle('muted', isCamOff);
     }
 
-    async function endStream() {
-        if (!confirm('Tens a certeza que queres terminar o stream?')) return;
+    function endStream() {
+        document.getElementById('endStreamModal').style.display = 'flex';
+    }
+
+    async function executeEndStream() {
+        document.getElementById('endStreamModal').style.display = 'none';
 
         // 1. Desligar do LiveKit (para de enviar vídeo/áudio)
         if (livekitRoom) {
