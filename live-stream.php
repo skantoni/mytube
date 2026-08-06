@@ -240,6 +240,19 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         .form-textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
         .form-select option { background: #1a1a2e; }
 
+        /* Dropdown Customizado (Minimalista) */
+        .custom-select { position: relative; user-select: none; width: 100%; }
+        .custom-select-trigger { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; color: var(--text); font-size: 15px; font-weight: 500; transition: all 0.2s; }
+        .custom-select-trigger:hover { border-color: rgba(255,255,255,0.2); background: var(--surface2); }
+        .custom-select-trigger i.fa-chevron-down { font-size: 14px; color: var(--text-muted); transition: transform 0.2s; }
+        .custom-select.open .custom-select-trigger i.fa-chevron-down { transform: rotate(180deg); }
+        .custom-options { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-top: 6px; z-index: 100; max-height: 250px; overflow-y: auto; opacity: 0; visibility: hidden; transition: all 0.2s; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .custom-select.open .custom-options { opacity: 1; visibility: visible; }
+        .custom-option { padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; color: var(--text); font-size: 14px; font-weight: 500; transition: background 0.2s; }
+        .custom-option:hover { background: var(--surface2); }
+        .custom-option i { width: 20px; text-align: center; color: var(--text-muted); font-size: 16px; }
+        .custom-option:hover i { color: #fff; }
+
         /* ── SETUP ACTIONS ── */
         .setup-actions {
             display: flex;
@@ -589,18 +602,43 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="streamCategory">Categoria</label>
-                <select id="streamCategory" class="form-select">
-                    <option value="">Sem categoria</option>
-                    <option value="Gaming">Gaming</option>
-                    <option value="Música">Música</option>
-                    <option value="Conversa">Conversa / Q&A</option>
-                    <option value="Educação">Educação</option>
-                    <option value="Desporto">Desporto</option>
-                    <option value="Arte">Arte</option>
-                    <option value="Tecnologia">Tecnologia</option>
-                    <option value="Entretenimento">Entretenimento</option>
-                </select>
+                <label class="form-label">Categoria</label>
+                <div class="custom-select" id="categorySelect">
+                    <div class="custom-select-trigger" onclick="toggleDropdown()">
+                        <span id="selectedCategoryText"><i class="fas fa-layer-group" style="width:20px;color:var(--text-muted);"></i> Sem categoria</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="custom-options">
+                        <div class="custom-option" onclick="selectCat('', 'Sem categoria', 'fa-layer-group')">
+                            <i class="fas fa-layer-group"></i> Sem categoria
+                        </div>
+                        <div class="custom-option" onclick="selectCat('Gaming', 'Gaming', 'fa-gamepad')">
+                            <i class="fas fa-gamepad"></i> Gaming
+                        </div>
+                        <div class="custom-option" onclick="selectCat('Música', 'Música', 'fa-music')">
+                            <i class="fas fa-music"></i> Música
+                        </div>
+                        <div class="custom-option" onclick="selectCat('Conversa', 'Conversa / Q&A', 'fa-comments')">
+                            <i class="fas fa-comments"></i> Conversa / Q&A
+                        </div>
+                        <div class="custom-option" onclick="selectCat('Educação', 'Educação', 'fa-book')">
+                            <i class="fas fa-book"></i> Educação
+                        </div>
+                        <div class="custom-option" onclick="selectCat('Desporto', 'Desporto', 'fa-futbol')">
+                            <i class="fas fa-futbol"></i> Desporto
+                        </div>
+                        <div class="custom-option" onclick="selectCat('Arte', 'Arte', 'fa-palette')">
+                            <i class="fas fa-palette"></i> Arte
+                        </div>
+                        <div class="custom-option" onclick="selectCat('Tecnologia', 'Tecnologia', 'fa-laptop-code')">
+                            <i class="fas fa-laptop-code"></i> Tecnologia
+                        </div>
+                        <div class="custom-option" onclick="selectCat('Entretenimento', 'Entretenimento', 'fa-masks-theater')">
+                            <i class="fas fa-masks-theater"></i> Entretenimento
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="streamCategory" value="">
             </div>
 
             <div class="setup-actions">
@@ -687,6 +725,24 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     let timerInterval = null, streamSeconds = 0, msgCount = 0;
     let isMicMuted = false, isCamOff = false, cameraActivated = false;
     let localVideoTrack = null, localAudioTrack = null;
+
+    // Custom Dropdown Logic
+    function toggleDropdown() {
+        document.getElementById('categorySelect').classList.toggle('open');
+    }
+    
+    function selectCat(value, text, icon) {
+        document.getElementById('streamCategory').value = value;
+        document.getElementById('selectedCategoryText').innerHTML = `<i class="fas ${icon}" style="width:20px;color:var(--text-muted);"></i> ${text}`;
+        document.getElementById('categorySelect').classList.remove('open');
+    }
+
+    // Fechar dropdown ao clicar fora
+    document.addEventListener('click', function(e) {
+        if (!document.getElementById('categorySelect').contains(e.target)) {
+            document.getElementById('categorySelect').classList.remove('open');
+        }
+    });
 
     // Ativar câmera
     async function activateCamera() {
