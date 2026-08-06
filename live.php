@@ -167,7 +167,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         /* ── HERO ── */
         .live-hero {
             background: linear-gradient(90deg, rgba(10,10,26,0.95) 0%, rgba(10,10,26,0.7) 50%, rgba(10,10,26,0.4) 100%), url('assets/images/live_hero.png') center/cover no-repeat;
-            border: 1px solid rgba(255,45,85,0.2);
+            border: 1px solid rgba(59, 130, 246, 0.5); /* rgba(255,45,85,0.2); */
             border-radius: 20px;
             padding: 40px 32px;
             margin-bottom: 32px;
