@@ -1315,10 +1315,8 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 <div class="chat-msg-text">${esc(msg.message)}</div>
             </div>`;
         c.appendChild(div);
-        // Garantir scroll correcto após render (importante para mobile com input fixo)
-        requestAnimationFrame(() => {
-            div.scrollIntoView({ block: 'nearest', behavior: 'auto' });
-        });
+        // scroll depois do render, corrige problema no mobile com input fixo
+        c.scrollTop = c.scrollHeight;
         // Adicionar também ao chat do fullscreen
         addFsChatMessage(msg, isStreamer);
     }
@@ -1402,6 +1400,21 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     document.addEventListener('DOMContentLoaded', () => {
         const chat = document.getElementById('chatMessages');
         if (chat) chat.scrollTop = chat.scrollHeight;
+
+        // Ajustar padding-bottom do chat dinamicamente ao tamanho real do input fixo
+        // Funciona em qualquer dispositivo sem adivinhar valores
+        const inputArea = document.querySelector('.chat-input-area');
+        function adjustChatPadding() {
+            if (!inputArea || !chat) return;
+            if (window.innerWidth <= 900) {
+                const h = inputArea.getBoundingClientRect().height;
+                chat.style.paddingBottom = (h + 8) + 'px';
+            } else {
+                chat.style.paddingBottom = '';
+            }
+        }
+        adjustChatPadding();
+        window.addEventListener('resize', adjustChatPadding);
     });
     </script>
 </body>
