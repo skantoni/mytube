@@ -73,7 +73,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
     <title><?php echo htmlspecialchars($stream['title']); ?> — MyTube Live</title>
     <meta name="description" content="<?php echo htmlspecialchars($stream['description'] ?: 'Assiste ao vivo na MyTube: ' . $stream['title']); ?>">
     <?php echo csrf_meta(); ?>
@@ -95,6 +95,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             --text: #fff;
             --text-muted: rgba(255,255,255,0.55);
             --header-h: 60px;
+            --live-height: 100vh; /* Será sobrescrita pelo JS com o valor real do visualViewport */
         }
         html, body {
             background: var(--bg);
@@ -104,8 +105,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         }
         @media (max-width: 900px) {
             html, body {
-                height: 100%;
-                height: 100dvh;
+                height: var(--live-height);
                 overflow: hidden;
             }
         }
@@ -182,9 +182,10 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         }
         @media (max-width: 900px) {
             .watch-layout {
-                /* Mantém height:100dvh da regra base — apenas muda para flexbox */
+                /* Usa o valor real medido pelo visualViewport, igual ao chat */
                 display: flex;
                 flex-direction: column;
+                height: var(--live-height);
                 overflow: hidden;
             }
         }
@@ -1402,6 +1403,19 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     document.addEventListener('DOMContentLoaded', () => {
         const chat = document.getElementById('chatMessages');
         if (chat) chat.scrollTop = chat.scrollHeight;
+
+        // ── Mesma técnica do chat.php: medir altura real via visualViewport ──
+        // Funciona correctamente em browser E em PWA standalone
+        function updateLiveHeight() {
+            const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            document.documentElement.style.setProperty('--live-height', Math.round(h) + 'px');
+        }
+        updateLiveHeight();
+        window.addEventListener('resize', updateLiveHeight);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', updateLiveHeight);
+            window.visualViewport.addEventListener('scroll', updateLiveHeight);
+        }
     });
     </script>
 </body>
