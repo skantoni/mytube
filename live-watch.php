@@ -614,21 +614,35 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             display: block;
         }
         /* Camera off overlay fs */
-        .fs-cam-off {
+        .camera-off-overlay {
             position: absolute;
             inset: 0;
+            background: rgba(0,0,0,0.85);
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: rgba(0,0,0,0.85);
-            z-index: 4;
-            color: var(--text-muted);
             gap: 12px;
+            color: var(--text-muted);
+            z-index: 3;
         }
-        .fs-cam-off.visible { display: flex; }
-        .fs-cam-off i { font-size: 48px; color: rgba(255,255,255,0.3); }
-        .fs-cam-off p { font-size: 16px; font-weight: 500; }
+        .camera-off-overlay i { font-size: 48px; color: rgba(255,255,255,0.3); }
+        .camera-off-overlay p { font-size: 16px; font-weight: 500; }
+        .reconnecting-banner {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: #fff;
+            z-index: 4;
+        }
+        .reconnecting-banner i { font-size: 36px; color: #f59e0b; animation: spin 1s linear infinite; }
+        .reconnecting-banner p { font-size: 15px; font-weight: 600; color: #f59e0b; }
+        @keyframes spin { to { transform: rotate(360deg); } }
         /* UI layer (toggle ao clicar) */
         .fs-ui {
             position: absolute;
@@ -887,6 +901,10 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                         <i class="fas fa-video-slash"></i>
                         <p>A câmara está desligada</p>
                     </div>
+                    <div class="reconnecting-banner" id="reconnectingBanner">
+                        <i class="fas fa-circle-notch"></i>
+                        <p>O emissor perdeu a ligação. A aguardar reconexão (até 2 min)...</p>
+                    </div>
                     <!-- Botões de acção sobre o vídeo -->
                     <button class="btn-heart" id="btnHeart" onclick="sendHeart(event)" title="Coração">
                         <i class="fas fa-heart"></i>
@@ -904,6 +922,11 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                     <div class="fs-cam-off" id="fsCamOff">
                         <i class="fas fa-video-slash"></i>
                         <p>A câmara está desligada</p>
+                    </div>
+                    <!-- Reconnecting banner -->
+                    <div class="reconnecting-banner" id="fsReconnectingBanner" style="z-index: 4999;">
+                        <i class="fas fa-circle-notch"></i>
+                        <p>O emissor perdeu a ligação. A aguardar reconexão (até 2 min)...</p>
                     </div>
 
                     <!-- Tap area: clique para toggle UI -->
@@ -1224,6 +1247,21 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 if (livekitRoom) livekitRoom.disconnect();
                 if (socket) socket.disconnect();
             });
+            socket.on('streamer_reconnecting', ({ message }) => {
+                showToast(message || 'O emissor perdeu a ligação. A aguardar...', 'error');
+                // Mostrar banner no vídeo
+                const banner = document.getElementById('reconnectingBanner');
+                if (banner) banner.style.display = 'flex';
+                const fsBanner = document.getElementById('fsReconnectingBanner');
+                if (fsBanner) fsBanner.style.display = 'flex';
+            });
+            socket.on('stream_reconnected', () => {
+                showToast('O emissor reconectou-se! 🔴', 'success');
+                const banner = document.getElementById('reconnectingBanner');
+                if (banner) banner.style.display = 'none';
+                const fsBanner = document.getElementById('fsReconnectingBanner');
+                if (fsBanner) fsBanner.style.display = 'none';
+            });
             socket.on('disconnect', () => { showToast('Ligação ao chat perdida', 'error'); });
 
             setTimeout(() => { if (spinner) spinner.style.display = 'none'; }, 8000);
@@ -1350,7 +1388,13 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         const isMine = msg.username === CURRENT_USERNAME;
         const div = document.createElement('div');
         div.className = 'chat-msg' + (isMine ? ' msg-mine' : '');
-        const avatarUrl = msg.profilePicture ? 'assets/images/avatars/' + msg.profilePicture : 'assets/images/avatars/default.webp';
+        function buildAvatarUrl(pic) {
+            if (!pic) return 'assets/images/avatars/default.webp';
+            if (pic.startsWith('http://') || pic.startsWith('https://')) return pic;
+            if (pic.startsWith('assets/') || pic.startsWith('uploads/')) return pic;
+            return 'assets/images/avatars/' + pic;
+        }
+        const avatarUrl = buildAvatarUrl(msg.profilePicture);
         div.innerHTML = `
             <img src="${esc(avatarUrl)}" class="chat-msg-avatar" alt="">
             <div class="chat-msg-body" style="${isMine ? 'text-align:right;' : ''}">
@@ -1369,7 +1413,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     function addFsChatMessage(msg, isStreamer) {
         const overlay = document.getElementById('fsChatOverlay');
         if (!overlay) return;
-        const avatarUrl = msg.profilePicture ? 'assets/images/avatars/' + msg.profilePicture : 'assets/images/avatars/default.webp';
+        const avatarUrl = buildAvatarUrl(msg.profilePicture);
         const el = document.createElement('div');
         el.className = 'fs-chat-msg';
         el.innerHTML = `

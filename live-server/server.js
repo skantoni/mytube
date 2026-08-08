@@ -11,7 +11,65 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 const { pool, testConnection } = require('./config/database');
+
+// ─────────────────────────────────────────────
+// Sistema de Logging em Ficheiro
+// ─────────────────────────────────────────────
+const LOG_DIR  = process.env.LOG_DIR || '/var/log/mytube';
+const LOG_FILE = path.join(LOG_DIR, 'live-server-dev.log');
+const MAX_LOG_SIZE = 10 * 1024 * 1024; // 10MB
+
+function ensureLogDir() {
+    try { fs.mkdirSync(LOG_DIR, { recursive: true }); } catch {}
+}
+
+function rotateLogs() {
+    try {
+        const stat = fs.statSync(LOG_FILE);
+        if (stat.size > MAX_LOG_SIZE) {
+            fs.renameSync(LOG_FILE, LOG_FILE + '.old');
+        }
+    } catch {}
+}
+
+function log(emoji, msg, extra = null) {
+    const ts = new Date().toISOString();
+    const line = extra
+        ? `[${ts}] ${emoji} ${msg} | ${JSON.stringify(extra)}\n`
+        : `[${ts}] ${emoji} ${msg}\n`;
+    // Sempre no console (pm2)
+    process.stdout.write(line);
+    // E também no ficheiro
+    try {
+        rotateLogs();
+        fs.appendFileSync(LOG_FILE, line);
+    } catch {}
+}
+
+function logError(msg, err = null) {
+    const ts = new Date().toISOString();
+    const line = `[${ts}] ❌ ${msg}${err ? ' | ' + (err.stack || err.message || err) : ''}\n`;
+    process.stderr.write(line);
+    try {
+        rotateLogs();
+        fs.appendFileSync(LOG_FILE, line);
+    } catch {}
+}
+
+// Capturar crashes não tratados
+process.on('uncaughtException', (err) => {
+    logError('CRASH uncaughtException', err);
+    process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+    logError('CRASH unhandledRejection', reason instanceof Error ? reason : new Error(String(reason)));
+});
+
+ensureLogDir();
+log('🚀', 'Live-Server a iniciar...');
 
 // ─────────────────────────────────────────────
 // JWT Verificação (mesmo padrão do chat-server)
@@ -252,7 +310,7 @@ io.use((socket, next) => {
 // ─────────────────────────────────────────────
 io.on('connection', async (socket) => {
     const { userId, username } = socket;
-    console.log(`🔌 Conectado: @${username} (userId=${userId}, socketId=${socket.id})`);
+    log('🔌', `Conectado: @${username}`, { userId, socketId: socket.id });
 
     // Registar cliente
     connectedClients.set(socket.id, { userId, username, streamId: null });
@@ -283,8 +341,20 @@ io.on('connection', async (socket) => {
                 return;
             }
 
-            // Nota: autenticação de vídeo é feita pelo LiveKit.
-            // Este handler trata apenas chat e eventos de ciclo de vida.
+            // Verificar se esta stream ainda está no grace period (reconexão do streamer)
+            const existingStream = activeStreams.get(streamId);
+            if (existingStream && existingStream.endTimer) {
+                clearTimeout(existingStream.endTimer);
+                existingStream.endTimer = null;
+                existingStream.streamerSocketId = socket.id;
+                const client = connectedClients.get(socket.id);
+                if (client) client.streamId = streamId;
+                socket.join(`stream_${streamId}`);
+                socket.emit('go_live_success', { streamId, roomName: `stream_${streamId}`, message: 'Reconectado à stream! 🔴' });
+                io.to(`stream_${streamId}`).emit('stream_reconnected', { streamId });
+                log('🔄', `Streamer @${username} reconectou-se à stream #${streamId} dentro do grace period`);
+                return;
+            }
 
             // Criar sala da stream
             const roomName = `stream_${streamId}`;
@@ -299,7 +369,8 @@ io.on('connection', async (socket) => {
                 title: stream.title,
                 viewers: new Set(),
                 peakViewers: 0,
-                startedAt: Date.now()
+                startedAt: Date.now(),
+                endTimer: null
             });
 
             // Atualizar socket
@@ -334,9 +405,9 @@ io.on('connection', async (socket) => {
                 }
             });
 
-            console.log(`🔴 Stream iniciada: #${streamId} por @${username}`);
+            log('🔴', `Stream iniciada: #${streamId} por @${username}`);
         } catch (err) {
-            console.error('❌ go_live:', err.message);
+            logError('go_live', err);
             socket.emit('error', { message: 'Erro ao iniciar stream' });
         }
     });
@@ -400,7 +471,7 @@ io.on('connection', async (socket) => {
         socket.leave(`stream_${streamId}`);
 
         socket.emit('end_stream_success', { streamId });
-        console.log(`⏹️ Stream terminada: #${streamId} por @${username}`);
+        log('⏹️', `Stream terminada voluntariamente: #${streamId} por @${username}`);
     });
 
     // ─── VIEWER: Entrar na Stream ────────────────────────────
@@ -476,9 +547,9 @@ io.on('connection', async (socket) => {
                 type: 'join'
             });
 
-            console.log(`👁️ Viewer @${username} entrou na stream #${sid}`);
+            log('👁️', `Viewer @${username} entrou na stream #${sid}`);
         } catch (err) {
-            console.error('❌ join_stream:', err.message);
+            logError('join_stream', err);
         }
     });
 
@@ -519,13 +590,13 @@ io.on('connection', async (socket) => {
                 createdAt: new Date().toISOString()
             });
         } catch (err) {
-            console.error('❌ live_chat_message:', err.message);
+            logError('live_chat_message', err);
         }
     });
 
     // ─── DESCONEXÃO ──────────────────────────────────────────
-    socket.on('disconnect', async () => {
-        console.log(`🔌 Desconectado: @${username} (socketId=${socket.id})`);
+    socket.on('disconnect', async (reason) => {
+        log('🔌', `Desconectado: @${username}`, { userId, socketId: socket.id, reason });
 
         const client = connectedClients.get(socket.id);
 
@@ -534,18 +605,34 @@ io.on('connection', async (socket) => {
 
             if (stream) {
                 if (stream.streamerId === userId) {
-                    // ─ Streamer desconectou — terminar stream automaticamente
-                    io.to(`stream_${client.streamId}`).emit('stream_ended', {
-                        streamId: client.streamId,
-                        message: `@${username} perdeu a ligação`
+                    // ─ Streamer desconectou — Grace period de 2m antes de terminar
+                    const streamId = client.streamId;
+                    log('⚠️', `Streamer @${username} desconectou da stream #${streamId}. Grace period de 2m iniciado.`, { reason });
+
+                    // Avisar viewers que o streamer pode estar com problemas
+                    io.to(`stream_${streamId}`).emit('streamer_reconnecting', {
+                        message: 'O emissor perdeu a ligação. A aguardar reconexão (até 2 min)...'
                     });
-                    await markStreamEnded(client.streamId, stream.peakViewers);
-                    await updateViewerCount(client.streamId, 0);
-                    
-                    // 📢 Broadcast feed
-                    io.to('live_feed').emit('feed_stream_ended', { streamId: client.streamId });
-                    activeStreams.delete(client.streamId);
-                    console.log(`⏹️ Stream #${client.streamId} terminada por desconexão do streamer`);
+
+                    // Timer de 120 segundos
+                    stream.endTimer = setTimeout(async () => {
+                        // Verificar se o streamer reconectou entretanto
+                        if (!activeStreams.has(streamId)) return;
+                        const s = activeStreams.get(streamId);
+                        if (s && s.streamerId !== userId) return; // outro streamer tomou o lugar
+
+                        log('⏹️', `Grace period expirado. Stream #${streamId} de @${username} terminada por desconexão.`);
+
+                        io.to(`stream_${streamId}`).emit('stream_ended', {
+                            streamId,
+                            message: `@${username} perdeu a ligação`
+                        });
+                        await markStreamEnded(streamId, stream.peakViewers);
+                        await updateViewerCount(streamId, 0);
+                        io.to('live_feed').emit('feed_stream_ended', { streamId });
+                        activeStreams.delete(streamId);
+                    }, 120000);
+
                 } else {
                     // ─ Viewer desconectou
                     stream.viewers.delete(socket.id);
@@ -623,14 +710,14 @@ const PORT = process.env.PORT || 3002;
 async function start() {
     const dbOk = await testConnection();
     if (!dbOk) {
-        console.error('❌ Não foi possível conectar ao banco. Servidor não iniciado.');
+        logError('Não foi possível conectar ao banco. Servidor não iniciado.');
         process.exit(1);
     }
 
     server.listen(PORT, () => {
-        console.log(`🔴 MyTube Live Server a correr na porta ${PORT}`);
-        console.log(`📡 CORS permitido para: ${corsOrigin}`);
-        console.log(`🌐 Health check: http://localhost:${PORT}/health`);
+        log('🔴', `MyTube Live Server a correr na porta ${PORT}`);
+        log('📡', `CORS permitido para: ${corsOrigin}`);
+        log('🌐', `Health check: http://localhost:${PORT}/health`);
     });
 }
 

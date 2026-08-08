@@ -735,7 +735,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 <div class="chat-side-header">
                     <i class="fas fa-comments" style="color:var(--live-red)"></i>
                     Chat ao Vivo
-                    <span style="margin-left:auto;font-size:12px;color:var(--text-muted);font-weight:500;" id="msgCountDisplay">0 msgs</span>
+                    <span style="margin-left:auto;font-size:12px;color:var(--text-muted);font-weight:500;" id="msgCountDisplay">0 dicas</span>
                 </div>
                 <div class="chat-messages" id="chatMessages">
                     <div class="system-msg" id="chatEmptyState">💬 O chat aparece aqui quando estiveres ao vivo</div>
@@ -987,7 +987,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         if (emptyMsg) emptyMsg.remove();
         const isMine = msg.userId === MY_USER_ID;
         msgCount++;
-        document.getElementById('msgCountDisplay').textContent = msgCount + ' msgs';
+        document.getElementById('msgCountDisplay').textContent = msgCount + ' dicas';
         const div = document.createElement('div');
         div.className = 'chat-msg' + (isMine ? ' msg-mine' : '');
         
