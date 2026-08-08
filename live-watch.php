@@ -480,7 +480,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 border-top: 1px solid var(--border);
             }
             .chat-messages {
-                padding-bottom: 100px; /* Espaço para o input fixo */
+                padding-bottom: 5rem; /* ~80px adaptável ao tamanho de fonte do dispositivo */
             }
         }
         .chat-header {
@@ -1315,7 +1315,10 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 <div class="chat-msg-text">${esc(msg.message)}</div>
             </div>`;
         c.appendChild(div);
-        c.scrollTop = c.scrollHeight;
+        // Garantir scroll correcto após render (importante para mobile com input fixo)
+        requestAnimationFrame(() => {
+            div.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+        });
         // Adicionar também ao chat do fullscreen
         addFsChatMessage(msg, isStreamer);
     }
