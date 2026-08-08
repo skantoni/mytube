@@ -469,6 +469,19 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 position: static;
                 height: 100%;
             }
+            .chat-input-area {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: #0a0a0f;
+                z-index: 100;
+                padding-bottom: max(12px, env(safe-area-inset-bottom));
+                border-top: 1px solid var(--border);
+            }
+            .chat-messages {
+                padding-bottom: 80px; /* Espaço para o input fixo */
+            }
         }
         .chat-header {
             padding: 14px 16px;
@@ -1329,7 +1342,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 el.style.opacity = '0';
                 setTimeout(() => { if (overlay.contains(el)) el.remove(); }, 500);
             }
-        }, 1000);
+        }, 10000);
     }
 
     function addSystemMessage(text) {
