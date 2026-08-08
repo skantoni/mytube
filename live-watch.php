@@ -335,6 +335,15 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             padding: 4px 10px; border-radius: 20px;
             display: flex; align-items: center; gap: 5px;
         }
+        .player-mic-muted {
+            background: rgba(255, 45, 85, 0.85);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            font-size: 12px; font-weight: 600;
+            padding: 4px 10px; border-radius: 20px;
+            display: none; align-items: center; gap: 5px;
+        }
         .buffer-spinner {
             position: absolute;
             inset: 0;
@@ -863,6 +872,9 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                             <i class="fas fa-eye" style="color:var(--live-red);font-size:10px;"></i>
                             <span id="viewerCountOverlay"><?php echo (int)$stream['viewers_count']; ?></span>
                         </div>
+                        <div class="player-mic-muted" id="playerMicMuted">
+                            <i class="fas fa-microphone-slash"></i> Áudio desligado
+                        </div>
                     </div>
                     <div class="buffer-spinner" id="bufferSpinner">
                         <div class="spinner"></div>
@@ -1125,8 +1137,15 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 if (track.kind === LivekitClient.Track.Kind.Video) {
                     document.getElementById('cameraOffOverlay').style.display = publication.isMuted ? 'flex' : 'none';
                 } else if (track.kind === LivekitClient.Track.Kind.Audio) {
-                    document.getElementById('micMutedIndicator').style.display = publication.isMuted ? 'flex' : 'none';
-                    document.getElementById('micMutedSpacer').style.display = publication.isMuted ? 'none' : 'block';
+                    const isMuted = publication.isMuted;
+                    document.getElementById('micMutedIndicator').style.display = isMuted ? 'flex' : 'none';
+                    document.getElementById('micMutedSpacer').style.display = isMuted ? 'none' : 'block';
+                    
+                    const fsMic = document.getElementById('fsMicMuted');
+                    if (fsMic) fsMic.classList.toggle('visible', isMuted);
+                    
+                    const playerMic = document.getElementById('playerMicMuted');
+                    if (playerMic) playerMic.style.display = isMuted ? 'flex' : 'none';
                 }
             });
 
@@ -1136,6 +1155,12 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 } else if (publication.kind === LivekitClient.Track.Kind.Audio) {
                     document.getElementById('micMutedIndicator').style.display = 'flex';
                     document.getElementById('micMutedSpacer').style.display = 'none';
+                    
+                    const fsMic = document.getElementById('fsMicMuted');
+                    if (fsMic) fsMic.classList.add('visible');
+                    
+                    const playerMic = document.getElementById('playerMicMuted');
+                    if (playerMic) playerMic.style.display = 'flex';
                 }
             });
 
@@ -1145,6 +1170,12 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 } else if (publication.kind === LivekitClient.Track.Kind.Audio) {
                     document.getElementById('micMutedIndicator').style.display = 'none';
                     document.getElementById('micMutedSpacer').style.display = 'block';
+                    
+                    const fsMic = document.getElementById('fsMicMuted');
+                    if (fsMic) fsMic.classList.remove('visible');
+                    
+                    const playerMic = document.getElementById('playerMicMuted');
+                    if (playerMic) playerMic.style.display = 'none';
                 }
             });
 
