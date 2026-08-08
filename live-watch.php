@@ -480,7 +480,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 border-top: 1px solid var(--border);
             }
             .chat-messages {
-                padding-bottom: 80px; /* Espaço para o input fixo */
+                padding-bottom: 100px; /* Espaço para o input fixo */
             }
         }
         .chat-header {
