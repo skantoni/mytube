@@ -1139,7 +1139,10 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 }
                 
                 if (track.kind === LivekitClient.Track.Kind.Video) {
-                    document.getElementById('cameraOffOverlay').style.display = publication.isMuted ? 'flex' : 'none';
+                    const isVidMuted = publication.isMuted;
+                    document.getElementById('cameraOffOverlay').style.display = isVidMuted ? 'flex' : 'none';
+                    const fsCam = document.getElementById('fsCamOff');
+                    if (fsCam) fsCam.classList.toggle('visible', isVidMuted);
                 } else if (track.kind === LivekitClient.Track.Kind.Audio) {
                     const isMuted = publication.isMuted;
                     document.getElementById('micMutedIndicator').style.display = isMuted ? 'flex' : 'none';
@@ -1156,6 +1159,8 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             livekitRoom.on(LivekitClient.RoomEvent.TrackMuted, (publication, participant) => {
                 if (publication.kind === LivekitClient.Track.Kind.Video) {
                     document.getElementById('cameraOffOverlay').style.display = 'flex';
+                    const fsCam = document.getElementById('fsCamOff');
+                    if (fsCam) fsCam.classList.add('visible');
                 } else if (publication.kind === LivekitClient.Track.Kind.Audio) {
                     document.getElementById('micMutedIndicator').style.display = 'flex';
                     document.getElementById('micMutedSpacer').style.display = 'none';
@@ -1171,6 +1176,8 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             livekitRoom.on(LivekitClient.RoomEvent.TrackUnmuted, (publication, participant) => {
                 if (publication.kind === LivekitClient.Track.Kind.Video) {
                     document.getElementById('cameraOffOverlay').style.display = 'none';
+                    const fsCam = document.getElementById('fsCamOff');
+                    if (fsCam) fsCam.classList.remove('visible');
                 } else if (publication.kind === LivekitClient.Track.Kind.Audio) {
                     document.getElementById('micMutedIndicator').style.display = 'none';
                     document.getElementById('micMutedSpacer').style.display = 'block';
