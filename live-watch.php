@@ -173,6 +173,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         /* ── Layout ── */
         .watch-layout {
             padding-top: var(--header-h);
+            height: 100vh;
             height: 100dvh;
             display: grid;
             grid-template-columns: 1fr 360px;
@@ -455,6 +456,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             flex-direction: column;
             background: #0a0a0f;
             border-left: 1px solid var(--border);
+            height: calc(100vh - var(--header-h));
             height: calc(100dvh - var(--header-h));
             overflow: hidden;
             position: sticky;
