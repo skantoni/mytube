@@ -182,9 +182,10 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         }
         @media (max-width: 900px) {
             .watch-layout {
+                /* Mantém height:100dvh da regra base — apenas muda para flexbox */
                 display: flex;
                 flex-direction: column;
-                height: 100%;
+                overflow: hidden;
             }
         }
 
@@ -468,16 +469,20 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 border-left: none;
                 border-top: 1px solid var(--border);
                 position: static;
-                height: auto;
+                /* Ocupa todo o espaço restante abaixo do vídeo */
                 flex: 1;
+                height: auto;
                 min-height: 0;
+                overflow: hidden;
             }
             .chat-input-area {
+                /* Input em flow normal — sem position fixed */
                 position: static;
+                flex-shrink: 0;
                 padding-bottom: max(12px, env(safe-area-inset-bottom));
             }
             .chat-messages {
-                padding-bottom: 12px;
+                padding-bottom: 8px;
             }
         }
         .chat-header {
