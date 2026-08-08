@@ -336,13 +336,16 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             display: flex; align-items: center; gap: 5px;
         }
         .player-mic-muted {
-            background: rgba(255, 45, 85, 0.85);
-            -webkit-backdrop-filter: blur(8px);
-            backdrop-filter: blur(8px);
-            color: #fff;
-            font-size: 12px; font-weight: 600;
-            padding: 4px 10px; border-radius: 20px;
-            display: none; align-items: center; gap: 5px;
+            position: absolute;
+            bottom: 16px; left: 16px;
+            background: rgba(0, 0, 0, 0.4);
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+            width: 32px; height: 32px; border-radius: 50%;
+            display: none; align-items: center; justify-content: center;
+            z-index: 10;
         }
         .buffer-spinner {
             position: absolute;
@@ -680,13 +683,14 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         /* Mic muted */
         .fs-mic-muted {
             position: absolute;
-            top: 70px; left: 16px;
-            background: rgba(0,0,0,0.6);
-            border-radius: 20px;
-            padding: 5px 12px;
-            font-size: 13px; font-weight: 600;
-            color: #ff2d55;
-            display: none; align-items: center; gap: 6px;
+            bottom: 80px; left: 16px;
+            background: rgba(0,0,0,0.4);
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+            width: 32px; height: 32px; border-radius: 50%;
+            font-size: 14px; color: rgba(255,255,255,0.8);
+            display: none; align-items: center; justify-content: center;
+            z-index: 100;
         }
         .fs-mic-muted.visible { display: flex; }
         /* Chat overlay TikTok-style */
@@ -872,9 +876,9 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                             <i class="fas fa-eye" style="color:var(--live-red);font-size:10px;"></i>
                             <span id="viewerCountOverlay"><?php echo (int)$stream['viewers_count']; ?></span>
                         </div>
-                        <div class="player-mic-muted" id="playerMicMuted">
-                            <i class="fas fa-microphone-slash"></i> Áudio desligado
-                        </div>
+                    </div>
+                    <div class="player-mic-muted" id="playerMicMuted">
+                        <i class="fas fa-microphone-slash"></i>
                     </div>
                     <div class="buffer-spinner" id="bufferSpinner">
                         <div class="spinner"></div>
@@ -928,7 +932,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
 
                         <!-- Mic muted indicator -->
                         <div class="fs-mic-muted" id="fsMicMuted">
-                            <i class="fas fa-microphone-slash"></i> Áudio desligado
+                            <i class="fas fa-microphone-slash"></i>
                         </div>
 
                         <!-- Botões laterais -->
