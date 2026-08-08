@@ -182,8 +182,9 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         }
         @media (max-width: 900px) {
             .watch-layout {
-                grid-template-columns: 1fr;
-                grid-template-rows: auto 1fr;
+                display: flex;
+                flex-direction: column;
+                height: 100%;
             }
         }
 
@@ -467,20 +468,16 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 border-left: none;
                 border-top: 1px solid var(--border);
                 position: static;
-                height: 100%;
+                height: auto;
+                flex: 1;
+                min-height: 0;
             }
             .chat-input-area {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: #0a0a0f;
-                z-index: 100;
+                position: static;
                 padding-bottom: max(12px, env(safe-area-inset-bottom));
-                border-top: 1px solid var(--border);
             }
             .chat-messages {
-                padding-bottom: 5rem; /* ~80px adaptável ao tamanho de fonte do dispositivo */
+                padding-bottom: 12px;
             }
         }
         .chat-header {
@@ -1400,21 +1397,6 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     document.addEventListener('DOMContentLoaded', () => {
         const chat = document.getElementById('chatMessages');
         if (chat) chat.scrollTop = chat.scrollHeight;
-
-        // Ajustar padding-bottom do chat dinamicamente ao tamanho real do input fixo
-        // Funciona em qualquer dispositivo sem adivinhar valores
-        const inputArea = document.querySelector('.chat-input-area');
-        function adjustChatPadding() {
-            if (!inputArea || !chat) return;
-            if (window.innerWidth <= 900) {
-                const h = inputArea.getBoundingClientRect().height;
-                chat.style.paddingBottom = (h + 8) + 'px';
-            } else {
-                chat.style.paddingBottom = '';
-            }
-        }
-        adjustChatPadding();
-        window.addEventListener('resize', adjustChatPadding);
     });
     </script>
 </body>
