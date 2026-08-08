@@ -1271,6 +1271,9 @@ try {
                                         <a href="index.php?video_id=<?php echo $vid['id']; ?>" target="_blank" class="ap-btn ap-btn-outline" style="padding:4px 10px; font-size:0.8rem" title="Ver vídeo">
                                             <i class="fas fa-external-link-alt"></i> Ver
                                         </a>
+                                        <button class="ap-btn ap-btn-outline js-report-details" data-id="<?php echo $vid['id']; ?>" style="padding:4px 10px; font-size:0.8rem; border-color:var(--primary); color:var(--primary);" title="Ler denúncias">
+                                            <i class="fas fa-file-alt"></i> Texto
+                                        </button>
                                         <button class="ap-btn ap-btn-approve js-report-action" data-action="resolve" data-id="<?php echo $vid['id']; ?>" style="padding:4px 10px; font-size:0.8rem" title="Marcar como resolvido">
                                             <i class="fas fa-check"></i> Resolvido
                                         </button>
@@ -1390,6 +1393,69 @@ document.getElementById('adsTable')?.addEventListener('click', async function(e)
 
 // ── Report Management ─────────────────────────────────────────────
 document.getElementById('section-reports')?.addEventListener('click', async function(e) {
+    const detailsBtn = e.target.closest('.js-report-details');
+    if (detailsBtn) {
+        const id = detailsBtn.dataset.id;
+        detailsBtn.disabled = true;
+        try {
+            const body = new URLSearchParams({
+                csrf_token: document.querySelector('meta[name="csrf-token"]').content,
+                action: 'get_details',
+                video_id: id
+            });
+            const res = await fetch('api/admin_reports.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body
+            });
+            const data = await res.json();
+            detailsBtn.disabled = false;
+            
+            if (data.success) {
+                const drawer = document.getElementById('usrDrawer');
+                const overlay = document.getElementById('usrDrawerOverlay');
+                const header = document.getElementById('usrDrawerHeader');
+                const bodyDiv = document.getElementById('usrDrawerBody');
+                
+                header.innerHTML = `<h3><i class="fas fa-flag"></i> Denúncias do Vídeo #${id}</h3>`;
+                
+                if (data.reports.length === 0) {
+                    bodyDiv.innerHTML = '<p style="padding:20px; color:var(--text-dim);">Não há texto de denúncia para exibir.</p>';
+                } else {
+                    let html = '<div style="padding:20px; display:flex; flex-direction:column; gap:16px;">';
+                    data.reports.forEach(r => {
+                        const dateObj = new Date(r.created_at);
+                        const dateStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('pt-BR') : r.created_at;
+                        html += `
+                        <div style="background:var(--bg-lighter); padding:16px; border-radius:12px; border:1px solid var(--border);">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                                <strong style="color:var(--text);">@${r.username || 'Anónimo'}</strong>
+                                <span style="font-size:0.8rem; color:var(--text-dim);">${dateStr}</span>
+                            </div>
+                            <div style="margin-bottom:12px;">
+                                <span class="ap-badge ap-badge-orange">${r.reason}</span>
+                            </div>
+                            <div style="color:var(--text); line-height:1.5; font-size:0.95rem; white-space:pre-wrap;">
+                                ${r.details ? r.details.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : '<em style="color:var(--text-dim);">Sem descrição detalhada.</em>'}
+                            </div>
+                        </div>`;
+                    });
+                    html += '</div>';
+                    bodyDiv.innerHTML = html;
+                }
+                
+                drawer.classList.add('open');
+                overlay.classList.add('open');
+            } else {
+                adToast('❌ ' + (data.error || 'Erro'), false);
+            }
+        } catch (err) {
+            adToast('❌ Erro de rede', false);
+            detailsBtn.disabled = false;
+        }
+        return;
+    }
+
     const btn = e.target.closest('.js-report-action');
     if (!btn) return;
     const action = btn.dataset.action;

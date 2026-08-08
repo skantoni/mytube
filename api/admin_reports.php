@@ -61,6 +61,21 @@ try {
         exit;
     }
 
+    if ($action === 'get_details') {
+        $stmt = $pdo->prepare("
+            SELECT r.reason, r.details, r.created_at, u.username
+            FROM video_reports r
+            LEFT JOIN users u ON r.reporter_id = u.id
+            WHERE r.video_id = ?
+            ORDER BY r.created_at DESC
+        ");
+        $stmt->execute([$video_id]);
+        $reports = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode(['success' => true, 'reports' => $reports]);
+        exit;
+    }
+
     if ($action === 'hide') {
         $stmt = $pdo->prepare("UPDATE videos SET is_hidden = 1 WHERE id = ?");
         $stmt->execute([$video_id]);
