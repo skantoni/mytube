@@ -1417,7 +1417,24 @@ document.getElementById('section-reports')?.addEventListener('click', async func
                 const header = document.getElementById('usrDrawerHeader');
                 const bodyDiv = document.getElementById('usrDrawerBody');
                 
-                header.innerHTML = `<h3><i class="fas fa-flag"></i> Denúncias do Vídeo #${id}</h3>`;
+                header.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <h3 style="margin:0;"><i class="fas fa-flag"></i> Denúncias do Vídeo #${id}</h3>
+                    </div>
+                    <button class="usr-drawer-close" id="usrDrawerCloseBtn" style="background:none; border:none; color:var(--text-dim); font-size:1.5rem; cursor:pointer; padding:4px;"><i class="fas fa-xmark"></i></button>
+                `;
+                
+                document.getElementById('usrDrawerCloseBtn').addEventListener('click', function() {
+                    drawer.classList.remove('open');
+                    overlay.classList.remove('open');
+                });
+                
+                overlay.addEventListener('click', function(e) {
+                    if (e.target === overlay) {
+                        drawer.classList.remove('open');
+                        overlay.classList.remove('open');
+                    }
+                });
                 
                 if (data.reports.length === 0) {
                     bodyDiv.innerHTML = '<p style="padding:20px; color:var(--text-dim);">Não há texto de denúncia para exibir.</p>';
