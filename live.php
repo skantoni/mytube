@@ -416,9 +416,9 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         <div class="live-header-title">
             <h1>Ao Vivo</h1>
             <?php if (count($live_streams) > 0): ?>
-            <div class="live-count-pill">
+            <div class="live-count-pill" id="livePill">
                 <div class="live-dot-pulse"></div>
-                <?php echo count($live_streams); ?> ao vivo
+                <span id="livePillCount"><?php echo count($live_streams); ?> ao vivo</span>
             </div>
             <?php endif; ?>
         </div>
@@ -637,15 +637,18 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         
         // Header pill
         const headerTitle = document.querySelector('.live-header-title');
-        let pill = headerTitle.querySelector('.live-count-pill');
+        if (!headerTitle) return;
+        let pill = document.getElementById('livePill');
         if (count > 0) {
             if (!pill) {
                 pill = document.createElement('div');
+                pill.id = 'livePill';
                 pill.className = 'live-count-pill';
-                pill.innerHTML = '<div class="live-dot-pulse"></div> <span></span>';
+                pill.innerHTML = '<div class="live-dot-pulse"></div> <span id="livePillCount"></span>';
                 headerTitle.appendChild(pill);
             }
-            pill.querySelector('span').textContent = count + ' ao vivo';
+            const pillSpan = document.getElementById('livePillCount');
+            if (pillSpan) pillSpan.textContent = count + ' ao vivo';
         } else if (pill) {
             pill.remove();
             checkEmptyState();
