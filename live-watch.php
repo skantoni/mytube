@@ -1129,6 +1129,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
 
     let socket = null, livekitRoom = null;
     let isFollowing = <?php echo json_encode($is_following); ?>;
+    let streamEnded = false; // flag: stream terminada intencionalmente (sem grace period)
 
     if (IS_LIVE) initViewer();
 
@@ -1238,8 +1239,12 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             });
 
             livekitRoom.on(LivekitClient.RoomEvent.ParticipantDisconnected, () => {
-                // O streamer perdeu a ligação de vídeo/áudio
                 if (livekitRoom.remoteParticipants.size === 0) {
+                    if (streamEnded) {
+                        // Termino voluntario — nao mostrar banner de reconexão
+                        showStreamOffline('O streamer terminou a live.');
+                        return;
+                    }
                     showToast('O emissor perdeu a ligação de vídeo. A aguardar...', 'warning');
                     const banner = document.getElementById('reconnectingBanner');
                     if (banner) banner.style.display = 'flex';
@@ -1267,6 +1272,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             socket.on('live_chat_message', (msg) => { addChatMessage(msg); });
             socket.on('system_message', ({ message }) => { addSystemMessage(message); });
             socket.on('stream_ended', ({ message }) => {
+                streamEnded = true; // Marcar antes de qualquer outra coisa
                 showStreamOffline(message);
                 if (livekitRoom) livekitRoom.disconnect();
                 if (socket) socket.disconnect();
