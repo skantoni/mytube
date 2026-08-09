@@ -174,8 +174,44 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         }
         .camera-box video {
             width: 100%; height: 100%;
-            object-fit: cover;
+            object-fit: contain;
+            background: #000;
             display: none;
+        }
+        .cam-controls {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+        .btn-flip-cam {
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.18);
+            color: #fff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.2s, transform 0.2s;
+            outline: none;
+        }
+        .btn-flip-cam:hover {
+            background: rgba(255,255,255,0.18);
+            transform: scale(1.1);
+        }
+        .btn-flip-cam.spinning i {
+            animation: spinOnce 0.35s ease;
+        }
+        @keyframes spinOnce {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(180deg); }
         }
         .camera-placeholder {
             position: absolute;
@@ -628,6 +664,12 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                         Ativar câmera
                     </button>
                 </div>
+                <!-- Controles sobrepostos (visíveis só com câmera ativa) -->
+                <div class="cam-controls" id="camControls" style="display:none">
+                    <button class="btn-flip-cam" id="btnFlipCam" title="Trocar câmera" onclick="flipCamera()">
+                        <i class="fas fa-camera-rotate"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Título -->
@@ -794,21 +836,67 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         }
     });
 
+    // Estado da câmera ativa
+    let currentFacingMode = 'user'; // 'user' = frontal, 'environment' = traseira
+
     // Ativar câmera
     async function activateCamera() {
         try {
             mediaStream = await navigator.mediaDevices.getUserMedia({
-                video: { width: 1280, height: 720, facingMode: 'user' },
+                video: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    facingMode: currentFacingMode
+                },
                 audio: true
             });
             const video = document.getElementById('previewVideo');
             video.srcObject = mediaStream;
             video.style.display = 'block';
             document.getElementById('cameraPlaceholder').style.display = 'none';
+            document.getElementById('camControls').style.display = 'flex';
             cameraActivated = true;
             toast('Câmera ativada! Podes ir ao vivo.', 'success');
         } catch (err) {
             toast('Não foi possível aceder à câmera: ' + err.message, 'error');
+        }
+    }
+
+    // Trocar entre câmera frontal e traseira
+    async function flipCamera() {
+        if (!cameraActivated) return;
+        const btn = document.getElementById('btnFlipCam');
+        btn.classList.add('spinning');
+        setTimeout(() => btn.classList.remove('spinning'), 400);
+
+        // Parar só as tracks de vídeo (manter audio)
+        mediaStream.getVideoTracks().forEach(t => t.stop());
+
+        currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+
+        try {
+            const newVideoStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    facingMode: currentFacingMode
+                }
+            });
+            const newVideoTrack = newVideoStream.getVideoTracks()[0];
+
+            // Substituir track no mediaStream existente
+            const sender = mediaStream.getVideoTracks();
+            mediaStream.removeTrack(sender[0] || mediaStream.getVideoTracks()[0]);
+            mediaStream.addTrack(newVideoTrack);
+
+            // Atualizar preview
+            const video = document.getElementById('previewVideo');
+            video.srcObject = null;
+            video.srcObject = mediaStream;
+        } catch (err) {
+            toast('Não foi possível trocar de câmera: ' + err.message, 'error');
+            // Reverter estado
+            currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
         }
     }
 
