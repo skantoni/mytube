@@ -1295,7 +1295,10 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 // Não escondemos o banner aqui. O banner só será escondido
                 // quando o LiveKit disparar o evento TrackSubscribed (vídeo/áudio real).
             });
-            socket.on('disconnect', () => { showToast('Ligação ao chat perdida', 'error'); });
+            socket.on('disconnect', () => {
+                // Só mostrar erro se a stream ainda estava ativa (desconexão inesperada)
+                if (!streamEnded) showToast('Ligação ao chat perdida', 'error');
+            });
 
             setTimeout(() => { if (spinner) spinner.style.display = 'none'; }, 8000);
 

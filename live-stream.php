@@ -1019,14 +1019,21 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         intentionalDisconnect = true; // Marcar como desconexão voluntaria — sem reconectar
         document.getElementById('endStreamModal').style.display = 'none';
 
-        // 1. Desligar do LiveKit (para de enviar vídeo/áudio)
+        // 1. Notificar o chat-server PRIMEIRO (antes de cortar o vídeo)
+        //    Assim os viewers recebem 'stream_ended' antes de o LiveKit desligar,
+        //    evitando o falso aviso de 'perda de ligação'.
+        if (socket) {
+            socket.emit('end_stream');
+            // Dar 300ms para o evento chegar a todos os viewers antes de cortar tudo
+            await new Promise(r => setTimeout(r, 300));
+            socket.disconnect();
+        }
+
+        // 2. Agora sim desligar o LiveKit (corta o vídeo/áudio)
         if (livekitRoom) {
             await livekitRoom.disconnect();
             livekitRoom = null;
         }
-
-        // 2. Notificar o chat-server e desligar
-        if (socket) { socket.emit('end_stream'); socket.disconnect(); }
 
         // 3. Parar câmara local
         if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
