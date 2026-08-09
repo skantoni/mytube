@@ -474,7 +474,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 </div>
             <?php else: ?>
                 <?php foreach ($live_streams as $s): ?>
-                <a href="live-watch.php?id=<?php echo $s['id']; ?>" class="stream-card">
+                <a href="live-watch.php?id=<?php echo $s['id']; ?>" class="stream-card" id="stream-card-<?php echo $s['id']; ?>">
                     <div class="stream-thumbnail">
                         <?php if ($s['thumbnail_path']): ?>
                             <img src="<?php echo htmlspecialchars($s['thumbnail_path']); ?>" alt="<?php echo htmlspecialchars($s['title']); ?>">
@@ -574,7 +574,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 <div class="stream-info">
                     <div class="stream-title">${escapeHtml(stream.title)}</div>
                     <div class="stream-streamer">
-                        <img src="${escapeHtml(stream.streamer.profile_picture || 'assets/images/avatars/default.webp')}" alt="${escapeHtml(stream.streamer.username)}">
+                        <img src="${resolveAvatarUrl(stream.streamer.profile_picture)}" alt="${escapeHtml(stream.streamer.username)}">
                         <span class="stream-streamer-name">${escapeHtml(stream.streamer.username)}${verifiedHtml}</span>
                         ${categoryHtml}
                     </div>
@@ -591,9 +591,15 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         socket.on('feed_stream_ended', ({ streamId }) => {
             const card = document.getElementById(`stream-card-${streamId}`);
             if (card) {
-                card.remove();
-                updateCount();
-                checkLoadMore();
+                card.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    card.remove();
+                    updateCount();
+                    checkLoadMore();
+                    checkEmptyState();
+                }, 400);
             }
         });
 
@@ -679,6 +685,16 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         if (!s) return '';
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
+
+    function resolveAvatarUrl(pic) {
+        if (!pic) return 'assets/images/avatars/default.webp';
+        // Se já for URL absoluta (http/https/R2), usar diretamente
+        if (pic.startsWith('http://') || pic.startsWith('https://')) return escapeHtml(pic);
+        // Se vier só o nome do ficheiro (sem barras), replicar lógica do PHP avatar_url()
+        if (!pic.includes('/')) return 'assets/images/avatars/' + escapeHtml(pic);
+        // Path relativo com prefixo (ex: "uploads/avatars/..." ou "assets/...")
+        return escapeHtml(pic);
+    }
     
     function formatNumber(num) {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
@@ -712,16 +728,17 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
 
     // Inicializar o JS
     document.addEventListener('DOMContentLoaded', () => {
-        // Tag inicial dos ids para updates de view
+        // Tag inicial dos ids para updates de view (o id já vem do PHP, mas garantimos o vc-span)
         const cards = document.querySelectorAll('.stream-card');
         cards.forEach(c => {
             const href = c.getAttribute('href');
             const match = href.match(/id=(\d+)/);
             if (match) {
                 const id = match[1];
-                c.id = `stream-card-${id}`;
+                // Garantir id no card caso não venha do PHP (fallback)
+                if (!c.id) c.id = `stream-card-${id}`;
                 const viewBadge = c.querySelector('.viewers-badge');
-                if (viewBadge) {
+                if (viewBadge && !viewBadge.querySelector('span[id]')) {
                     const txt = viewBadge.textContent.trim();
                     viewBadge.innerHTML = `<i class="fas fa-eye" style="color:#3b82f6;font-size:10px;"></i> <span id="vc-${id}">${txt}</span>`;
                 }
