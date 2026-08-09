@@ -765,10 +765,15 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     const LIVE_JWT        = <?php echo json_encode($live_jwt); ?>;
 
     let socket = null, livekitRoom = null, mediaStream = null;
-    let streamId = null;
-    let timerInterval = null, streamSeconds = 0, msgCount = 0;
-    let isMicMuted = false, isCamOff = false, cameraActivated = false;
     let localVideoTrack = null, localAudioTrack = null;
+    let isMicMuted = false, isCamOff = false;
+    let timerInterval = null, streamSeconds = 0;
+    let livekitStreamId = null; // stream ID para reconexão
+    let intentionalDisconnect = false; // flag para não reconectar quando o streamer termina de forma voluntaria
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 24; // 24 x 5s = 2 minutos
+    let msgCount = 0;
+    let cameraActivated = false;
 
     // Custom Dropdown Logic
     function toggleDropdown() {
@@ -860,10 +865,26 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 dynacast: true,
             });
 
-            livekitRoom.on(LivekitClient.RoomEvent.Disconnected, () => {
-                toast('LiveKit desligado', 'error');
+            livekitRoom.on(LivekitClient.RoomEvent.Reconnecting, () => {
+                toast('A reconectar…', 'warning');
             });
 
+            livekitRoom.on(LivekitClient.RoomEvent.Reconnected, () => {
+                toast('Ligação LiveKit restaurada! 🔴', 'success');
+                reconnectAttempts = 0;
+                // Re-emitir go_live para cancelar o grace period no servidor de chat
+                if (socket?.connected && livekitStreamId) {
+                    socket.emit('go_live', { streamId: livekitStreamId });
+                }
+            });
+
+            livekitRoom.on(LivekitClient.RoomEvent.Disconnected, (reason) => {
+                if (intentionalDisconnect) return;
+                toast('Ligação de vídeo perdida. A tentar reconectar…', 'error');
+                tryReconnectLivekit();
+            });
+
+            livekitStreamId = STREAM_ID; // guardar para reconexão
             await livekitRoom.connect(tkData.livekit_url, tkData.token);
 
             // Publicar vídeo e áudio a partir do stream já capturado
@@ -939,11 +960,62 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         btn.classList.toggle('muted', isCamOff);
     }
 
+    async function tryReconnectLivekit() {
+        if (intentionalDisconnect || reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                toast('Não foi possível reconectar após 2 minutos.', 'error');
+            }
+            return;
+        }
+        reconnectAttempts++;
+        setTimeout(async () => {
+            if (intentionalDisconnect) return;
+            try {
+                toast(`A tentar reconectar (#${reconnectAttempts})…`, 'warning');
+                // Obter novo token (o anterior pode ter expirado)
+                const tkRes = await fetch('api/livekit_token.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+                    body: JSON.stringify({ stream_id: STREAM_ID, role: 'publisher' })
+                });
+                const tkData = await tkRes.json();
+                if (!tkData.success) throw new Error(tkData.error);
+
+                await livekitRoom.connect(tkData.livekit_url, tkData.token);
+
+                // Re-publicar tracks
+                const tracks = await LivekitClient.createLocalTracks({ audio: true, video: { width: 1280, height: 720 } });
+                for (const track of tracks) {
+                    await livekitRoom.localParticipant.publishTrack(track);
+                    if (track.kind === LivekitClient.Track.Kind.Video) {
+                        localVideoTrack = track;
+                        track.attach(document.getElementById('liveVideo'));
+                    }
+                    if (track.kind === LivekitClient.Track.Kind.Audio) localAudioTrack = track;
+                }
+
+                // Re-aplicar estado de mic/cam
+                if (isMicMuted && localAudioTrack) localAudioTrack.mute();
+                if (isCamOff && localVideoTrack) localVideoTrack.mute();
+
+                // Avisar servidor de chat que voltamos
+                if (socket?.connected) socket.emit('go_live', { streamId: STREAM_ID });
+
+                reconnectAttempts = 0;
+                toast('Ligação restaurada! 🔴', 'success');
+            } catch (err) {
+                console.error('Reconexão LiveKit falhou:', err);
+                tryReconnectLivekit(); // tentar outra vez
+            }
+        }, 5000);
+    }
+
     function endStream() {
         document.getElementById('endStreamModal').style.display = 'flex';
     }
 
     async function executeEndStream() {
+        intentionalDisconnect = true; // Marcar como desconexão voluntaria — sem reconectar
         document.getElementById('endStreamModal').style.display = 'none';
 
         // 1. Desligar do LiveKit (para de enviar vídeo/áudio)
