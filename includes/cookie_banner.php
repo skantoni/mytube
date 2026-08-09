@@ -1,5 +1,8 @@
 <?php
 // includes/cookie_banner.php
+if (isset($_COOKIE['mytube_cookies_accepted']) && $_COOKIE['mytube_cookies_accepted'] === 'true') {
+    return; // Se já aceitou os cookies, nem renderiza o HTML do banner
+}
 ?>
 <style>
     #cookie-banner {
@@ -68,14 +71,28 @@
 
 <script>
     function acceptCookies() {
+        // Define localStorage por garantia
         localStorage.setItem('mytube_cookies_accepted', 'true');
-        document.getElementById('cookie-banner').classList.remove('show');
+        
+        // Define um cookie válido por 1 ano para o servidor também ler
+        let d = new Date();
+        d.setTime(d.getTime() + (365 * 24 * 60 * 60 * 1000));
+        document.cookie = "mytube_cookies_accepted=true; expires=" + d.toUTCString() + "; path=/";
+        
+        let banner = document.getElementById('cookie-banner');
+        if(banner) {
+            banner.classList.remove('show');
+            setTimeout(() => banner.remove(), 300); // Remove do DOM após animação
+        }
     }
 
     document.addEventListener("DOMContentLoaded", function() {
-        if (!localStorage.getItem('mytube_cookies_accepted')) {
+        // Verifica se o cookie ou localStorage existe
+        let hasCookie = document.cookie.split('; ').find(row => row.startsWith('mytube_cookies_accepted='));
+        if (!hasCookie && !localStorage.getItem('mytube_cookies_accepted')) {
             setTimeout(function() {
-                document.getElementById('cookie-banner').classList.add('show');
+                let banner = document.getElementById('cookie-banner');
+                if(banner) banner.classList.add('show');
             }, 1000); // Mostra 1 segundo após carregar
         }
     });

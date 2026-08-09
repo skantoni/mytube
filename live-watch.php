@@ -1214,13 +1214,19 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             });
 
             livekitRoom.on(LivekitClient.RoomEvent.Disconnected, () => {
-                showStreamOffline('Ligação terminada.');
+                // O LiveKit tenta reconectar sozinho. Se falhar mesmo,
+                // o socket.io vai tratar de avisar se a stream acabar.
+                console.log('LiveKit: Ligação perdida.');
             });
 
             livekitRoom.on(LivekitClient.RoomEvent.ParticipantDisconnected, () => {
-                // Se o streamer saiu, mostrar offline
+                // O streamer perdeu a ligação de vídeo/áudio
                 if (livekitRoom.remoteParticipants.size === 0) {
-                    showStreamOffline('O streamer terminou a live.');
+                    showToast('O emissor perdeu a ligação de vídeo. A aguardar...', 'warning');
+                    const banner = document.getElementById('reconnectingBanner');
+                    if (banner) banner.style.display = 'flex';
+                    const fsBanner = document.getElementById('fsReconnectingBanner');
+                    if (fsBanner) fsBanner.style.display = 'flex';
                 }
             });
 
