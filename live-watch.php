@@ -1154,6 +1154,13 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
 
             livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
                 if (spinner) spinner.style.display = 'none';
+                
+                // O streamer voltou a enviar media, esconder aviso de reconexão
+                const banner = document.getElementById('reconnectingBanner');
+                if (banner) banner.style.display = 'none';
+                const fsBanner = document.getElementById('fsReconnectingBanner');
+                if (fsBanner) fsBanner.style.display = 'none';
+
                 const video = document.getElementById('livePlayer');
                 if (track.kind === LivekitClient.Track.Kind.Video ||
                     track.kind === LivekitClient.Track.Kind.Audio) {
@@ -1217,6 +1224,14 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 // O LiveKit tenta reconectar sozinho. Se falhar mesmo,
                 // o socket.io vai tratar de avisar se a stream acabar.
                 console.log('LiveKit: Ligação perdida.');
+            });
+
+            livekitRoom.on(LivekitClient.RoomEvent.ParticipantConnected, () => {
+                // O streamer voltou a conectar ao LiveKit
+                const banner = document.getElementById('reconnectingBanner');
+                if (banner) banner.style.display = 'none';
+                const fsBanner = document.getElementById('fsReconnectingBanner');
+                if (fsBanner) fsBanner.style.display = 'none';
             });
 
             livekitRoom.on(LivekitClient.RoomEvent.ParticipantDisconnected, () => {
