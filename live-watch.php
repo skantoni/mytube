@@ -368,9 +368,14 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             gap: 12px; padding: 40px;
             background: radial-gradient(circle at center, #1a0a1e 0%, #0a0a0f 100%);
         }
-        .offline-screen i { font-size: 48px; color: rgba(255,255,255,0.2); }
+        .offline-screen > i.fa-satellite-dish { font-size: 48px; color: rgba(255,255,255,0.2); }
         .offline-screen h2 { font-size: 22px; font-weight: 700; }
         .offline-screen p { color: var(--text-muted); text-align: center; }
+        .offline-screen a { 
+            color: #4facfe; text-decoration: none; font-weight: 600; margin-top: 8px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .offline-screen a i { font-size: 16px; color: #4facfe; }
 
         .camera-off-overlay {
             position: absolute;
@@ -1310,7 +1315,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 <i class="fas fa-satellite-dish"></i>
                 <h2>Stream terminada</h2>
                 <p>${message || 'Esta stream chegou ao fim.'}</p>
-                <a href="live.php" style="color:#4facfe;text-decoration:none;font-weight:600;margin-top:8px;">
+                <a href="live.php">
                     <i class="fas fa-arrow-left"></i> Ver outras streams
                 </a>
             </div>`;
