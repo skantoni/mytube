@@ -349,7 +349,8 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         }
         .live-video {
             width: 100%; height: 100%;
-            object-fit: cover;
+            object-fit: contain;
+            background: #000;
         }
 
         /* Overlay info on video */

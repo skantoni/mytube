@@ -310,7 +310,8 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         .btn-heart-fs:active { transform: scale(0.85); }
         #livePlayer {
             width: 100%; height: 100%;
-            object-fit: cover;
+            object-fit: contain;
+            background: #000;
             display: block;
         }
         .player-overlay-top {
