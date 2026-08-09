@@ -765,6 +765,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
     const LIVE_JWT        = <?php echo json_encode($live_jwt); ?>;
 
     let socket = null, livekitRoom = null, mediaStream = null;
+    let streamId = null;
     let localVideoTrack = null, localAudioTrack = null;
     let isMicMuted = false, isCamOff = false;
     let timerInterval = null, streamSeconds = 0;
@@ -884,7 +885,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 tryReconnectLivekit();
             });
 
-            livekitStreamId = STREAM_ID; // guardar para reconexão
+            livekitStreamId = streamId; // guardar para reconexão
             await livekitRoom.connect(tkData.livekit_url, tkData.token);
 
             // Publicar vídeo e áudio a partir do stream já capturado
@@ -976,7 +977,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 const tkRes = await fetch('api/livekit_token.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
-                    body: JSON.stringify({ stream_id: STREAM_ID, role: 'publisher' })
+                    body: JSON.stringify({ stream_id: streamId, role: 'publisher' })
                 });
                 const tkData = await tkRes.json();
                 if (!tkData.success) throw new Error(tkData.error);
@@ -999,7 +1000,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 if (isCamOff && localVideoTrack) localVideoTrack.mute();
 
                 // Avisar servidor de chat que voltamos
-                if (socket?.connected) socket.emit('go_live', { streamId: STREAM_ID });
+                if (socket?.connected) socket.emit('go_live', { streamId: streamId });
 
                 reconnectAttempts = 0;
                 toast('Ligação restaurada! 🔴', 'success');
