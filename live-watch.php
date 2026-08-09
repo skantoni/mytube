@@ -1220,6 +1220,11 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 }
             });
 
+            livekitRoom.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
+                const video = document.getElementById('livePlayer');
+                if (track) track.detach(video);
+            });
+
             livekitRoom.on(LivekitClient.RoomEvent.Disconnected, () => {
                 // O LiveKit tenta reconectar sozinho. Se falhar mesmo,
                 // o socket.io vai tratar de avisar se a stream acabar.
@@ -1227,11 +1232,9 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             });
 
             livekitRoom.on(LivekitClient.RoomEvent.ParticipantConnected, () => {
-                // O streamer voltou a conectar ao LiveKit
-                const banner = document.getElementById('reconnectingBanner');
-                if (banner) banner.style.display = 'none';
-                const fsBanner = document.getElementById('fsReconnectingBanner');
-                if (fsBanner) fsBanner.style.display = 'none';
+                // O streamer ligou-se ao LiveKit, mas ainda vamos esperar pelo TrackSubscribed
+                // para esconder o banner (para não mostrar um ecrã preto).
+                console.log('LiveKit: Streamer connected');
             });
 
             livekitRoom.on(LivekitClient.RoomEvent.ParticipantDisconnected, () => {
@@ -1277,11 +1280,9 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 if (fsBanner) fsBanner.style.display = 'flex';
             });
             socket.on('stream_reconnected', () => {
-                showToast('O emissor reconectou-se! 🔴', 'success');
-                const banner = document.getElementById('reconnectingBanner');
-                if (banner) banner.style.display = 'none';
-                const fsBanner = document.getElementById('fsReconnectingBanner');
-                if (fsBanner) fsBanner.style.display = 'none';
+                showToast('O emissor regressou ao chat! A carregar vídeo...', 'success');
+                // Não escondemos o banner aqui. O banner só será escondido
+                // quando o LiveKit disparar o evento TrackSubscribed (vídeo/áudio real).
             });
             socket.on('disconnect', () => { showToast('Ligação ao chat perdida', 'error'); });
 
