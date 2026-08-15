@@ -722,10 +722,12 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             max-height: 45%;
             display: flex;
             flex-direction: column;
+            justify-content: flex-end;
             gap: 0;
             padding: 0 12px 8px;
             overflow: hidden;
             pointer-events: none;
+            z-index: 10;
         }
         .fs-chat-msg {
             display: flex;
@@ -1423,6 +1425,13 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         }
     }
 
+    function buildAvatarUrl(pic) {
+        if (!pic) return 'assets/images/avatars/default.webp';
+        if (pic.startsWith('http://') || pic.startsWith('https://')) return pic;
+        if (pic.startsWith('assets/') || pic.startsWith('uploads/')) return pic;
+        return 'assets/images/avatars/' + pic;
+    }
+
     function addChatMessage(msg) {
         const c = document.getElementById('chatMessages');
         const emptyMsg = document.getElementById('chatEmptyState');
@@ -1431,12 +1440,6 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
         const isMine = msg.username === CURRENT_USERNAME;
         const div = document.createElement('div');
         div.className = 'chat-msg' + (isMine ? ' msg-mine' : '');
-        function buildAvatarUrl(pic) {
-            if (!pic) return 'assets/images/avatars/default.webp';
-            if (pic.startsWith('http://') || pic.startsWith('https://')) return pic;
-            if (pic.startsWith('assets/') || pic.startsWith('uploads/')) return pic;
-            return 'assets/images/avatars/' + pic;
-        }
         const avatarUrl = buildAvatarUrl(msg.profilePicture);
         div.innerHTML = `
             <img src="${esc(avatarUrl)}" class="chat-msg-avatar" alt="">
