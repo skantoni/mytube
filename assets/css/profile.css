@@ -539,6 +539,35 @@
     font-weight: 600;
 }
 
+/* === Vídeo em revisão (status pending) === */
+.video-pending-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+.video-pending-overlay i {
+    font-size: 1.5rem;
+    color: #f59e0b;
+    animation: pulse-clock 2s ease-in-out infinite;
+}
+
+@keyframes pulse-clock {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.6; transform: scale(0.92); }
+}
+
 .video-info {
     padding: 16px;
 }
