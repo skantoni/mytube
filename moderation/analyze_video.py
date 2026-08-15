@@ -21,13 +21,21 @@ import tempfile
 import shutil
 
 
-# Classes NSFW que devem causar rejeição do vídeo
+# Classes NSFW que devem causar rejeição do vídeo (Suporta NudeNet v2 e v3)
 NSFW_CLASSES = {
+    # NudeNet v2
     'EXPOSED_BREAST_F',
     'EXPOSED_GENITALIA_F',
     'EXPOSED_GENITALIA_M',
     'EXPOSED_ANUS',
     'EXPOSED_BUTTOCKS',
+    
+    # NudeNet v3
+    'FEMALE_BREAST_EXPOSED',
+    'FEMALE_GENITALIA_EXPOSED',
+    'MALE_GENITALIA_EXPOSED',
+    'ANUS_EXPOSED',
+    'BUTTOCKS_EXPOSED',
 }
 
 # Score mínimo para considerar uma deteção como positiva
