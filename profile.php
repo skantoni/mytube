@@ -352,7 +352,7 @@ if (!$user) {
     redirect('login.php');
 }
 
-// Buscar vídeos do usuário — exclui vídeos ainda em processamento pelo FFmpeg
+// Buscar vídeos do usuário — inclui aprovados, em processamento e em revisão
 $videos_page_limit = 18;
 $videos_stmt = $pdo->prepare("
     SELECT
@@ -363,10 +363,11 @@ $videos_stmt = $pdo->prepare("
         v.views_count,
         v.likes_count,
         v.comments_count,
-        v.created_at
+        v.created_at,
+        v.moderation_status
     FROM videos v
     WHERE v.user_id = ? AND v.is_public = 1 AND v.is_hidden = 0
-          AND v.moderation_status != 'processing'
+          AND v.moderation_status IN ('approved', 'pending', 'processing')
     ORDER BY v.created_at DESC
     LIMIT ? OFFSET 0
 ");
@@ -548,8 +549,15 @@ $has_more_videos = $total_user_videos > count($user_videos);
                 </div>
             <?php else: ?>
                 <div class="videos-grid" id="profileVideosGrid">
-                    <?php foreach ($user_videos as $video): ?>
-                        <div class="video-thumbnail" data-video-id="<?php echo (int)$video['id']; ?>" onclick="window.location.href='index.php?user_id=<?php echo $user_id; ?>&video_id=<?php echo $video['id']; ?>'">
+                    <?php foreach ($user_videos as $video):
+                        $mod_status = $video['moderation_status'] ?? 'approved';
+                        $is_processing = ($mod_status === 'processing');
+                        $is_pending = ($mod_status === 'pending');
+                        $card_onclick = ($is_processing || $is_pending)
+                            ? "onclick=\"return false;\""
+                            : "onclick=\"window.location.href='index.php?user_id={$user_id}&video_id={$video['id']}'\"";
+                    ?>
+                        <div class="video-thumbnail<?php echo ($is_processing || $is_pending) ? ' video-card--disabled' : ''; ?>" data-video-id="<?php echo (int)$video['id']; ?>" <?php echo $card_onclick; ?> style="<?php echo ($is_processing || $is_pending) ? 'cursor:default;' : ''; ?>">
                             <div class="thumbnail-container">
                                 <?php if (!empty($video['thumbnail_path'])): ?>
                                     <img src="uploads/thumbnails/<?php echo htmlspecialchars($video['thumbnail_path']); ?>"
@@ -566,31 +574,45 @@ $has_more_videos = $total_user_videos > count($user_videos);
                                         onloadeddata="this.currentTime = 0.5;">
                                         <source data-src="<?php echo htmlspecialchars($resolved_url); ?>" type="video/mp4">
                                     </video>
+                                    <?php if (!$is_processing && !$is_pending): ?>
                                     <div class="play-overlay">
                                         <i class="fas fa-play"></i>
                                     </div>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     <div class="default-thumbnail">
                                         <i class="fas fa-play"></i>
                                     </div>
                                 <?php endif; ?>
                                 
-                                <div class="video-overlay">
-                                    <div class="video-stats">
-                                        <span class="stat">
-                                            <i class="fas fa-heart"></i>
-                                            <?php echo formatNumberShort($video['likes_count']); ?>
-                                        </span>
-                                        <span class="stat">
-                                            <i class="fas fa-eye"></i>
-                                            <?php echo formatNumberShort($video['views_count']); ?>
-                                        </span>
-                                        <span class="stat">
-                                            <i class="fas fa-comment"></i>
-                                            <?php echo formatNumberShort($video['comments_count']); ?>
-                                        </span>
+                                <?php if ($is_processing): ?>
+                                    <div class="video-status-overlay">
+                                        <i class="fas fa-cog fa-spin" style="color: #3b82f6;"></i>
+                                        <span>A processar...</span>
                                     </div>
-                                </div>
+                                <?php elseif ($is_pending): ?>
+                                    <div class="video-status-overlay">
+                                        <i class="fas fa-clock" style="color: #f59e0b; animation: pulse-clock 2s ease-in-out infinite;"></i>
+                                        <span>Em revisão</span>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="video-overlay">
+                                        <div class="video-stats">
+                                            <span class="stat">
+                                                <i class="fas fa-heart"></i>
+                                                <?php echo formatNumberShort($video['likes_count']); ?>
+                                            </span>
+                                            <span class="stat">
+                                                <i class="fas fa-eye"></i>
+                                                <?php echo formatNumberShort($video['views_count']); ?>
+                                            </span>
+                                            <span class="stat">
+                                                <i class="fas fa-comment"></i>
+                                                <?php echo formatNumberShort($video['comments_count']); ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                             
                             <div class="video-info">
@@ -894,25 +916,49 @@ $has_more_videos = $total_user_videos > count($user_videos);
             const timeAgo = escHtml(video.time_ago || 'agora');
             const thumbSrc = video.thumbnail_path ? `uploads/thumbnails/${encodeURIComponent(video.thumbnail_path)}` : '';
             const videoSrc = video.video_url || (video.video_path ? resolveVideoUrl(video.video_path) : '');
+            
+            const modStatus = video.moderation_status || 'approved';
+            const isProcessing = (modStatus === 'processing');
+            const isPending = (modStatus === 'pending');
+            const isDisabled = isProcessing || isPending;
+            
+            const cardClick = isDisabled 
+                ? "return false;" 
+                : `window.location.href='index.php?user_id=${userId}&video_id=${video.id}'`;
 
             let mediaHtml = '<div class="default-thumbnail"><i class="fas fa-play"></i></div>';
             if (thumbSrc) {
                 mediaHtml = `<img src="${thumbSrc}" alt="${title}" loading="lazy" decoding="async">`;
             } else if (videoSrc) {
-                mediaHtml = `<video muted preload="none" class="video-preview lazy-video-preview" data-video-src="${videoSrc}" onloadeddata="this.currentTime = 0.5;"><source data-src="${videoSrc}" type="video/mp4"></video><div class="play-overlay"><i class="fas fa-play"></i></div>`;
+                mediaHtml = `<video muted preload="none" class="video-preview lazy-video-preview" data-video-src="${videoSrc}" onloadeddata="this.currentTime = 0.5;"><source data-src="${videoSrc}" type="video/mp4"></video>${!isDisabled ? '<div class="play-overlay"><i class="fas fa-play"></i></div>' : ''}`;
+            }
+
+            let overlayHtml = '';
+            if (isProcessing) {
+                overlayHtml = `<div class="video-status-overlay">
+                                  <i class="fas fa-cog fa-spin" style="color: #3b82f6;"></i>
+                                  <span>A processar...</span>
+                               </div>`;
+            } else if (isPending) {
+                overlayHtml = `<div class="video-status-overlay">
+                                  <i class="fas fa-clock" style="color: #f59e0b; animation: pulse-clock 2s ease-in-out infinite;"></i>
+                                  <span>Em revisão</span>
+                               </div>`;
+            } else {
+                overlayHtml = `<div class="video-overlay">
+                                   <div class="video-stats">
+                                       <span class="stat"><i class="fas fa-heart"></i>${formatNum(video.likes_count)}</span>
+                                       <span class="stat"><i class="fas fa-eye"></i>${formatNum(video.views_count)}</span>
+                                       <span class="stat"><i class="fas fa-comment"></i>${formatNum(video.comments_count)}</span>
+                                   </div>
+                               </div>`;
             }
 
             return `
-                <div class="video-thumbnail" data-video-id="${video.id}" onclick="window.location.href='index.php?user_id=${userId}&video_id=${video.id}'">
+                <div class="video-thumbnail ${isDisabled ? 'video-card--disabled' : ''}" data-video-id="${video.id}" onclick="${cardClick}" style="${isDisabled ? 'cursor:default;' : ''}">
                     <div class="thumbnail-container">
                         ${mediaHtml}
-                        <div class="video-overlay">
-                            <div class="video-stats">
-                                <span class="stat"><i class="fas fa-heart"></i>${formatNum(video.likes_count)}</span>
-                                <span class="stat"><i class="fas fa-eye"></i>${formatNum(video.views_count)}</span>
-                                <span class="stat"><i class="fas fa-comment"></i>${formatNum(video.comments_count)}</span>
-                            </div>
-                        </div>
+                        ${overlayHtml}
                     </div>
                     <div class="video-info">
                         <h4 class="video-title">${title}</h4>
@@ -943,7 +989,7 @@ $has_more_videos = $total_user_videos > count($user_videos);
             statusEl.style.display = 'block';
 
             try {
-                const response = await fetch(`api/get_user_videos.php?user_id=${userId}&page=${nextPage}&limit=${pageLimit}`, { cache: 'no-store' });
+                const response = await fetch(`api/get_user_videos.php?user_id=${userId}&page=${nextPage}&limit=${pageLimit}&manage=1`, { cache: 'no-store' });
                 const data = await response.json();
 
                 if (!data.success || !Array.isArray(data.videos) || data.videos.length === 0) {

@@ -23,7 +23,13 @@ if ($user_id <= 0) {
 $offset = ($page - 1) * $limit;
 $fetch_limit = $limit + 1;
 
+$manage_mode = (isset($_GET['manage']) && $_GET['manage'] == 1 && $user_id === $_SESSION['user_id']);
+
 try {
+    $status_filter = $manage_mode 
+        ? "AND v.moderation_status IN ('approved', 'pending', 'processing')" 
+        : "AND v.moderation_status = 'approved'";
+
     $stmt = $pdo->prepare("
         SELECT
             v.id,
@@ -33,9 +39,10 @@ try {
             v.likes_count,
             v.comments_count,
             v.views_count,
-            v.created_at
+            v.created_at,
+            v.moderation_status
         FROM videos v
-        WHERE v.user_id = ? AND v.is_public = 1 AND v.is_hidden = 0 AND v.moderation_status = 'approved'
+        WHERE v.user_id = ? AND v.is_public = 1 AND v.is_hidden = 0 $status_filter
         ORDER BY v.created_at DESC
         LIMIT ? OFFSET ?
     ");
@@ -65,7 +72,8 @@ try {
             'views_count' => (int)$video['views_count'],
             'created_at' => (string)$video['created_at'],
             'date_label' => date('d/m/Y', strtotime($video['created_at'])),
-            'time_ago' => timeAgo($video['created_at'])
+            'time_ago' => timeAgo($video['created_at']),
+            'moderation_status' => (string)($video['moderation_status'] ?? 'approved')
         ];
     }
 

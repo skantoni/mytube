@@ -539,8 +539,8 @@
     font-weight: 600;
 }
 
-/* === Vídeo em revisão (status pending) === */
-.video-pending-overlay {
+/* === Vídeo em revisão / processamento (status pending / processing) === */
+.video-status-overlay {
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.55);
@@ -557,10 +557,16 @@
     -webkit-backdrop-filter: blur(2px);
 }
 
-.video-pending-overlay i {
+.video-status-overlay i {
     font-size: 1.5rem;
-    color: #f59e0b;
-    animation: pulse-clock 2s ease-in-out infinite;
+}
+
+.video-card--disabled {
+    cursor: default !important;
+}
+.video-card--disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
 }
 
 @keyframes pulse-clock {
