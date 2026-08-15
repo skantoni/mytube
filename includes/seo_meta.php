@@ -10,8 +10,8 @@
 $seo_config = [
     'site_name' => 'MyTube',
     'site_url' => 'https://mytube.social',
-    'title' => 'MyTube - Compartilhe vídeos e conecte-se com outros criadores e Aqui os criadores competem!',
-    'description' => 'MyTube é a rede social angolana onde criadores competem e talentos são descobertos! Participe de competições escolares, compartilhe vídeos e conecte-se com outros criadores. Mostre seu talento!',
+    'title' => 'MyTube - A sua rede social de vídeos',
+    'description' => 'Crie uma conta no MyTube para assistir, partilhar e descobrir vídeos curtos. Conecte-se com a comunidade angolana e participe de competições divertidas.',
     'image' => 'https://mytube.social/assets/images/og-image.jpg',
     'image_width' => 1200,
     'image_height' => 630,
@@ -79,11 +79,18 @@ if (isset($page_seo)) {
   "url": "<?php echo htmlspecialchars($seo_config['site_url'], ENT_QUOTES); ?>",
   "datePublished": "<?php echo date('c'); ?>",
   "dateModified": "<?php echo date('c'); ?>",
-  "author": {
-    "@type": "Organization",
-    "name": "<?php echo htmlspecialchars($seo_config['site_name'], ENT_QUOTES); ?>",
-    "url": "<?php echo htmlspecialchars($seo_config['site_url'], ENT_QUOTES); ?>"
-  },
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Skeny Bemba Mendes António",
+      "roleName": "CT-fundador & Criador"
+    },
+    {
+      "@type": "Person",
+      "name": "Joaquim Abel dos Santos Júnior",
+      "roleName": "Co-fundador & Idealizador"
+    }
+  ],
   "publisher": {
     "@type": "Organization",
     "name": "<?php echo htmlspecialchars($seo_config['site_name'], ENT_QUOTES); ?>",
