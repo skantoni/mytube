@@ -620,7 +620,7 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             display: block;
         }
         /* Camera off overlay fs */
-        .camera-off-overlay {
+        .fs-cam-off {
             position: absolute;
             inset: 0;
             background: rgba(0,0,0,0.85);
@@ -632,8 +632,9 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
             color: var(--text-muted);
             z-index: 3;
         }
-        .camera-off-overlay i { font-size: 48px; color: rgba(255,255,255,0.3); }
-        .camera-off-overlay p { font-size: 16px; font-weight: 500; }
+        .fs-cam-off.visible { display: flex; }
+        .fs-cam-off i { font-size: 48px; color: rgba(255,255,255,0.3); }
+        .fs-cam-off p { font-size: 16px; font-weight: 500; }
         .reconnecting-banner {
             position: absolute;
             inset: 0;
@@ -1411,7 +1412,12 @@ $live_server_url = env('LIVE_SERVER_URL', 'http://localhost:3003');
                 el.style.left = (rect.left + rect.width / 2 + offsetX) + 'px';
                 el.style.top  = (rect.top - 10) + 'px';
                 el.style.setProperty('--rot', (Math.random() * 30 - 15) + 'deg');
-                document.body.appendChild(el);
+                const overlay = document.getElementById('videoFsOverlay');
+                if (overlay && overlay.classList.contains('active')) {
+                    overlay.appendChild(el);
+                } else {
+                    document.body.appendChild(el);
+                }
                 el.addEventListener('animationend', () => el.remove());
             }, i * 80);
         }
