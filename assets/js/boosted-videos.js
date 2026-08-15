@@ -76,10 +76,6 @@
 
         // Persist in URL hash
         try { history.replaceState(null, '', '#' + name); } catch (_) {}
-
-        if (name === 'mod-logs') {
-            loadModLogs();
-        }
     }
 
     function initTabs() {
@@ -1298,5 +1294,22 @@
 
     const btnRefreshModLogs = document.getElementById('btnRefreshModLogs');
     if (btnRefreshModLogs) btnRefreshModLogs.addEventListener('click', loadModLogs);
+
+    // Hook into sidebar nav click — lazy init ao entrar pela primeira vez
+    let modLogsInitDone = false;
+    document.querySelectorAll('.ap-nav-item[data-section="mod-logs"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            loadModLogs();
+        });
+    });
+
+    // Inicializa imediatamente se a página carregar com hash #mod-logs
+    if ((window.location.hash || '').replace('#', '') === 'mod-logs') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => setTimeout(loadModLogs, 100));
+        } else {
+            setTimeout(loadModLogs, 100);
+        }
+    }
 
 })();

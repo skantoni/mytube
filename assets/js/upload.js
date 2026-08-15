@@ -399,6 +399,11 @@ function updateProgress(percent, loaded, total, speed, eta) {
             if (icon) {
                 icon.className = 'fas fa-cog fa-spin progress-icon processing';
             }
+            // Atualizar o botão submit para refletir que já enviou
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-cog fa-spin"></i> Processando...';
+            }
         }
     }
     if (sentText) sentText.textContent = formatFileSize(loaded);
@@ -561,6 +566,12 @@ function doPoll(jobId) {
 function showProcessingState(message) {
     var uploadProgress = document.getElementById('uploadProgress');
     if (!uploadProgress) return;
+
+    // Atualizar o botão Submit para evitar a mensagem 'Enviando...' falsa
+    var submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-cog fa-spin"></i> A processar...';
+    }
 
     // Se já está em modo processing, só actualizar o texto
     var existingStatus = document.getElementById('progressStatusText');
