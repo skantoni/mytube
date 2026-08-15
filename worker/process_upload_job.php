@@ -193,6 +193,22 @@ try {
     } catch (Throwable $e2) { $has_moderation_cols = false; }
 }
 
+try {
+    $pdo->exec("
+    CREATE TABLE IF NOT EXISTS `moderation_logs` (
+      `id` INT AUTO_INCREMENT PRIMARY KEY,
+      `video_id` INT NOT NULL,
+      `user_id` INT NOT NULL,
+      `moderator_id` INT DEFAULT NULL,
+      `action` VARCHAR(50) NOT NULL,
+      `details` TEXT DEFAULT NULL,
+      `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX `idx_modlogs_video_id` (`video_id`),
+      INDEX `idx_modlogs_created_at` (`created_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+} catch (Throwable $e) {}
+
 // ── PASSO 1: Transcodificar com FFmpeg ───────────────────────────────────────
 update_progress($pdo, $job_id, 'A processar vídeo com FFmpeg...');
 require_once ROOT_DIR . '/includes/upload_validation.php';
@@ -269,6 +285,15 @@ if ($has_moderation_cols) {
     update_progress($pdo, $job_id, 'A verificar conteúdo com NudeNet...');
     $mod_decision = moderation_decide_status($processed_video_path);
     wlog('Moderação: ' . $mod_decision['log']);
+
+    // Guardar log na tabela moderation_logs (para pending e rejected)
+    if (in_array($mod_decision['db_status'], ['pending', 'rejected'])) {
+        try {
+            $log_action = $mod_decision['db_status'] === 'rejected' ? 'flagged_rejected_bot' : 'flagged_pending_bot';
+            $pdo->prepare("INSERT INTO moderation_logs (video_id, user_id, action, details) VALUES (?, ?, ?, ?)")
+                ->execute([$video_id, $user_id, $log_action, $mod_decision['log']]);
+        } catch (Throwable $e) {}
+    }
 
     if ($mod_decision['db_status'] === 'rejected') {
         if ($is_transcoded && file_exists($processed_video_path)) {

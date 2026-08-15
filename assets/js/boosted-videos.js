@@ -76,6 +76,10 @@
 
         // Persist in URL hash
         try { history.replaceState(null, '', '#' + name); } catch (_) {}
+
+        if (name === 'mod-logs') {
+            loadModLogs();
+        }
     }
 
     function initTabs() {
@@ -1172,5 +1176,127 @@
             setTimeout(initUsers, 100);
         }
     }
+
+    // ── Moderation Logs ───────────────────────────────────────────
+    function esc(str) {
+        if (!str) return '';
+        const d = document.createElement('div');
+        d.appendChild(document.createTextNode(str));
+        return d.innerHTML;
+    }
+
+    async function loadModLogs() {
+        const tbody = document.getElementById('modLogsBody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:#64748b;"><i class="fas fa-spinner fa-spin"></i> A carregar...</td></tr>';
+        
+        try {
+            const formData = new FormData();
+            formData.append('action', 'logs');
+            
+            const res = await fetch('api/admin_moderate.php', {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': getCsrfToken() },
+                body: formData
+            });
+            const data = await res.json();
+            
+            if (!data.success) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:#ef4444">${esc(data.error || 'Erro ao carregar logs')}</td></tr>`;
+                return;
+            }
+            
+            if (!data.logs || data.logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:#64748b">Sem logs de moderação.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            data.logs.forEach(log => {
+                const tr = document.createElement('tr');
+                
+                let actionBadge = '';
+                const act = log.action.toLowerCase();
+                if (act.includes('approved')) actionBadge = '<span class="ap-badge ap-badge-green">Aprovado</span>';
+                else if (act.includes('rejected')) actionBadge = '<span class="ap-badge ap-badge-red">Rejeitado</span>';
+                else if (act.includes('pending')) actionBadge = '<span class="ap-badge ap-badge-yellow">Suspeito</span>';
+                else if (act.includes('deleted')) actionBadge = '<span class="ap-badge" style="background:#ef4444;color:#fff">Eliminado</span>';
+                else actionBadge = `<span class="ap-badge">${esc(log.action)}</span>`;
+                
+                const uploader = `<a href="perfil.php?id=${log.user_id}" target="_blank" style="font-weight:500">@${esc(log.username || 'user')}</a>`;
+                const moderator = log.mod_username ? `<br><small style="color:#64748b">Moderador: @${esc(log.mod_username)}</small>` : '<br><small style="color:#64748b">Por: NudeNet (Bot)</small>';
+                
+                let videoHtml = '';
+                if (log.video_path) {
+                    const thumb = log.thumbnail_path ? `uploads/thumbnails/${esc(log.thumbnail_path)}` : '';
+                    videoHtml = `
+                    <a href="index.php?video_id=${log.video_id}" target="_blank" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:8px">
+                        ${thumb ? `<img src="${thumb}" style="width:40px;height:40px;object-fit:cover;border-radius:4px">` : `<div style="width:40px;height:40px;background:#1e293b;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#64748b"><i class="fas fa-video"></i></div>`}
+                        <div style="display:flex;flex-direction:column;max-width:140px">
+                            <span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(log.title || 'Vídeo ' + log.video_id)}</span>
+                        </div>
+                    </a>`;
+                } else {
+                    videoHtml = `<div style="display:flex;align-items:center;gap:8px;color:#64748b">
+                        <div style="width:40px;height:40px;background:#f871711a;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#ef4444"><i class="fas fa-trash"></i></div>
+                        <div style="display:flex;flex-direction:column">
+                            <span style="text-decoration:line-through">Vídeo Apagado</span>
+                            <small>ID: ${log.video_id}</small>
+                        </div>
+                    </div>`;
+                }
+
+                const d = new Date(log.created_at);
+                const dateStr = d.toLocaleDateString('pt-PT') + ' ' + d.toLocaleTimeString('pt-PT', {hour: '2-digit', minute:'2-digit'});
+
+                tr.innerHTML = `
+                    <td style="white-space:nowrap;color:#64748b;font-size:0.9em">${dateStr}</td>
+                    <td>${videoHtml}</td>
+                    <td>${uploader}${moderator}</td>
+                    <td>${actionBadge}</td>
+                    <td><div style="font-size:0.85em;color:#475569;max-width:250px;line-height:1.4">${esc(log.details || '')}</div></td>
+                    <td>
+                        <button type="button" class="ap-btn ap-btn-ghost ap-btn-xs js-delete-log" data-id="${log.log_id}" title="Apagar Registo">
+                            <i class="fas fa-trash" style="color:#ef4444"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            document.querySelectorAll('.js-delete-log').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    if (!confirm('Tem a certeza que deseja apagar este registo? Pode perder o histórico de moderação deste utilizador.')) return;
+                    const logId = this.dataset.id;
+                    try {
+                        const fd = new FormData();
+                        fd.append('action', 'delete_log');
+                        fd.append('log_id', logId);
+                        const r = await fetch('api/admin_moderate.php', {
+                            method: 'POST',
+                            headers: { 'X-CSRF-Token': getCsrfToken() },
+                            body: fd
+                        });
+                        const resJson = await r.json();
+                        if (resJson.success) {
+                            showToast(resJson.message || 'Apagado');
+                            loadModLogs();
+                        } else {
+                            showToast(resJson.error || 'Erro', 'error');
+                        }
+                    } catch (e) {
+                        showToast('Erro de rede', 'error');
+                    }
+                });
+            });
+            
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:#ef4444">Erro de rede ao carregar os logs.</td></tr>';
+        }
+    }
+
+    const btnRefreshModLogs = document.getElementById('btnRefreshModLogs');
+    if (btnRefreshModLogs) btnRefreshModLogs.addEventListener('click', loadModLogs);
 
 })();

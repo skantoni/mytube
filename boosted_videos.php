@@ -160,6 +160,10 @@ try {
                 <span class="ap-badge" id="apModerationBadge"><?php echo $pending_count; ?></span>
             <?php endif; ?>
         </li>
+        <li class="ap-nav-item" data-section="mod-logs" role="button" tabindex="0">
+            <i class="fas fa-clipboard-list"></i>
+            <span>Logs de Mod.</span>
+        </li>
         <li class="ap-nav-item" data-section="boosted" role="button" tabindex="0">
             <i class="fas fa-bolt"></i>
             <span>Boosted</span>
@@ -483,6 +487,41 @@ try {
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────
+         SECÇÃO: LOGS DE MODERAÇÃO
+    ────────────────────────────────────────────────────────── -->
+    <section class="ap-section" id="section-mod-logs">
+        <div class="ap-section-header">
+            <div>
+                <p class="ap-eyebrow">Auditoria</p>
+                <h1>Logs de Moderação</h1>
+            </div>
+            <div class="ap-header-actions">
+                <button class="ap-btn ap-btn-secondary" id="btnRefreshModLogs">
+                    <i class="fas fa-sync-alt"></i> Atualizar
+                </button>
+            </div>
+        </div>
+        
+        <div class="ap-table-wrap">
+            <table class="ap-table" id="modLogsTable">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Vídeo</th>
+                        <th>Atores</th>
+                        <th>Ação</th>
+                        <th>Detalhes</th>
+                        <th>Opções</th>
+                    </tr>
+                </thead>
+                <tbody id="modLogsBody">
+                    <tr><td colspan="6" style="text-align:center;padding:2rem;color:#64748b;"><i class="fas fa-spinner fa-spin"></i> A carregar...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </section>
 
     <!-- ──────────────────────────────────────────────────────

@@ -103,6 +103,71 @@ if ($action === 'list') {
     exit;
 }
 
+// ── LOGS: listar logs de moderação ───────────────────────────
+if ($action === 'logs') {
+    try {
+        $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `moderation_logs` (
+          `id` INT AUTO_INCREMENT PRIMARY KEY,
+          `video_id` INT NOT NULL,
+          `user_id` INT NOT NULL,
+          `moderator_id` INT DEFAULT NULL,
+          `action` VARCHAR(50) NOT NULL,
+          `details` TEXT DEFAULT NULL,
+          `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+          INDEX `idx_modlogs_video_id` (`video_id`),
+          INDEX `idx_modlogs_created_at` (`created_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+    } catch (Throwable $e) {}
+
+    $page     = max(1, (int)($_GET['page'] ?? 1));
+    $per_page = 50;
+    $offset   = ($page - 1) * $per_page;
+
+    try {
+        $count_stmt = $pdo->query("SELECT COUNT(*) FROM moderation_logs");
+        $total = (int)$count_stmt->fetchColumn();
+
+        $stmt = $pdo->prepare("
+            SELECT
+                l.id AS log_id, l.video_id, l.user_id, l.moderator_id, l.action, l.details, l.created_at,
+                u.username, u.full_name, u.profile_picture,
+                m.username AS mod_username,
+                v.title, v.thumbnail_path, v.video_path, v.moderation_status
+            FROM moderation_logs l
+            LEFT JOIN users u ON l.user_id = u.id
+            LEFT JOIN users m ON l.moderator_id = m.id
+            LEFT JOIN videos v ON l.video_id = v.id
+            ORDER BY l.created_at DESC
+            LIMIT ? OFFSET ?
+        ");
+        $stmt->bindValue(1, $per_page, PDO::PARAM_INT);
+        $stmt->bindValue(2, $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($logs as &$log) {
+            if (!empty($log['video_path'])) {
+                $log['video_url'] = resolve_video_url($log['video_path']);
+            }
+        }
+        unset($log);
+
+        echo json_encode([
+            'success'  => true,
+            'total'    => $total,
+            'page'     => $page,
+            'per_page' => $per_page,
+            'logs'     => $logs,
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Erro na base de dados: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
 // ── Ações POST ────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -116,6 +181,24 @@ if (!csrf_verify()) {
     exit;
 }
 
+// ── DELETE LOG ────────────────────────────────────────────────
+if ($action === 'delete_log') {
+    $log_id = (int)($_POST['log_id'] ?? 0);
+    if ($log_id <= 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'log_id inválido']);
+        exit;
+    }
+    try {
+        $pdo->prepare("DELETE FROM moderation_logs WHERE id = ?")->execute([$log_id]);
+        echo json_encode(['success' => true, 'message' => 'Log apagado com sucesso.']);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Erro ao apagar log']);
+    }
+    exit;
+}
+
 $video_id = (int)($_POST['video_id'] ?? 0);
 if ($video_id <= 0) {
     http_response_code(400);
@@ -125,7 +208,7 @@ if ($video_id <= 0) {
 
 // Verificar que o vídeo existe
 try {
-    $v_stmt = $pdo->prepare("SELECT id, video_path, moderation_status FROM videos WHERE id = ? LIMIT 1");
+    $v_stmt = $pdo->prepare("SELECT id, user_id, video_path, moderation_status FROM videos WHERE id = ? LIMIT 1");
     $v_stmt->execute([$video_id]);
     $video = $v_stmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -143,6 +226,10 @@ if (!$video) {
 // ── APPROVE ───────────────────────────────────────────────────
 if ($action === 'approve') {
     moderation_update_video_status($pdo, $video_id, 'approved', null);
+    try {
+        $pdo->prepare("INSERT INTO moderation_logs (video_id, user_id, moderator_id, action, details) VALUES (?, ?, ?, 'approved_by_admin', 'Aprovado manualmente')")
+            ->execute([$video_id, (int)$video['user_id'], $_SESSION['user_id']]);
+    } catch (Throwable $e) {}
     error_log("admin_moderate: vídeo ID=$video_id aprovado manualmente por user={$_SESSION['user_id']}");
     echo json_encode(['success' => true, 'message' => 'Vídeo aprovado.', 'video_id' => $video_id]);
     exit;
@@ -151,6 +238,10 @@ if ($action === 'approve') {
 // ── REJECT ────────────────────────────────────────────────────
 if ($action === 'reject') {
     moderation_update_video_status($pdo, $video_id, 'rejected', null);
+    try {
+        $pdo->prepare("INSERT INTO moderation_logs (video_id, user_id, moderator_id, action, details) VALUES (?, ?, ?, 'rejected_by_admin', 'Rejeitado manualmente')")
+            ->execute([$video_id, (int)$video['user_id'], $_SESSION['user_id']]);
+    } catch (Throwable $e) {}
     error_log("admin_moderate: vídeo ID=$video_id rejeitado manualmente por user={$_SESSION['user_id']}");
     echo json_encode(['success' => true, 'message' => 'Vídeo rejeitado.', 'video_id' => $video_id]);
     exit;
@@ -171,6 +262,10 @@ if ($action === 'reject_delete') {
         }
     }
 
+    try {
+        $pdo->prepare("INSERT INTO moderation_logs (video_id, user_id, moderator_id, action, details) VALUES (?, ?, ?, 'deleted_by_admin', 'Rejeitado e Eliminado do disco')")
+            ->execute([$video_id, (int)$video['user_id'], $_SESSION['user_id']]);
+    } catch (Throwable $e) {}
     error_log("admin_moderate: vídeo ID=$video_id rejeitado+eliminado por user={$_SESSION['user_id']}");
     echo json_encode(['success' => true, 'message' => 'Vídeo rejeitado e eliminado.', 'video_id' => $video_id]);
     exit;
