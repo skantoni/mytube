@@ -544,11 +544,14 @@ function setupMessageInput() {
         // Marcar que os listeners foram adicionados
         messageInput.dataset.listenersAdded = 'true';
         
-        // Evento de teclado (Enter para enviar)
+        // Evento de teclado (Enter para enviar apenas no Desktop)
         messageInput.addEventListener('keydown', function(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendMessage();
+                const isMobile = window.innerWidth <= 768 || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+                if (!isMobile) {
+                    event.preventDefault();
+                    sendMessage();
+                }
             }
         });
         
@@ -5504,8 +5507,11 @@ function setupGroupMessageInput() {
 
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendGroupMessage();
+            const isMobile = window.innerWidth <= 768 || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+            if (!isMobile) {
+                e.preventDefault();
+                sendGroupMessage();
+            }
         }
     });
     input.addEventListener('input', function() {
