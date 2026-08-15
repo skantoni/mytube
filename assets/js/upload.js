@@ -264,7 +264,6 @@ function startAjaxUpload() {
         `;
     }
     
-    // Desabilitar botão
     if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
@@ -402,7 +401,7 @@ function updateProgress(percent, loaded, total, speed, eta) {
             // Atualizar o botão submit para refletir que já enviou
             const submitBtn = document.getElementById('submitBtn');
             if (submitBtn) {
-                submitBtn.innerHTML = '<i class="fas fa-cog fa-spin"></i> Processando...';
+                submitBtn.innerHTML = '<i class="fas fa-check"></i> Enviado';
             }
         }
     }
@@ -567,10 +566,10 @@ function showProcessingState(message) {
     var uploadProgress = document.getElementById('uploadProgress');
     if (!uploadProgress) return;
 
-    // Atualizar o botão Submit para evitar a mensagem 'Enviando...' falsa
+    // Atualizar o botão Submit para refletir o estado de processamento
     var submitBtn = document.getElementById('submitBtn');
     if (submitBtn) {
-        submitBtn.innerHTML = '<i class="fas fa-cog fa-spin"></i> A processar...';
+        submitBtn.innerHTML = '<i class="fas fa-check"></i> Enviado';
     }
 
     // Se já está em modo processing, só actualizar o texto

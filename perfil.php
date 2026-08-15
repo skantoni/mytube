@@ -38,7 +38,7 @@ try {
         exit;
     }
 
-    // Buscar vídeos do usuário
+    // Buscar vídeos do usuário — apenas vídeos já aprovados (não em processamento)
     $videos_page_limit = 18;
     $videos_stmt = $pdo->prepare("
         SELECT
@@ -49,9 +49,11 @@ try {
                v.likes_count,
                v.comments_count,
                v.views_count,
-               v.created_at
+               v.created_at,
+               v.moderation_status
         FROM videos v
-        WHERE v.user_id = ? AND v.is_public = 1
+        WHERE v.user_id = ? AND v.is_public = 1 AND v.is_hidden = 0
+              AND v.moderation_status IN ('approved', 'pending')
         ORDER BY v.created_at DESC
         LIMIT ? OFFSET 0
     ");
@@ -313,8 +315,13 @@ try {
             <?php else: ?>
                 <div class="videos-scroll-wrapper" id="perfilVideosScrollWrapper">
                     <div class="videos-grid" id="perfilVideosGrid">
-                        <?php foreach ($user_videos as $video): ?>
-                            <div class="video-card" data-video-id="<?php echo (int)$video['id']; ?>" onclick="window.location.href='index.php?user_id=<?php echo $profile_user_id; ?>&video_id=<?php echo $video['id']; ?>'">
+                        <?php foreach ($user_videos as $video):
+                            $is_pending = ($video['moderation_status'] ?? 'approved') === 'pending';
+                            $card_onclick = (!$is_pending || $can_manage_profile_videos)
+                                ? "onclick=\"window.location.href='index.php?user_id={$profile_user_id}&video_id={$video['id']}'\"" 
+                                : "onclick=\"return false;\"";
+                        ?>
+                            <div class="video-card<?php echo $is_pending ? ' video-card--pending' : ''; ?>" data-video-id="<?php echo (int)$video['id']; ?>" <?php echo $card_onclick; ?>>
                                 <div class="video-thumbnail">
                                     <?php if (!empty($video['thumbnail_path'])): ?>
                                         <img src="uploads/thumbnails/<?php echo htmlspecialchars($video['thumbnail_path']); ?>" alt="Thumbnail" loading="lazy" decoding="async">
@@ -325,13 +332,20 @@ try {
                                         </video>
                                     <?php endif; ?>
                                     
-                                    <div class="video-overlay">
-                                        <div class="video-stats">
-                                            <span><i class="fas fa-eye"></i> <?php echo formatNumberShort($video['views_count']); ?></span>
-                                            <span><i class="fas fa-heart"></i> <?php echo formatNumberShort($video['likes_count']); ?></span>
-                                            <span><i class="fas fa-comment"></i> <?php echo formatNumberShort($video['comments_count']); ?></span>
+                                    <?php if ($is_pending && $is_own_profile): ?>
+                                        <div class="video-pending-overlay">
+                                            <i class="fas fa-clock"></i>
+                                            <span>Em revisão</span>
                                         </div>
-                                    </div>
+                                    <?php else: ?>
+                                        <div class="video-overlay">
+                                            <div class="video-stats">
+                                                <span><i class="fas fa-eye"></i> <?php echo formatNumberShort($video['views_count']); ?></span>
+                                                <span><i class="fas fa-heart"></i> <?php echo formatNumberShort($video['likes_count']); ?></span>
+                                                <span><i class="fas fa-comment"></i> <?php echo formatNumberShort($video['comments_count']); ?></span>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                                 
                                 <div class="video-info">
