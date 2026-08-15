@@ -352,7 +352,7 @@ if (!$user) {
     redirect('login.php');
 }
 
-// Buscar vídeos do usuário — apenas aprovados ou em revisão (não em processamento)
+// Buscar vídeos do usuário — exclui vídeos ainda em processamento pelo FFmpeg
 $videos_page_limit = 18;
 $videos_stmt = $pdo->prepare("
     SELECT
@@ -363,11 +363,10 @@ $videos_stmt = $pdo->prepare("
         v.views_count,
         v.likes_count,
         v.comments_count,
-        v.created_at,
-        v.moderation_status
+        v.created_at
     FROM videos v
     WHERE v.user_id = ? AND v.is_public = 1 AND v.is_hidden = 0
-          AND v.moderation_status IN ('approved', 'pending')
+          AND v.moderation_status != 'processing'
     ORDER BY v.created_at DESC
     LIMIT ? OFFSET 0
 ");
@@ -549,13 +548,8 @@ $has_more_videos = $total_user_videos > count($user_videos);
                 </div>
             <?php else: ?>
                 <div class="videos-grid" id="profileVideosGrid">
-                    <?php foreach ($user_videos as $video):
-                        $is_pending = ($video['moderation_status'] ?? 'approved') === 'pending';
-                        $card_onclick = $is_pending
-                            ? "onclick=\"return false;\""
-                            : "onclick=\"window.location.href='index.php?user_id={$user_id}&video_id={$video['id']}'\"";
-                    ?>
-                        <div class="video-thumbnail<?php echo $is_pending ? ' video-pending' : ''; ?>" data-video-id="<?php echo (int)$video['id']; ?>" <?php echo $card_onclick; ?> style="<?php echo $is_pending ? 'cursor:default;' : ''; ?>">
+                    <?php foreach ($user_videos as $video): ?>
+                        <div class="video-thumbnail" data-video-id="<?php echo (int)$video['id']; ?>" onclick="window.location.href='index.php?user_id=<?php echo $user_id; ?>&video_id=<?php echo $video['id']; ?>'">
                             <div class="thumbnail-container">
                                 <?php if (!empty($video['thumbnail_path'])): ?>
                                     <img src="uploads/thumbnails/<?php echo htmlspecialchars($video['thumbnail_path']); ?>"
@@ -572,40 +566,31 @@ $has_more_videos = $total_user_videos > count($user_videos);
                                         onloadeddata="this.currentTime = 0.5;">
                                         <source data-src="<?php echo htmlspecialchars($resolved_url); ?>" type="video/mp4">
                                     </video>
-                                    <?php if (!$is_pending): ?>
                                     <div class="play-overlay">
                                         <i class="fas fa-play"></i>
                                     </div>
-                                    <?php endif; ?>
                                 <?php else: ?>
                                     <div class="default-thumbnail">
                                         <i class="fas fa-play"></i>
                                     </div>
                                 <?php endif; ?>
                                 
-                                <?php if ($is_pending): ?>
-                                    <div class="video-pending-overlay">
-                                        <i class="fas fa-clock"></i>
-                                        <span>Em revisão</span>
+                                <div class="video-overlay">
+                                    <div class="video-stats">
+                                        <span class="stat">
+                                            <i class="fas fa-heart"></i>
+                                            <?php echo formatNumberShort($video['likes_count']); ?>
+                                        </span>
+                                        <span class="stat">
+                                            <i class="fas fa-eye"></i>
+                                            <?php echo formatNumberShort($video['views_count']); ?>
+                                        </span>
+                                        <span class="stat">
+                                            <i class="fas fa-comment"></i>
+                                            <?php echo formatNumberShort($video['comments_count']); ?>
+                                        </span>
                                     </div>
-                                <?php else: ?>
-                                    <div class="video-overlay">
-                                        <div class="video-stats">
-                                            <span class="stat">
-                                                <i class="fas fa-heart"></i>
-                                                <?php echo formatNumberShort($video['likes_count']); ?>
-                                            </span>
-                                            <span class="stat">
-                                                <i class="fas fa-eye"></i>
-                                                <?php echo formatNumberShort($video['views_count']); ?>
-                                            </span>
-                                            <span class="stat">
-                                                <i class="fas fa-comment"></i>
-                                                <?php echo formatNumberShort($video['comments_count']); ?>
-                                            </span>
-                                        </div>
-                                    </div>
-                                <?php endif; ?>
+                                </div>
                             </div>
                             
                             <div class="video-info">
