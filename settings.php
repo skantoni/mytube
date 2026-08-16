@@ -894,9 +894,9 @@ try {
         <!-- Conta -->
         <div class="settings-section">
             <div class="settings-section-title">Conta</div>
-            <div class="settings-group">
+            <div class="settings-group" >
                 <!-- MyTube Premium -->
-                <a href="premium.php" class="settings-item<?php echo $user_is_premium ? ' premium-item' : ''; ?>">
+                <a href="premium.php" class="settings-item<?php echo $user_is_premium ? ' premium-item' : ''; ?>"  style="display: none;">
                     <div class="settings-item-icon gold">
                         <i class="fas fa-crown"></i>
                     </div>
@@ -961,7 +961,7 @@ try {
                     </div>
                     <i class="fas fa-chevron-right"></i>
                 </div>
-                <a href="anuncios.php" class="settings-item" id="settingsAdsLink">
+                <a href="anuncios.php" class="settings-item" id="settingsAdsLink"  style="display: none;">
                     <div class="settings-item-icon">
                         <i class="fas fa-rocket"></i>
                     </div>
