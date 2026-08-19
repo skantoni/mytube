@@ -311,7 +311,11 @@ function resolve_video_url(string $video_path): string {
     
     if (r2_is_r2_path($video_path)) {
         $file_name = r2_strip_prefix($video_path);
-        return R2_PUBLIC_URL . '/' . R2_VIDEO_FOLDER . rawurlencode($file_name);
+        // Separar por barras para não dar encode às barras das pastas (HLS)
+        $parts = explode('/', $file_name);
+        $parts = array_map('rawurlencode', $parts);
+        $encoded_file_name = implode('/', $parts);
+        return R2_PUBLIC_URL . '/' . R2_VIDEO_FOLDER . $encoded_file_name;
     }
     
     // Vídeo local (compatibilidade com vídeos antigos)
@@ -369,7 +373,10 @@ function r2_js_config(): string {
         if (!videoPath) return '';
         if (videoPath.startsWith(window.R2_CONFIG.pathPrefix)) {
             var fileName = videoPath.substring(window.R2_CONFIG.pathPrefix.length);
-            return window.R2_CONFIG.publicUrl + '/' + window.R2_CONFIG.videoFolder + encodeURIComponent(fileName);
+            // Dividir por barras para codificar apenas os nomes dos ficheiros/pastas e não as barras em si
+            var parts = fileName.split('/');
+            var encodedFileName = parts.map(encodeURIComponent).join('/');
+            return window.R2_CONFIG.publicUrl + '/' + window.R2_CONFIG.videoFolder + encodedFileName;
         }
         return 'uploads/videos/' + videoPath;
     }
