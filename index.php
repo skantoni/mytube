@@ -400,6 +400,9 @@ if ($start_video_id > 0) {
         <script src="<?php echo asset('assets/js/modal-mobile-helper.js'); ?>"></script>
         <script src="<?php echo asset('assets/js/tiktok.js'); ?>"></script>
         <script src="<?php echo asset('assets/js/comments-new.js'); ?>"></script>
+        <!-- HLS.js — Player adaptativo (carregado antes do feed-ajax.js) -->
+        <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+        <script src="<?php echo asset('assets/js/hls-player.js'); ?>"></script>
         <script src="<?php echo asset('assets/js/feed-ajax.js'); ?>"></script>
         <script>
             // Initialize guest feed
@@ -737,6 +740,9 @@ if ($start_video_id > 0) {
     <script src="<?php echo asset('assets/js/tiktok.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/comments-new.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/video-delete.js'); ?>"></script>
+    <!-- HLS.js — Player adaptativo (carregado antes do feed-ajax.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+    <script src="<?php echo asset('assets/js/hls-player.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/feed-ajax.js'); ?>"></script>
     <!-- Sistema de Sincronização de Likes em Tempo Real -->
     <script src="<?php echo asset('assets/js/like-sync.js'); ?>"></script>

@@ -579,7 +579,7 @@ class FeedManager {
         videoDiv.innerHTML = `
             <!-- Player de vídeo centralizado -->
             <div class="video-player">
-                <video 
+                    <video 
                     id="video-${video.id}"
                     loop
                     muted
@@ -587,8 +587,8 @@ class FeedManager {
                     preload="metadata"
                     data-has-audio="true"
                     data-video-id="${video.id}"
-                    data-video-path="${video.video_path}">
-                    <source src="${video.video_url || resolveVideoUrl(video.video_path)}" type="video/mp4">
+                    data-video-path="${video.video_path}"
+                    data-video-url="${video.video_url || resolveVideoUrl(video.video_path)}">
                     Seu navegador não suporta o elemento de vídeo.
                 </video>
                 

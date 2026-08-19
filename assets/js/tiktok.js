@@ -641,11 +641,17 @@ class TikTokPlayer {
         video.muted = this.getCurrentMuteState();
         video.preload = 'metadata';
 
-        // Reconstruir o src
-        const source = document.createElement('source');
-        source.src = resolveVideoUrl(videoData.videoPath);
-        source.type = 'video/mp4';
-        video.appendChild(source);
+        // Reconstruir o src com suporte a HLS (para novos vídeos .m3u8) e MP4 (legado)
+        const videoUrl = video.dataset.videoUrl || resolveVideoUrl(videoData.videoPath);
+        if (typeof initHlsPlayer === 'function') {
+            initHlsPlayer(video, videoUrl);
+        } else {
+            // Fallback caso o hls-player.js não esteja carregado
+            const source = document.createElement('source');
+            source.src = videoUrl;
+            source.type = videoUrl.includes('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/mp4';
+            video.appendChild(source);
+        }
 
         // Restaurar estado visual
         video.classList.remove('video-unloaded');

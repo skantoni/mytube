@@ -320,53 +320,70 @@ if ($has_moderation_cols) {
     $moderation_score  = $mod_decision['score'];
 }
 
-// ── PASSO 4: Upload para R2 ou local ────────────────────────────────────────
-update_progress($pdo, $job_id, 'A enviar vídeo para armazenamento...');
+// ── PASSO 4: Gerar HLS e Upload ───────────────────────────────────────────────
+update_progress($pdo, $job_id, 'A gerar qualidades de vídeo (HLS)...');
 
-$uniqueName    = uniqid() . '_' . time() . '.' . $processed_video_ext;
+$uniqueName    = uniqid() . '_' . time();
 $upload_success = false;
-$db_video_path  = $uniqueName;
+$db_video_path  = $uniqueName . '/master.m3u8';
 $local_path     = null;
 
+// Gerar HLS a partir do vídeo já processado (e com música)
+$hls_result = video_prepare_hls($processed_video_path);
+if (!$hls_result['success']) {
+    fail_job($pdo, $job_id, $video_id, 'FFmpeg HLS: ' . ($hls_result['error'] ?? 'Erro desconhecido'));
+    exit(1);
+}
+
+$hls_dir = $hls_result['output_dir'];
+
+update_progress($pdo, $job_id, 'A enviar vídeo HLS para armazenamento...');
+
 if (R2_ENABLED) {
-    $mime_type = r2_get_mime_type($processed_video_ext);
-    $r2_result = r2_upload_video($processed_video_path, $uniqueName, $mime_type);
+    $r2_result = r2_upload_directory($hls_dir, $uniqueName);
 
     if ($r2_result['success']) {
         $upload_success = true;
-        $db_video_path  = R2_PATH_PREFIX . $uniqueName;
-        wlog("Upload R2 OK: $db_video_path");
+        $db_video_path  = R2_PATH_PREFIX . $r2_result['key'];
+        wlog("Upload R2 HLS OK: $db_video_path");
     } else {
         wlog("R2 falhou: " . $r2_result['error'] . " — a usar armazenamento local");
         $local_path = ROOT_DIR . '/uploads/videos/' . $uniqueName;
-        if (!is_dir(ROOT_DIR . '/uploads/videos/')) {
-            mkdir(ROOT_DIR . '/uploads/videos/', 0755, true);
+        if (!is_dir($local_path)) {
+            mkdir($local_path, 0755, true);
         }
-        if (rename($processed_video_path, $local_path) || copy($processed_video_path, $local_path)) {
+        // Move directory contents
+        if (rename($hls_dir, $local_path)) {
             $upload_success = true;
-            $db_video_path  = $uniqueName;
-            wlog("Armazenamento local OK: $local_path");
+            $db_video_path  = $uniqueName . '/master.m3u8';
+            wlog("Armazenamento local HLS OK: $local_path");
         }
     }
 } else {
     $local_path = ROOT_DIR . '/uploads/videos/' . $uniqueName;
-    if (!is_dir(ROOT_DIR . '/uploads/videos/')) {
-        mkdir(ROOT_DIR . '/uploads/videos/', 0755, true);
+    if (!is_dir(dirname($local_path))) {
+        mkdir(dirname($local_path), 0755, true);
     }
-    if (rename($processed_video_path, $local_path) || copy($processed_video_path, $local_path)) {
+    if (rename($hls_dir, $local_path)) {
         $upload_success = true;
-        $db_video_path  = $uniqueName;
-        wlog("Armazenamento local OK: $local_path");
+        $db_video_path  = $uniqueName . '/master.m3u8';
+        wlog("Armazenamento local HLS OK: $local_path");
     }
 }
 
-// Limpar ficheiro processado se ainda existir
-if ($is_transcoded && file_exists($processed_video_path) && $processed_video_path !== ($local_path ?? '')) {
+// Limpar diretório HLS temporário se não foi movido
+if (is_dir($hls_dir) && $hls_dir !== ($local_path ?? '')) {
+    array_map('unlink', glob("$hls_dir/*.*"));
+    @rmdir($hls_dir);
+}
+
+// Limpar ficheiro mp4 original processado
+if (file_exists($processed_video_path)) {
     @unlink($processed_video_path);
 }
 
 if (!$upload_success) {
-    fail_job($pdo, $job_id, $video_id, 'Falha ao fazer upload do ficheiro para armazenamento.');
+    fail_job($pdo, $job_id, $video_id, 'Falha ao fazer upload da pasta HLS para armazenamento.');
     exit(1);
 }
 

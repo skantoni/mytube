@@ -42,9 +42,15 @@ function openVideoModal(videoId) {
     const videoElement = document.getElementById('modalVideo');
     const source = videoElement.querySelector('source');
     
-    // Definir fonte do vídeo
-    source.src = video.video_url || resolveVideoUrl(video.video_path);
-    videoElement.load();
+    // Definir fonte do vídeo com suporte a HLS
+    const videoUrl = video.video_url || resolveVideoUrl(video.video_path);
+    if (typeof initHlsPlayer === 'function') {
+        initHlsPlayer(videoElement, videoUrl);
+    } else {
+        source.src = videoUrl;
+        source.type = videoUrl.includes('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/mp4';
+        videoElement.load();
+    }
     
     // Preencher informações
     document.getElementById('modalVideoTitle').textContent = video.title;

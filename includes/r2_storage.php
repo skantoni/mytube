@@ -125,6 +125,13 @@ function r2_delete_video(string $video_path): bool {
     try {
         // Remover o prefixo r2:// se existir
         $file_name = r2_strip_prefix($video_path);
+        
+        // Se for uma diretoria (HLS termina em .m3u8, a diretoria é o prefixo sem o master.m3u8)
+        if (str_ends_with($file_name, '.m3u8')) {
+            $folder = dirname($file_name);
+            return r2_delete_directory($folder);
+        }
+
         $key = R2_VIDEO_FOLDER . $file_name;
         
         $client = r2_get_client();
@@ -136,6 +143,108 @@ function r2_delete_video(string $video_path): bool {
         return true;
     } catch (Throwable $e) {
         error_log('R2 Delete Error: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Fazer upload de uma diretoria (HLS) para o Cloudflare R2
+ * 
+ * @param string $local_dir Caminho local da diretoria
+ * @param string $r2_folder_name Nome da diretoria no R2 (ex: "abc123_1234567890")
+ * @return array ['success' => bool, 'key' => string, 'error' => string]
+ */
+function r2_upload_directory(string $local_dir, string $r2_folder_name): array {
+    try {
+        $client = r2_get_client();
+        $base_key = R2_VIDEO_FOLDER . $r2_folder_name . '/';
+        
+        $files = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($local_dir, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        $master_playlist_key = null;
+
+        foreach ($files as $file) {
+            if ($file->isDir()) {
+                continue;
+            }
+
+            $real_path = $file->getRealPath();
+            $relative_path = str_replace($local_dir . DIRECTORY_SEPARATOR, '', $real_path);
+            $relative_path = str_replace('\\', '/', $relative_path); // Para Windows
+            
+            $key = $base_key . $relative_path;
+            $ext = pathinfo($real_path, PATHINFO_EXTENSION);
+            $content_type = r2_get_mime_type($ext);
+
+            $client->putObject([
+                'Bucket' => R2_BUCKET_NAME,
+                'Key'    => $key,
+                'SourceFile' => $real_path,
+                'ContentType' => $content_type,
+                'CacheControl' => 'public, max-age=31536000',
+            ]);
+
+            if ($relative_path === 'master.m3u8' || $relative_path === 'playlist.m3u8') {
+                $master_playlist_key = $key;
+            }
+        }
+        
+        // Se não houver playlist principal, usa a própria pasta como key
+        $final_key = $master_playlist_key ?: $base_key;
+        $final_key = str_replace(R2_VIDEO_FOLDER, '', $final_key);
+
+        return [
+            'success' => true,
+            'key' => $final_key,
+            'url' => R2_PUBLIC_URL . '/' . R2_VIDEO_FOLDER . $final_key,
+            'error' => null,
+        ];
+    } catch (Throwable $e) {
+        error_log('R2 Upload Directory Error: ' . $e->getMessage());
+        return [
+            'success' => false,
+            'key' => null,
+            'url' => null,
+            'error' => $e->getMessage(),
+        ];
+    }
+}
+
+/**
+ * Apagar uma diretoria do Cloudflare R2
+ * 
+ * @param string $folder_name Nome da diretoria dentro do R2_VIDEO_FOLDER
+ * @return bool
+ */
+function r2_delete_directory(string $folder_name): bool {
+    try {
+        $client = r2_get_client();
+        $prefix = R2_VIDEO_FOLDER . trim($folder_name, '/') . '/';
+        
+        $objects = $client->listObjects([
+            'Bucket' => R2_BUCKET_NAME,
+            'Prefix' => $prefix
+        ]);
+
+        if (isset($objects['Contents'])) {
+            $delete = [];
+            foreach ($objects['Contents'] as $object) {
+                $delete[] = ['Key' => $object['Key']];
+            }
+            if (!empty($delete)) {
+                $client->deleteObjects([
+                    'Bucket' => R2_BUCKET_NAME,
+                    'Delete' => ['Objects' => $delete]
+                ]);
+            }
+        }
+        
+        return true;
+    } catch (Throwable $e) {
+        error_log('R2 Delete Directory Error: ' . $e->getMessage());
         return false;
     }
 }
@@ -223,9 +332,11 @@ function r2_get_mime_type(string $extension): string {
         'mov'  => 'video/quicktime',
         'wmv'  => 'video/x-ms-wmv',
         'mkv'  => 'video/x-matroska',
+        'm3u8' => 'application/vnd.apple.mpegurl',
+        'ts'   => 'video/MP2T',
     ];
     
-    return $mime_types[strtolower($extension)] ?? 'video/mp4';
+    return $mime_types[strtolower($extension)] ?? 'application/octet-stream';
 }
 
 /**

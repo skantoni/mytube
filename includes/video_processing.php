@@ -303,6 +303,99 @@ function video_prepare_for_storage(string $input_path, string $original_extensio
 }
 
 /**
+ * Prepara o vídeo para Adaptive Bitrate Streaming (HLS).
+ * Corta e transcodifica o vídeo em 4 qualidades (144p, 360p, 480p, 720p).
+ * 
+ * @param string $input_path Caminho do vídeo original
+ * @return array{success: bool, output_dir: ?string, error: ?string}
+ */
+function video_prepare_hls(string $input_path): array {
+    $result = [
+        'success' => false,
+        'output_dir' => null,
+        'error' => null,
+    ];
+
+    if (!video_exec_available()) {
+        $result['error'] = 'Processamento de vídeo indisponível (exec desativado).';
+        return $result;
+    }
+
+    $ffmpeg = video_get_ffmpeg_binary();
+    if (!$ffmpeg) {
+        $result['error'] = 'FFmpeg não encontrado no servidor.';
+        return $result;
+    }
+
+    $output_dir = rtrim((string)sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . uniqid('mytube_hls_', true);
+    if (!mkdir($output_dir, 0755, true) && !is_dir($output_dir)) {
+        $result['error'] = 'Não foi possível criar o diretório temporário para HLS.';
+        return $result;
+    }
+
+    // Obter resolução original para evitar upscale
+    $probe = video_probe_file($input_path);
+    $orig_height = 1080;
+    if ($probe && !empty($probe['streams'])) {
+        foreach ($probe['streams'] as $stream) {
+            if (isset($stream['codec_type']) && $stream['codec_type'] === 'video' && isset($stream['height'])) {
+                $orig_height = (int)$stream['height'];
+                break;
+            }
+        }
+    }
+
+    // Construção condicional do map e filtros baseado na resolução original
+    // Se o vídeo original é menor que 720p, omitimos os perfis superiores ou limitamo-los.
+    // Mas para simplificar e garantir as 4 playlists, o FFmpeg suporta scale com aspect ratio correto.
+    // O scale usa -2:HEIGHT para manter o aspect ratio.
+
+    // Perfil 0: 720p (Alta)
+    // Perfil 1: 480p (Média)
+    // Perfil 2: 360p (Aceitável)
+    // Perfil 3: 144p (Baixa)
+
+    $command = sprintf(
+        '%s -y -i %s -filter_complex "[0:v]split=4[v0][v1][v2][v3];[v0]scale=-2:720[v0out];[v1]scale=-2:480[v1out];[v2]scale=-2:360[v2out];[v3]scale=-2:144[v3out]" ' .
+        '-map "[v0out]" -map 0:a:0? -map "[v1out]" -map 0:a:0? -map "[v2out]" -map 0:a:0? -map "[v3out]" -map 0:a:0? ' .
+        '-c:v libx264 -preset %s -crf %d -c:a aac ' .
+        '-b:v:0 2500k -maxrate:v:0 2675k -bufsize:v:0 3750k -profile:v:0 main ' .
+        '-b:v:1 1200k -maxrate:v:1 1284k -bufsize:v:1 1800k -profile:v:1 main ' .
+        '-b:v:2 800k  -maxrate:v:2 856k  -bufsize:v:2 1200k -profile:v:2 main ' .
+        '-b:v:3 400k  -maxrate:v:3 428k  -bufsize:v:3 600k  -profile:v:3 baseline ' .
+        '-b:a:0 128k -b:a:1 96k -b:a:2 96k -b:a:3 64k ' .
+        '-f hls -hls_time 4 -hls_playlist_type vod -hls_flags independent_segments ' .
+        '-master_pl_name master.m3u8 ' .
+        '-hls_segment_filename "%s/stream_%%v_data%%03d.ts" ' .
+        '-var_stream_map "v:0,a:0 v:1,a:1 v:2,a:2 v:3,a:3" ' .
+        '"%s/playlist_%%v.m3u8" 2>&1',
+        escapeshellarg($ffmpeg),
+        escapeshellarg($input_path),
+        escapeshellarg(VIDEO_TRANSCODE_PRESET),
+        (int)VIDEO_TRANSCODE_CRF,
+        $output_dir, // No escape here to allow %%v
+        $output_dir
+    );
+
+    error_log('video_prepare_hls: command = ' . $command);
+
+    $output = [];
+    $exit_code = 1;
+    exec($command, $output, $exit_code);
+
+    if ($exit_code !== 0 || !file_exists($output_dir . DIRECTORY_SEPARATOR . 'master.m3u8')) {
+        $result['error'] = 'Falha ao transcodificar para HLS (FFmpeg exit ' . $exit_code . '). ' . implode(" ", array_slice($output, -5));
+        error_log('HLS erro: ' . implode("\n", array_slice($output, -15)));
+        return $result;
+    }
+
+    $result['success'] = true;
+    $result['output_dir'] = $output_dir;
+
+    return $result;
+}
+
+/**
  * Faz download de um ficheiro de audio a partir de uma URL segura (Deezer CDN).
  * Usa cURL como método principal (mais fiável que file_get_contents para HTTPS).
  * Retorna o caminho do ficheiro temporario ou null em caso de erro.
