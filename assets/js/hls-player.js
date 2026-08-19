@@ -73,34 +73,33 @@ function initHlsPlayer(videoEl, url) {
             videoEl._hlsInstance = null;
         }
 
-        // --- A TÉCNICA DEFINITIVA: autoStartLoad: false ---
-        //
-        // Com autoStartLoad: true (o default), o hls.js começa a descarregar o
-        // primeiro segmento IMEDIATAMENTE, antes mesmo do MANIFEST_PARSED disparar.
-        // Isso significa que qualquer tentativa de definir o nível no MANIFEST_PARSED
-        // é IGNORADA — o download já está a decorrer.
-        //
-        // A solução: autoStartLoad: false congela o hls.js após carregar o manifest,
-        // dando-nos controlo total para forçar o nível antes de qualquer download.
-        // Depois chamamos hls.startLoad() manualmente dentro do MANIFEST_PARSED.
-        // O abrEwmaDefaultEstimate é crucial porque diz ao hls.js qual a velocidade 
-        // esperada antes de descarregar os primeiros pacotes de teste.
         const estimatedBps = _estimateInitialBandwidth();
 
+        // ╔══════════════════════════════════════════════════════════════════╗
+        // ║  ABORDAGEM MÁXIMA: PIN + RELEASE                                ║
+        // ║                                                                  ║
+        // ║  1. autoStartLoad: false  → Congela o HLS antes de qualquer     ║
+        // ║     download de segmento.                                        ║
+        // ║                                                                  ║
+        // ║  2. No MANIFEST_PARSED:                                          ║
+        // ║     a) autoLevelEnabled = false  → DESLIGA o ABR totalmente.     ║
+        // ║        O motor de qualidade automática fica mudo.                ║
+        // ║     b) Forçar o nível nos 3 pontos de controlo em simultâneo:   ║
+        // ║        - hls.startLevel     → diz ao startLoad() qual usar      ║
+        // ║        - hls.nextLoadLevel  → fila de download directa           ║
+        // ║        - hls.currentLevel   → pin do nível actual               ║
+        // ║     c) startLoad() → arranca. O PRIMEIRO segmento é descarregado ║
+        // ║        GARANTIDAMENTE no nível escolhido. Sem excepções.         ║
+        // ║                                                                  ║
+        // ║  3. No FRAG_LOADED (1º fragmento descarregado com sucesso):      ║
+        // ║     → Re-activar o ABR (autoLevelEnabled = true, currentLevel=-1)║
+        // ║       para que o HLS volte a adaptar automaticamente a partir    ║
+        // ║       deste momento, com base em medições REAIS de velocidade.   ║
+        // ╚══════════════════════════════════════════════════════════════════╝
         const hls = new Hls({
-            autoStartLoad: false, // Congelar até definirmos o nível
-            
-            // ---- Configurações de ABR (Adaptive Bitrate) ----
-            startLevel: -1,
-            abrEwmaDefaultEstimate: estimatedBps,
-            abrBandWidthFactor: 0.85,
-            abrBandWidthUpFactor: 0.7,
-            
-            // Garantir que não limita a qualidade ao tamanho do ecrã no telemóvel
-            // (onde a densidade de pixeis exige resoluções maiores que os pixeis CSS)
-            capLevelToPlayerSize: false,
-
-            // ---- Buffer e robustez ----
+            autoStartLoad: false,       // Passo 1: congelar até ao MANIFEST_PARSED
+            capLevelToPlayerSize: false, // Não limitar qualidade pelo tamanho CSS do player
+            abrEwmaDefaultEstimate: estimatedBps, // Seed de velocidade para o ABR (usado após release)
             maxBufferLength: 30,
             maxMaxBufferLength: 60,
             maxBufferHole: 0.5,
@@ -110,36 +109,46 @@ function initHlsPlayer(videoEl, url) {
 
         hls.loadSource(url);
         hls.attachMedia(videoEl);
-
         videoEl._hlsInstance = hls;
 
-        // MANIFEST_PARSED: O manifest foi descarregado e os níveis estão disponíveis.
-        hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
-            const totalLevels = data.levels.length; // ex: 4 (144p, 360p, 480p, 720p)
-            const bps = estimatedBps;
+        // Calcular o nível alvo uma só vez
+        let _targetLevel = 0;
+        let _firstFragLoaded = false;
 
-            let targetLevel = 0; // fallback: qualidade mais baixa
+        hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+            const totalLevels = data.levels.length;
 
             if (totalLevels > 1) {
-                if (bps >= 8 * 1000 * 1000) {
-                    // ≥ 8 Mbps → Máxima qualidade (ex: 720p = índice 3)
-                    targetLevel = totalLevels - 1;
-                } else if (bps >= 3 * 1000 * 1000) {
-                    // ≥ 3 Mbps → Qualidade alta-média (ex: 480p = índice 2)
-                    targetLevel = totalLevels - 2;
-                } else if (bps >= 1 * 1000 * 1000) {
-                    // ≥ 1 Mbps → Qualidade média (ex: 360p = índice 1)
-                    targetLevel = Math.max(0, totalLevels - 3);
+                if (estimatedBps >= 8 * 1000 * 1000) {
+                    _targetLevel = totalLevels - 1; // 720p
+                } else if (estimatedBps >= 3 * 1000 * 1000) {
+                    _targetLevel = totalLevels - 2; // 480p
+                } else if (estimatedBps >= 1 * 1000 * 1000) {
+                    _targetLevel = Math.max(0, totalLevels - 3); // 360p
                 }
             }
 
-            // A TÉCNICA CORRETA: hls.startLevel define qual o índice que o 
-            // startLoad() vai usar para pedir o PRIMEIRO segmento.
-            // (Usar hls.currentLevel aqui seria ignorado porque o stream não arrancou)
-            hls.startLevel = targetLevel;
+            // Passo 2a: DESLIGAR o ABR completamente
+            hls.autoLevelEnabled = false;
 
-            // Agora sim, autorizamos o HLS a descarregar o primeiro segmento (já na qualidade certa)
+            // Passo 2b: Forçar o nível nos 3 pontos de controlo em simultâneo
+            hls.startLevel    = _targetLevel;
+            hls.nextLoadLevel = _targetLevel;
+            hls.currentLevel  = _targetLevel;
+
+            // Passo 2c: Agora o HLS pode arrancar — primeiro segmento será no nível correcto
             hls.startLoad();
+        });
+
+        // Passo 3: Assim que o primeiro fragmento for descarregado com sucesso,
+        // RE-ACTIVAR o ABR para que o player adapte a qualidade de forma inteligente
+        // a partir daqui, com base em medições reais de velocidade de download.
+        hls.on(Hls.Events.FRAG_LOADED, function (event, data) {
+            if (!_firstFragLoaded && data.frag.sn !== 'initSegment') {
+                _firstFragLoaded = true;
+                hls.autoLevelEnabled = true;  // Libertar o ABR
+                hls.currentLevel = -1;         // Voltar ao modo automático
+            }
         });
 
         hls.on(Hls.Events.ERROR, function (event, data) {
