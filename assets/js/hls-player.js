@@ -73,29 +73,23 @@ function initHlsPlayer(videoEl, url) {
             videoEl._hlsInstance = null;
         }
 
-        // --- A TÉCNICA CORRETA DAS BIG TECHS ---
-        // O segredo é o abrEwmaDefaultEstimate passado NA CRIAÇÃO do objeto Hls.
-        // Tentar definir startLevel no evento MANIFEST_PARSED é TARDE DEMAIS —
-        // o HLS já escolheu a qualidade inicial antes do evento disparar.
-        // O abrEwmaDefaultEstimate diz ao ABR controller: "parte do princípio que
-        // a internet do utilizador tem esta velocidade, ANTES de medir qualquer coisa."
-        const estimatedBps = _estimateInitialBandwidth();
-
+        // --- A TÉCNICA DEFINITIVA: autoStartLoad: false ---
+        //
+        // Com autoStartLoad: true (o default), o hls.js começa a descarregar o
+        // primeiro segmento IMEDIATAMENTE, antes mesmo do MANIFEST_PARSED disparar.
+        // Isso significa que qualquer tentativa de definir o nível no MANIFEST_PARSED
+        // é IGNORADA — o download já está a decorrer.
+        //
+        // A solução: autoStartLoad: false congela o hls.js após carregar o manifest,
+        // dando-nos controlo total para forçar o nível antes de qualquer download.
+        // Depois chamamos hls.startLoad() manualmente dentro do MANIFEST_PARSED.
         const hls = new Hls({
-            // ---- Qualidade inicial ----
-            startLevel: -1, // -1 = auto (ABR decide com base no estimatedBps abaixo)
-            abrEwmaDefaultEstimate: estimatedBps, // <<< A CHAVE PRINCIPAL
-            // Fator de confiança: 85% da largura de banda estimada
-            // Mais conservador que o default (95%) para evitar buffering ao arrancar
-            abrBandWidthFactor: 0.85,
-            abrBandWidthUpFactor: 0.7,
+            autoStartLoad: false, // <<< CONGELAR até definirmos o nível
 
-            // ---- Buffer ----
+            // ---- Buffer e robustez ----
             maxBufferLength: 30,
             maxMaxBufferLength: 60,
             maxBufferHole: 0.5,
-
-            // ---- Robustez ----
             fragLoadingTimeOut: 20000,
             levelLoadingTimeOut: 10000,
         });
@@ -104,6 +98,37 @@ function initHlsPlayer(videoEl, url) {
         hls.attachMedia(videoEl);
 
         videoEl._hlsInstance = hls;
+
+        // MANIFEST_PARSED: O manifest foi descarregado e os níveis estão disponíveis.
+        // Como autoStartLoad é false, NENHUM segmento foi descarregado ainda.
+        // Podemos forçar currentLevel com total controlo.
+        hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+            const totalLevels = data.levels.length; // ex: 4 (144p, 360p, 480p, 720p)
+            const bps = _estimateInitialBandwidth();
+
+            let targetLevel = 0; // fallback: qualidade mais baixa
+
+            if (totalLevels > 1) {
+                if (bps >= 8 * 1000 * 1000) {
+                    // ≥ 8 Mbps → Máxima qualidade (ex: 720p = índice 3)
+                    targetLevel = totalLevels - 1;
+                } else if (bps >= 3 * 1000 * 1000) {
+                    // ≥ 3 Mbps → Qualidade alta-média (ex: 480p = índice 2)
+                    targetLevel = totalLevels - 2;
+                } else if (bps >= 1 * 1000 * 1000) {
+                    // ≥ 1 Mbps → Qualidade média (ex: 360p = índice 1)
+                    targetLevel = Math.max(0, totalLevels - 3);
+                }
+                // < 1 Mbps → índice 0 (144p) — já está como default
+            }
+
+            // Forçar o nível escolhido. Com autoStartLoad:false, isto funciona
+            // garantidamente porque nenhum segmento foi descarregado ainda.
+            hls.currentLevel = targetLevel;
+
+            // Agora podemos arrancar. O primeiro segmento descarregado será no nível escolhido.
+            hls.startLoad();
+        });
 
         hls.on(Hls.Events.ERROR, function (event, data) {
             if (data.fatal) {
