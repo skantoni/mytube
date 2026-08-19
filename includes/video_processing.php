@@ -356,24 +356,37 @@ function video_prepare_hls(string $input_path): array {
     // Perfil 3: 144p (Baixa)
 
     $command = sprintf(
-        '%s -y -i %s -filter_complex "[0:v]split=4[v0][v1][v2][v3];[v0]scale=-2:720[v0out];[v1]scale=-2:480[v1out];[v2]scale=-2:360[v2out];[v3]scale=-2:144[v3out]" ' .
-        '-map "[v0out]" -map 0:a:0? -map "[v1out]" -map 0:a:0? -map "[v2out]" -map 0:a:0? -map "[v3out]" -map 0:a:0? ' .
-        '-c:v libx264 -preset %s -crf %d -c:a aac ' .
-        '-b:v:0 2500k -maxrate:v:0 2675k -bufsize:v:0 3750k -profile:v:0 main ' .
-        '-b:v:1 1200k -maxrate:v:1 1284k -bufsize:v:1 1800k -profile:v:1 main ' .
-        '-b:v:2 800k  -maxrate:v:2 856k  -bufsize:v:2 1200k -profile:v:2 main ' .
-        '-b:v:3 400k  -maxrate:v:3 428k  -bufsize:v:3 600k  -profile:v:3 baseline ' .
-        '-b:a:0 128k -b:a:1 96k -b:a:2 96k -b:a:3 64k ' .
-        '-f hls -hls_time 4 -hls_playlist_type vod -hls_flags independent_segments ' .
-        '-master_pl_name master.m3u8 ' .
-        '-hls_segment_filename "%s/stream_%%v_data%%03d.ts" ' .
-        '-var_stream_map "v:0,a:0 v:1,a:1 v:2,a:2 v:3,a:3" ' .
-        '"%s/playlist_%%v.m3u8" 2>&1',
+        '%s -y -i %s' .
+        // ── Filtros de vídeo ──────────────────────────────────────────────────
+        ' -filter_complex "[0:v]split=4[v0][v1][v2][v3];[v0]scale=-2:720[v0out];[v1]scale=-2:480[v1out];[v2]scale=-2:360[v2out];[v3]scale=-2:144[v3out]"' .
+        ' -map "[v0out]" -map 0:a:0? -map "[v1out]" -map 0:a:0? -map "[v2out]" -map 0:a:0? -map "[v3out]" -map 0:a:0?' .
+        // ── Codec de vídeo ────────────────────────────────────────────────────
+        ' -c:v libx264 -preset %s -crf %d' .
+        ' -b:v:0 2500k -maxrate:v:0 2675k -bufsize:v:0 3750k -profile:v:0 main' .
+        ' -b:v:1 1200k -maxrate:v:1 1284k -bufsize:v:1 1800k -profile:v:1 main' .
+        ' -b:v:2 800k  -maxrate:v:2 856k  -bufsize:v:2 1200k -profile:v:2 main' .
+        ' -b:v:3 400k  -maxrate:v:3 428k  -bufsize:v:3 600k  -profile:v:3 baseline' .
+        // ── Codec de áudio — flags anti-glitch ───────────────────────────────
+        // -c:a aac           : codec AAC (nativo do FFmpeg, sem encoder delay externo)
+        // -ar 48000          : forçar sample rate consistente em TODOS os streams
+        //                      (evita re-sync ao mudar qualidade)
+        // -async 1           : corrigir desvio de timestamp de áudio frame-a-frame
+        // -avoid_negative_ts make_zero: garantir que o primeiro timestamp de cada
+        //                      segmento .ts começa em zero (requerido pelo MPEG-TS)
+        //                      e elimina o "priming silence" do AAC nos cortes de segmento
+        ' -c:a aac -ar 48000 -async 1 -avoid_negative_ts make_zero' .
+        ' -b:a:0 128k -b:a:1 96k -b:a:2 96k -b:a:3 64k' .
+        // ── HLS ───────────────────────────────────────────────────────────────
+        ' -f hls -hls_time 4 -hls_playlist_type vod -hls_flags independent_segments' .
+        ' -master_pl_name master.m3u8' .
+        ' -hls_segment_filename "%s/stream_%%v_data%%03d.ts"' .
+        ' -var_stream_map "v:0,a:0 v:1,a:1 v:2,a:2 v:3,a:3"' .
+        ' "%s/playlist_%%v.m3u8" 2>&1',
         escapeshellarg($ffmpeg),
         escapeshellarg($input_path),
         escapeshellarg(VIDEO_TRANSCODE_PRESET),
         (int)VIDEO_TRANSCODE_CRF,
-        $output_dir, // No escape here to allow %%v
+        $output_dir, // Sem escape para permitir %%v
         $output_dir
     );
 
