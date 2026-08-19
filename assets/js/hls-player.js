@@ -54,6 +54,32 @@ function initHlsPlayer(videoEl, url) {
 
         videoEl._hlsInstance = hls;
 
+        // --- MAGIA DAS BIG TECHS: Escolher a qualidade inicial baseada na net ---
+        hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+            // data.levels tem as qualidades ordenadas por bitrate (0 = pior, ex: 144p | N = melhor, ex: 720p)
+            const totalLevels = data.levels.length;
+            
+            if (navigator.connection && totalLevels > 1) {
+                const conn = navigator.connection;
+                // downlink é a velocidade de download estimada em Mbps
+                const mbps = conn.downlink || 0;
+                
+                let targetLevel = -1; // -1 = Auto (hls.js escolhe a mais baixa por padrão)
+
+                if (mbps >= 8 || conn.effectiveType === '4g') {
+                    // Net muito boa: Arranca na Máxima (ex: 720p)
+                    targetLevel = totalLevels - 1;
+                } else if (mbps >= 3) {
+                    // Net média: Arranca na qualidade do meio (ex: 360p / 480p)
+                    targetLevel = Math.floor(totalLevels / 2);
+                }
+                
+                if (targetLevel !== -1) {
+                    hls.startLevel = targetLevel;
+                }
+            }
+        });
+
         hls.on(Hls.Events.ERROR, function (event, data) {
             if (data.fatal) {
                 switch (data.type) {
