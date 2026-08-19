@@ -83,8 +83,22 @@ function initHlsPlayer(videoEl, url) {
         // A solução: autoStartLoad: false congela o hls.js após carregar o manifest,
         // dando-nos controlo total para forçar o nível antes de qualquer download.
         // Depois chamamos hls.startLoad() manualmente dentro do MANIFEST_PARSED.
+        // O abrEwmaDefaultEstimate é crucial porque diz ao hls.js qual a velocidade 
+        // esperada antes de descarregar os primeiros pacotes de teste.
+        const estimatedBps = _estimateInitialBandwidth();
+
         const hls = new Hls({
-            autoStartLoad: false, // <<< CONGELAR até definirmos o nível
+            autoStartLoad: false, // Congelar até definirmos o nível
+            
+            // ---- Configurações de ABR (Adaptive Bitrate) ----
+            startLevel: -1,
+            abrEwmaDefaultEstimate: estimatedBps,
+            abrBandWidthFactor: 0.85,
+            abrBandWidthUpFactor: 0.7,
+            
+            // Garantir que não limita a qualidade ao tamanho do ecrã no telemóvel
+            // (onde a densidade de pixeis exige resoluções maiores que os pixeis CSS)
+            capLevelToPlayerSize: false,
 
             // ---- Buffer e robustez ----
             maxBufferLength: 30,
@@ -100,11 +114,9 @@ function initHlsPlayer(videoEl, url) {
         videoEl._hlsInstance = hls;
 
         // MANIFEST_PARSED: O manifest foi descarregado e os níveis estão disponíveis.
-        // Como autoStartLoad é false, NENHUM segmento foi descarregado ainda.
-        // Podemos forçar currentLevel com total controlo.
         hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
             const totalLevels = data.levels.length; // ex: 4 (144p, 360p, 480p, 720p)
-            const bps = _estimateInitialBandwidth();
+            const bps = estimatedBps;
 
             let targetLevel = 0; // fallback: qualidade mais baixa
 
@@ -119,14 +131,14 @@ function initHlsPlayer(videoEl, url) {
                     // ≥ 1 Mbps → Qualidade média (ex: 360p = índice 1)
                     targetLevel = Math.max(0, totalLevels - 3);
                 }
-                // < 1 Mbps → índice 0 (144p) — já está como default
             }
 
-            // Forçar o nível escolhido. Com autoStartLoad:false, isto funciona
-            // garantidamente porque nenhum segmento foi descarregado ainda.
-            hls.currentLevel = targetLevel;
+            // A TÉCNICA CORRETA: hls.startLevel define qual o índice que o 
+            // startLoad() vai usar para pedir o PRIMEIRO segmento.
+            // (Usar hls.currentLevel aqui seria ignorado porque o stream não arrancou)
+            hls.startLevel = targetLevel;
 
-            // Agora podemos arrancar. O primeiro segmento descarregado será no nível escolhido.
+            // Agora sim, autorizamos o HLS a descarregar o primeiro segmento (já na qualidade certa)
             hls.startLoad();
         });
 
