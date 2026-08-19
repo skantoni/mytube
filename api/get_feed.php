@@ -512,27 +512,29 @@ function fetchBatch(
     int $start_video_id = 0
 ): array {
     if ($profile_user_id > 0) {
-        $exclude_clause = '';
-        $params = [];
+        $stmt = $pdo->prepare("
+            SELECT v.id
+            FROM videos v
+            WHERE v.is_public = 1 AND v.is_hidden = 0 AND v.moderation_status = 'approved' AND v.user_id = ?
+            ORDER BY v.created_at DESC, v.id DESC
+        ");
+        $stmt->execute([$profile_user_id]);
+        $all_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        $all_ids = array_map('intval', $all_ids);
 
-        if ($start_video_id > 0 && empty($exclude_ids)) {
-            $limit_rest = $batch_size - 1;
-            $params_start = [$start_video_id, $profile_user_id];
-            $stmt = $pdo->prepare("\n                (SELECT v.id, 1 AS sort_order\n                 FROM videos v\n                 WHERE v.id = ? AND v.is_public = 1 AND v.is_hidden = 0 AND v.moderation_status = 'approved')\n                UNION ALL\n                (SELECT v.id, 2 AS sort_order\n                 FROM videos v\n                 WHERE v.is_public = 1 AND v.is_hidden = 0 AND v.moderation_status = 'approved' AND v.user_id = ? AND v.id != " . (int)$start_video_id . "\n                 ORDER BY v.created_at DESC\n                 LIMIT $limit_rest)\n            ");
-            $stmt->execute($params_start);
-            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        if ($start_video_id > 0) {
+            $start_index = array_search($start_video_id, $all_ids);
+            if ($start_index !== false) {
+                $all_ids = array_slice($all_ids, $start_index);
+            }
         }
 
-        $params[] = $profile_user_id;
         if (!empty($exclude_ids)) {
-            $ph = implode(',', array_fill(0, count($exclude_ids), '?'));
-            $exclude_clause = "AND v.id NOT IN ($ph)";
-            $params = array_merge($params, $exclude_ids);
+            $all_ids = array_values(array_diff($all_ids, $exclude_ids));
         }
 
-        $stmt = $pdo->prepare("\n            SELECT v.id\n            FROM videos v\n            WHERE v.is_public = 1 AND v.is_hidden = 0 AND v.moderation_status = 'approved' AND v.user_id = ? $exclude_clause\n            ORDER BY v.created_at DESC\n            LIMIT $batch_size\n        ");
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return array_slice($all_ids, 0, $batch_size);
     }
 
     $policy = getBoostPolicy();
@@ -652,12 +654,17 @@ if ($guest_mode) {
         $cache_valid = $cache && ($cache['session_id'] ?? '') === $feed_session_id;
 
         if (!$cache_valid) {
-            $initial_ids = fetchGuestBatch($pdo, $seed, [], $batch_size);
-
             $start_video = isset($_GET['start_video']) ? (int)$_GET['start_video'] : 0;
-            if ($start_video > 0) {
-                $initial_ids = array_values(array_diff($initial_ids, [$start_video]));
-                array_unshift($initial_ids, $start_video);
+            $profile_user_id = isset($_GET['profile_user']) ? (int)$_GET['profile_user'] : 0;
+
+            if ($profile_user_id > 0) {
+                $initial_ids = fetchBatch($pdo, 0, $seed, [], $batch_size, $profile_user_id, $start_video);
+            } else {
+                $initial_ids = fetchGuestBatch($pdo, $seed, [], $batch_size);
+                if ($start_video > 0) {
+                    $initial_ids = array_values(array_diff($initial_ids, [$start_video]));
+                    array_unshift($initial_ids, $start_video);
+                }
             }
 
             if (empty($initial_ids)) {
@@ -675,6 +682,8 @@ if ($guest_mode) {
                 'session_id' => $feed_session_id,
                 'video_ids' => $initial_ids,
                 'seed' => $seed,
+                'profile' => $profile_user_id,
+                'start_video' => $start_video,
                 'exhausted' => count($initial_ids) < $batch_size,
             ];
         }
@@ -683,7 +692,12 @@ if ($guest_mode) {
         $exhausted  = $_SESSION[$guest_cache_key]['exhausted'] ?? false;
 
         if (!$exhausted && ($offset + $limit) >= count($cached_ids)) {
-            $new_ids = fetchGuestBatch($pdo, $seed, $cached_ids, $batch_size);
+            $profile_user_id = $_SESSION[$guest_cache_key]['profile'] ?? 0;
+            if ($profile_user_id > 0) {
+                $new_ids = fetchBatch($pdo, 0, $seed, $cached_ids, $batch_size, $profile_user_id, $_SESSION[$guest_cache_key]['start_video'] ?? 0);
+            } else {
+                $new_ids = fetchGuestBatch($pdo, $seed, $cached_ids, $batch_size);
+            }
 
             if (!empty($new_ids)) {
                 $cached_ids = array_merge($cached_ids, $new_ids);
@@ -884,6 +898,7 @@ try {
             'video_ids' => $initial_ids,
             'seed' => $seed,
             'profile' => $profile_user_id,
+            'start_video' => $start_video_id,
             'exhausted' => count($initial_ids) < $batch_size,
             'created_at' => time(),
         ];
@@ -903,7 +918,7 @@ try {
             $cached_ids,
             $batch_size,
             $_SESSION[$feed_cache_key]['profile'] ?? 0,
-            0
+            $_SESSION[$feed_cache_key]['start_video'] ?? 0
         );
 
         if (!empty($new_ids)) {
