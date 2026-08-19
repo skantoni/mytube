@@ -1,4 +1,4 @@
-﻿/**
+/**
  * hls-player.js — MyTube HLS Player
  *
  * Usa a biblioteca hls.js para tocar vídeos no formato HLS (.m3u8).

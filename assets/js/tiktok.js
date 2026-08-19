@@ -74,9 +74,22 @@ class TikTokPlayer {
         this.videos = Array.from(videoItems).map((item, index) => {
             const video = item.querySelector('video');
             const videoId = item.dataset.videoId;
+            const placeholder = item.querySelector('.video-placeholder');
+            const videoPath = video?.dataset?.videoPath || placeholder?.dataset?.videoPath || '';
             
             // Eventos básicos do elemento video (não são de click)
             if (video) {
+                // Inicializar o HLS ou fallback nativo, apenas se ainda não tiver src
+                if (!video.src && !video.querySelector('source') && !video._hlsInstance) {
+                    const videoUrl = video.dataset.videoUrl || (typeof resolveVideoUrl === 'function' ? resolveVideoUrl(videoPath) : videoPath);
+                    if (typeof initHlsPlayer === 'function') {
+                        initHlsPlayer(video, videoUrl);
+                    } else {
+                        // Fallback absoluto se hls-player.js falhar
+                        video.src = videoUrl;
+                    }
+                }
+
                 // Remover listeners antigos
                 video.onloadeddata = null;
                 video.ontimeupdate = null;
@@ -130,9 +143,6 @@ class TikTokPlayer {
                 };
             }
             
-            const placeholder = item.querySelector('.video-placeholder');
-            const videoPath = video?.dataset?.videoPath || placeholder?.dataset?.videoPath || '';
-
             // Aplicar estado de mute consistente
             if (video) video.muted = currentMuteState;
 
@@ -770,7 +780,11 @@ class TikTokPlayer {
         if (!currentVideo.loaded && currentVideo.video) {
             const nq = window.networkQuality;
             if (nq) currentVideo.video.preload = nq.getPreload();
-            currentVideo.video.load();
+            
+            // NÃO usar .load() em instâncias HLS.js, pois isso reinicia o MediaSource e quebra a reprodução
+            if (!currentVideo.video._hlsInstance) {
+                currentVideo.video.load();
+            }
         }
         this.preloadNearbyVideos();
     }
@@ -813,7 +827,9 @@ class TikTokPlayer {
                 }
                 if (!vd.loaded && vd.video) {
                     if (nq) vd.video.preload = nq.getPreload();
-                    vd.video.load();
+                    if (!vd.video._hlsInstance) {
+                        vd.video.load();
+                    }
                 }
             }
         });
