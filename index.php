@@ -16,7 +16,7 @@ $highlight_comment_id = isset($_GET['comment_id']) ? (int)$_GET['comment_id'] : 
 $profile_user = null;
 
 // Se há user_id, é modo perfil
-if ($profile_user_id > 0 && isLoggedIn()) {
+if ($profile_user_id > 0) {
     $feed_mode = 'profile';
     
     // Buscar dados do usuário do perfil
@@ -387,8 +387,8 @@ if ($start_video_id > 0) {
             window.isGuestMode = true;
             window.isAdmin = false;
             window.currentUserId = 0;
-            window.feedMode = 'normal';
-            window.profileUserId = 0;
+            window.feedMode = '<?php echo $feed_mode; ?>';
+            window.profileUserId = <?php echo $profile_user_id; ?>;
             window.startVideoId = <?php echo $start_video_id; ?>;
             window.highlightCommentId = <?php echo $highlight_comment_id; ?>;
             

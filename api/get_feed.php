@@ -523,18 +523,23 @@ function fetchBatch(
         
         $all_ids = array_map('intval', $all_ids);
 
-        if ($start_video_id > 0) {
+        if ($start_video_id > 0 && empty($exclude_ids)) {
             $start_index = array_search($start_video_id, $all_ids);
             if ($start_index !== false) {
-                $all_ids = array_slice($all_ids, $start_index);
+                // Return from index 0 up to start_index + batch_size
+                // This includes all newer videos PLUS the batch size of older videos
+                $all_ids = array_slice($all_ids, 0, $start_index + $batch_size);
+            } else {
+                $all_ids = array_slice($all_ids, 0, $batch_size);
             }
+        } else {
+            if (!empty($exclude_ids)) {
+                $all_ids = array_values(array_diff($all_ids, $exclude_ids));
+            }
+            $all_ids = array_slice($all_ids, 0, $batch_size);
         }
 
-        if (!empty($exclude_ids)) {
-            $all_ids = array_values(array_diff($all_ids, $exclude_ids));
-        }
-
-        return array_slice($all_ids, 0, $batch_size);
+        return $all_ids;
     }
 
     $policy = getBoostPolicy();
@@ -706,6 +711,16 @@ if ($guest_mode) {
             if (count($new_ids) < $batch_size) {
                 $_SESSION[$guest_cache_key]['exhausted'] = true;
                 $exhausted = true;
+            }
+        }
+
+        if ($offset === 0) {
+            $start_video = $_SESSION[$guest_cache_key]['start_video'] ?? 0;
+            if ($start_video > 0) {
+                $start_index_in_cache = array_search($start_video, $cached_ids);
+                if ($start_index_in_cache !== false) {
+                    $limit = max($limit, $start_index_in_cache + 4);
+                }
             }
         }
 
@@ -929,6 +944,16 @@ try {
         if (count($new_ids) < $batch_size || count($cached_ids) >= $max_session_ids) {
             $exhausted = true;
             $_SESSION[$feed_cache_key]['exhausted'] = true;
+        }
+    }
+
+    if ($offset === 0) {
+        $start_vid = $_SESSION[$feed_cache_key]['start_video'] ?? 0;
+        if ($start_vid > 0) {
+            $start_index_in_cache = array_search($start_vid, $cached_ids);
+            if ($start_index_in_cache !== false) {
+                $limit = max($limit, $start_index_in_cache + 4);
+            }
         }
     }
 

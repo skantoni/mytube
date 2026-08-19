@@ -342,8 +342,21 @@ class FeedManager {
                 }
                 
                 // Atualizar estado
+                const wasFirstLoad = (this.offset === 0);
                 this.offset = data.next_offset;
                 this.hasMore = data.has_more;
+
+                if (wasFirstLoad && window.startVideoId && window.feedMode === 'profile') {
+                    setTimeout(() => {
+                        const targetVideo = document.querySelector(`.video-item[data-video-id="${window.startVideoId}"]`);
+                        if (targetVideo && window.tiktokPlayer) {
+                            const index = parseInt(targetVideo.dataset.index);
+                            if (!isNaN(index)) {
+                                window.tiktokPlayer.snapToVideo(index, 'auto');
+                            }
+                        }
+                    }, 100);
+                }
                 
             } else if (this.offset === 0) {
                 this.showEmptyFeed();
