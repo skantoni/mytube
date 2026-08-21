@@ -87,10 +87,8 @@ class TikTokPlayer {
                 //      e o browser tenta tocar o .m3u8 nativamente (o Chrome não consegue bem).
                 const srcIsRawM3u8 = video.src && video.src.includes('.m3u8') && !video.src.startsWith('blob:');
                 const needsHls = (!video.src || srcIsRawM3u8) && !video.querySelector('source') && !video._hlsInstance;
-                console.log(`[TIKTOK setupVideos] vid=${video.id} | src="${video.src?.substring(0,60)}..." | srcIsRawM3u8=${srcIsRawM3u8} | needsHls=${needsHls} | initHlsPlayer_type=${typeof initHlsPlayer}`);
                 if (needsHls) {
                     const videoUrl = video.dataset.videoUrl || (typeof resolveVideoUrl === 'function' ? resolveVideoUrl(videoPath) : videoPath);
-                    console.log(`[TIKTOK setupVideos] → A chamar initHlsPlayer com url=${videoUrl?.substring(0,80)}`);
                     // Limpar src direto antes de entregar ao HLS.js (ele vai criar um blob: próprio)
                     if (srcIsRawM3u8) {
                         video.removeAttribute('src');

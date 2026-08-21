@@ -43,35 +43,24 @@ function _estimateInitialBandwidth() {
  * @param {string} url - URL do vídeo (pode ser .m3u8 ou .mp4)
  */
 function initHlsPlayer(videoEl, url) {
-    console.log(`[HLS 0] initHlsPlayer chamado: url=${url}, videoEl.id=${videoEl?.id}`);
-
     if (!videoEl || !url) {
-        console.warn('[HLS 0] SAÍDA: videoEl ou url em falta');
         return;
     }
 
     const isHls = url.includes('.m3u8');
-    console.log(`[HLS 0] isHls=${isHls}`);
 
     if (!isHls) {
-        console.log('[HLS 0] SAÍDA: url não é .m3u8, usando src nativo (MP4)');
+        // Vídeo antigo .mp4, usar nativo
         videoEl.src = url;
         return;
     }
 
     // ─── ORDEM CORRETA (padrão oficial hls.js) ────────────────────────────────
-    //
     // 1º: Verificar Hls.isSupported() — usa MSE (Chrome, Edge, Firefox)
     // 2º: Fallback para HLS nativo — apenas Safari/iOS retorna "probably"
-    //
-    // ⚠️  ATENÇÃO: canPlayType('application/vnd.apple.mpegurl') retorna "maybe"
-    //     em Chrome e Edge no Windows, mas eles NÃO suportam HLS nativamente!
-    //     Verificar canPlayType ANTES de Hls.isSupported() faz com que o hls.js
-    //     seja IGNORADO em todos os browsers excepto Firefox — o bug original.
     // ─────────────────────────────────────────────────────────────────────────
 
     const hlsDefined = typeof Hls !== 'undefined';
-    console.log(`[HLS 0] hlsDefined=${hlsDefined}, Hls.isSupported=${hlsDefined ? Hls.isSupported() : 'N/A'}`);
 
     if (hlsDefined && Hls.isSupported()) {
         // Chrome, Edge, Firefox → usar hls.js (via MediaSource API)
@@ -130,7 +119,10 @@ function initHlsPlayer(videoEl, url) {
         });
 
         hls.on(Hls.Events.LEVEL_SWITCHED, function (event, data) {
-            console.log(`[HLS Debug] LEVEL_SWITCHED: Agora no level ${data.level}`);
+            const levelInfo = hls.levels[data.level];
+            const resolution = levelInfo ? `${levelInfo.width}x${levelInfo.height}` : 'desconhecida';
+            const kbps = levelInfo ? Math.round(levelInfo.bitrate / 1000) : 0;
+            console.log(`[HLS Debug] 🔄 LEVEL_SWITCHED: Agora no level ${data.level} (${resolution} @ ${kbps} kbps)`);
         });
 
         hls.on(Hls.Events.FRAG_LOADING, function (event, data) {
