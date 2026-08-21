@@ -79,9 +79,20 @@ class TikTokPlayer {
             
             // Eventos básicos do elemento video (não são de click)
             if (video) {
-                // Inicializar o HLS ou fallback nativo, apenas se ainda não tiver src
-                if (!video.src && !video.querySelector('source') && !video._hlsInstance) {
+                // Inicializar HLS.js se:
+                // 1. O vídeo não tem src (caso normal ao carregar novos vídeos)
+                // 2. OU o src já está preenchido com URL .m3u8 direto (não blob:)
+                //    → acontece no primeiro vídeo do feed, onde o feed-ajax.js preenche o src
+                //      antes do setupVideos() correr. Sem este check, o HLS.js nunca é inicializado
+                //      e o browser tenta tocar o .m3u8 nativamente (o Chrome não consegue bem).
+                const srcIsRawM3u8 = video.src && video.src.includes('.m3u8') && !video.src.startsWith('blob:');
+                const needsHls = (!video.src || srcIsRawM3u8) && !video.querySelector('source') && !video._hlsInstance;
+                if (needsHls) {
                     const videoUrl = video.dataset.videoUrl || (typeof resolveVideoUrl === 'function' ? resolveVideoUrl(videoPath) : videoPath);
+                    // Limpar src direto antes de entregar ao HLS.js (ele vai criar um blob: próprio)
+                    if (srcIsRawM3u8) {
+                        video.removeAttribute('src');
+                    }
                     if (typeof initHlsPlayer === 'function') {
                         initHlsPlayer(video, videoUrl);
                     } else {
