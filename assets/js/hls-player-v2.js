@@ -43,25 +43,36 @@ function _estimateInitialBandwidth() {
  * @param {string} url - URL do vídeo (pode ser .m3u8 ou .mp4)
  */
 function initHlsPlayer(videoEl, url) {
-    if (!videoEl || !url) return;
+    console.log(`[HLS 0] initHlsPlayer chamado: url=${url}, videoEl.id=${videoEl?.id}`);
+
+    if (!videoEl || !url) {
+        console.warn('[HLS 0] SAÍDA: videoEl ou url em falta');
+        return;
+    }
 
     const isHls = url.includes('.m3u8');
+    console.log(`[HLS 0] isHls=${isHls}`);
 
     if (!isHls) {
-        // Vídeo .mp4 antigo: usar o player nativo normalmente
+        console.log('[HLS 0] SAÍDA: url não é .m3u8, usando src nativo');
         videoEl.src = url;
         return;
     }
 
-    // Verificar se o browser suporta HLS nativamente (Safari / iOS)
-    if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+    // Verificar se o browser suporta HLS nativamente (Safari / iOS / Edge Windows)
+    const canPlayNative = videoEl.canPlayType('application/vnd.apple.mpegurl');
+    console.log(`[HLS 0] canPlayType('application/vnd.apple.mpegurl') = "${canPlayNative}"`);
+    if (canPlayNative) {
+        console.log('[HLS 0] SAÍDA: browser suporta HLS nativo — a usar src direto (sem hls.js)');
         videoEl.src = url;
         return;
     }
 
     // Verificar se a biblioteca hls.js está carregada
-    if (typeof Hls === 'undefined') {
-        console.warn('⚠️ hls.js não carregado — a tentar fallback para src nativo:', url);
+    const hlsDefined = typeof Hls !== 'undefined';
+    console.log(`[HLS 0] typeof Hls = "${typeof Hls}", hlsDefined=${hlsDefined}, Hls.isSupported=${hlsDefined ? Hls.isSupported() : 'N/A'}`);
+    if (!hlsDefined) {
+        console.warn('[HLS 0] SAÍDA: hls.js não carregado — a tentar fallback para src nativo:', url);
         videoEl.src = url;
         return;
     }
