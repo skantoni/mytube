@@ -67,92 +67,82 @@ function initHlsPlayer(videoEl, url) {
     }
 
     if (Hls.isSupported()) {
-        // Destruir instância anterior se existir (evitar memory leaks e sobreposição de áudio)
         if (videoEl._hlsInstance) {
             videoEl._hlsInstance.destroy();
             videoEl._hlsInstance = null;
         }
 
         const estimatedBps = _estimateInitialBandwidth();
+        console.log(`[HLS Debug] 1. Init: URL=${url}, estimatedBps=${estimatedBps}, downlink=${navigator.connection ? navigator.connection.downlink : 'N/A'}`);
 
-        // ╔══════════════════════════════════════════════════════════════════╗
-        // ║  ABORDAGEM MÁXIMA: PIN + RELEASE                                ║
-        // ║                                                                  ║
-        // ║  1. autoStartLoad: false  → Congela o HLS antes de qualquer     ║
-        // ║     download de segmento.                                        ║
-        // ║                                                                  ║
-        // ║  2. No MANIFEST_PARSED:                                          ║
-        // ║     a) autoLevelEnabled = false  → DESLIGA o ABR totalmente.     ║
-        // ║        O motor de qualidade automática fica mudo.                ║
-        // ║     b) Forçar o nível nos 3 pontos de controlo em simultâneo:   ║
-        // ║        - hls.startLevel     → diz ao startLoad() qual usar      ║
-        // ║        - hls.nextLoadLevel  → fila de download directa           ║
-        // ║        - hls.currentLevel   → pin do nível actual               ║
-        // ║     c) startLoad() → arranca. O PRIMEIRO segmento é descarregado ║
-        // ║        GARANTIDAMENTE no nível escolhido. Sem excepções.         ║
-        // ║                                                                  ║
-        // ║  3. No FRAG_LOADED (1º fragmento descarregado com sucesso):      ║
-        // ║     → Re-activar o ABR (autoLevelEnabled = true, currentLevel=-1)║
-        // ║       para que o HLS volte a adaptar automaticamente a partir    ║
-        // ║       deste momento, com base em medições REAIS de velocidade.   ║
-        // ╚══════════════════════════════════════════════════════════════════╝
         const hls = new Hls({
-            autoStartLoad: false,       // Passo 1: congelar até ao MANIFEST_PARSED
-            capLevelToPlayerSize: false, // Não limitar qualidade pelo tamanho CSS do player
-            abrEwmaDefaultEstimate: estimatedBps, // Seed de velocidade para o ABR (usado após release)
+            autoStartLoad: false,
+            capLevelToPlayerSize: false,
+            abrEwmaDefaultEstimate: estimatedBps,
             maxBufferLength: 30,
             maxMaxBufferLength: 60,
             maxBufferHole: 0.5,
             fragLoadingTimeOut: 20000,
             levelLoadingTimeOut: 10000,
+            debug: false // Pode ser alterado para true se quisermos log de tudo
         });
 
         hls.loadSource(url);
         hls.attachMedia(videoEl);
         videoEl._hlsInstance = hls;
 
-        // Calcular o nível alvo uma só vez
         let _targetLevel = 0;
         let _firstFragLoaded = false;
 
         hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
             const totalLevels = data.levels.length;
+            console.log(`[HLS Debug] 2. MANIFEST_PARSED: totalLevels=${totalLevels}`);
+            data.levels.forEach((lvl, i) => {
+                console.log(`[HLS Debug]    Level ${i}: ${lvl.width}x${lvl.height} @ ${lvl.bitrate} bps`);
+            });
 
             if (totalLevels > 1) {
                 if (estimatedBps >= 8 * 1000 * 1000) {
-                    _targetLevel = totalLevels - 1; // 720p
+                    _targetLevel = totalLevels - 1;
                 } else if (estimatedBps >= 3 * 1000 * 1000) {
-                    _targetLevel = totalLevels - 2; // 480p
+                    _targetLevel = totalLevels - 2;
                 } else if (estimatedBps >= 1 * 1000 * 1000) {
-                    _targetLevel = Math.max(0, totalLevels - 3); // 360p
+                    _targetLevel = Math.max(0, totalLevels - 3);
                 }
             }
 
-            // Passo 2a: DESLIGAR o ABR completamente
-            hls.autoLevelEnabled = false;
+            console.log(`[HLS Debug] 3. Locking targetLevel to ${_targetLevel} (Bitrate alvo: ${data.levels[_targetLevel].bitrate})`);
 
-            // Passo 2b: Forçar o nível nos 3 pontos de controlo em simultâneo
+            hls.autoLevelEnabled = false;
             hls.startLevel    = _targetLevel;
             hls.nextLoadLevel = _targetLevel;
             hls.currentLevel  = _targetLevel;
 
-            // Passo 2c: Agora o HLS pode arrancar — primeiro segmento será no nível correcto
             hls.startLoad();
         });
 
-        // Passo 3: Assim que o primeiro fragmento for descarregado com sucesso,
-        // RE-ACTIVAR o ABR para que o player adapte a qualidade de forma inteligente
-        // a partir daqui, com base em medições reais de velocidade de download.
+        hls.on(Hls.Events.LEVEL_SWITCHED, function (event, data) {
+            console.log(`[HLS Debug] LEVEL_SWITCHED: Agora no level ${data.level}`);
+        });
+
+        hls.on(Hls.Events.FRAG_LOADING, function (event, data) {
+            if (!_firstFragLoaded) {
+                console.log(`[HLS Debug] 4. FRAG_LOADING (1º segmento): Pedindo level ${data.frag.level}`);
+            }
+        });
+
         hls.on(Hls.Events.FRAG_LOADED, function (event, data) {
             if (!_firstFragLoaded && data.frag.sn !== 'initSegment') {
                 _firstFragLoaded = true;
-                hls.autoLevelEnabled = true;  // Libertar o ABR
-                hls.currentLevel = -1;         // Voltar ao modo automático
+                console.log(`[HLS Debug] 5. FRAG_LOADED (1º segmento concluído): Reativando ABR`);
+                hls.autoLevelEnabled = true;
+                hls.currentLevel = -1;
             }
         });
 
         hls.on(Hls.Events.ERROR, function (event, data) {
             if (data.fatal) {
+                console.error(`[HLS Debug] FATAL ERROR: ${data.type}`);
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
                         hls.startLoad();
