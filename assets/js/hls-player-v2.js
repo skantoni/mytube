@@ -54,30 +54,27 @@ function initHlsPlayer(videoEl, url) {
     console.log(`[HLS 0] isHls=${isHls}`);
 
     if (!isHls) {
-        console.log('[HLS 0] SAÍDA: url não é .m3u8, usando src nativo');
+        console.log('[HLS 0] SAÍDA: url não é .m3u8, usando src nativo (MP4)');
         videoEl.src = url;
         return;
     }
 
-    // Verificar se o browser suporta HLS nativamente (Safari / iOS / Edge Windows)
-    const canPlayNative = videoEl.canPlayType('application/vnd.apple.mpegurl');
-    console.log(`[HLS 0] canPlayType('application/vnd.apple.mpegurl') = "${canPlayNative}"`);
-    if (canPlayNative) {
-        console.log('[HLS 0] SAÍDA: browser suporta HLS nativo — a usar src direto (sem hls.js)');
-        videoEl.src = url;
-        return;
-    }
+    // ─── ORDEM CORRETA (padrão oficial hls.js) ────────────────────────────────
+    //
+    // 1º: Verificar Hls.isSupported() — usa MSE (Chrome, Edge, Firefox)
+    // 2º: Fallback para HLS nativo — apenas Safari/iOS retorna "probably"
+    //
+    // ⚠️  ATENÇÃO: canPlayType('application/vnd.apple.mpegurl') retorna "maybe"
+    //     em Chrome e Edge no Windows, mas eles NÃO suportam HLS nativamente!
+    //     Verificar canPlayType ANTES de Hls.isSupported() faz com que o hls.js
+    //     seja IGNORADO em todos os browsers excepto Firefox — o bug original.
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // Verificar se a biblioteca hls.js está carregada
     const hlsDefined = typeof Hls !== 'undefined';
-    console.log(`[HLS 0] typeof Hls = "${typeof Hls}", hlsDefined=${hlsDefined}, Hls.isSupported=${hlsDefined ? Hls.isSupported() : 'N/A'}`);
-    if (!hlsDefined) {
-        console.warn('[HLS 0] SAÍDA: hls.js não carregado — a tentar fallback para src nativo:', url);
-        videoEl.src = url;
-        return;
-    }
+    console.log(`[HLS 0] hlsDefined=${hlsDefined}, Hls.isSupported=${hlsDefined ? Hls.isSupported() : 'N/A'}`);
 
-    if (Hls.isSupported()) {
+    if (hlsDefined && Hls.isSupported()) {
+        // Chrome, Edge, Firefox → usar hls.js (via MediaSource API)
         if (videoEl._hlsInstance) {
             videoEl._hlsInstance.destroy();
             videoEl._hlsInstance = null;
