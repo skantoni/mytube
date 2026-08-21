@@ -641,6 +641,7 @@ class TikTokPlayer {
         if (placeholder && !video) {
             video = document.createElement('video');
             video.id = `video-${videoData.videoId}`;
+            video.crossOrigin = 'anonymous';
             video.playsInline = true;
             video.setAttribute('playsinline', '');
             video.setAttribute('data-has-audio', 'true');
