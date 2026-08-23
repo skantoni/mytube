@@ -10,6 +10,8 @@
  *   - Valor é lido da Network Information API se disponível, caso contrário usa
  *     10 Mbps como default (suficiente para começar em 720p na maioria dos casos).
  *   - O ABR controller continua a ajustar automaticamente após a primeira medição.
+ *   - Qualidade mínima: 360p (144p foi descartada). O player prefere buffering
+ *     a degradar demasiado a imagem.
  */
 
 /**
@@ -26,14 +28,14 @@ function _estimateInitialBandwidth() {
     const mbps = conn.downlink;
 
     // A Network Information API serve para dar um "chute inicial"
-    if (mbps >= 8 || conn.effectiveType === '4g') {
-        return 10 * 1000 * 1000; // 10 Mbps → forçar início em 720p
+    if (mbps >= 15 || conn.effectiveType === '4g') {
+        return 15 * 1000 * 1000; // 15 Mbps → forçar início em 1080p
+    } else if (mbps >= 8) {
+        return 10 * 1000 * 1000; // 8-15 Mbps → início em 720p
     } else if (mbps >= 3) {
-        return 4 * 1000 * 1000;  // 4 Mbps → início em 480p
-    } else if (mbps >= 1) {
-        return 1.5 * 1000 * 1000; // 1.5 Mbps → início em 360p
+        return 4 * 1000 * 1000;  // 3-8 Mbps → início em 480p
     } else {
-        return 500 * 1000; // 500 Kbps → início em 144p
+        return 800 * 1000; // ≤ 3 Mbps → início em 360p (piso mínimo, 144p descartada)
     }
 }
 
@@ -98,13 +100,17 @@ function initHlsPlayer(videoEl, url) {
                 console.log(`[HLS Debug]    Level ${i}: ${lvl.width}x${lvl.height} @ ${lvl.bitrate} bps`);
             });
 
+            // Agora temos 4 níveis (hls.js ordena do menor bitrate para o maior):
+            // levels[0] = 360p | levels[1] = 480p | levels[2] = 720p | levels[3] = 1080p
             if (totalLevels > 1) {
-                if (estimatedBps >= 8 * 1000 * 1000) {
-                    _targetLevel = totalLevels - 1;
+                if (estimatedBps >= 15 * 1000 * 1000) {
+                    _targetLevel = totalLevels - 1; // 1080p
+                } else if (estimatedBps >= 8 * 1000 * 1000) {
+                    _targetLevel = totalLevels - 2; // 720p
                 } else if (estimatedBps >= 3 * 1000 * 1000) {
-                    _targetLevel = totalLevels - 2;
-                } else if (estimatedBps >= 1 * 1000 * 1000) {
-                    _targetLevel = Math.max(0, totalLevels - 3);
+                    _targetLevel = totalLevels - 3; // 480p
+                } else {
+                    _targetLevel = 0; // 360p — piso mínimo, nunca vai abaixo disso
                 }
             }
 

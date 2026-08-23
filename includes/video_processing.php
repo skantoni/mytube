@@ -304,8 +304,9 @@ function video_prepare_for_storage(string $input_path, string $original_extensio
 
 /**
  * Prepara o vídeo para Adaptive Bitrate Streaming (HLS).
- * Corta e transcodifica o vídeo em 4 qualidades (144p, 360p, 480p, 720p).
- * 
+ * Corta e transcodifica o vídeo em 4 qualidades (1080p, 720p, 480p, 360p).
+ * A qualidade 144p foi descartada — o piso mínimo é 360p.
+ *
  * @param string $input_path Caminho do vídeo original
  * @return array{success: bool, output_dir: ?string, error: ?string}
  */
@@ -345,27 +346,23 @@ function video_prepare_hls(string $input_path): array {
         }
     }
 
-    // Construção condicional do map e filtros baseado na resolução original
-    // Se o vídeo original é menor que 720p, omitimos os perfis superiores ou limitamo-los.
-    // Mas para simplificar e garantir as 4 playlists, o FFmpeg suporta scale com aspect ratio correto.
-    // O scale usa -2:HEIGHT para manter o aspect ratio.
-
-    // Perfil 0: 720p (Alta)
-    // Perfil 1: 480p (Média)
-    // Perfil 2: 360p (Aceitável)
-    // Perfil 3: 144p (Baixa)
+    // 4 perfis de qualidade (144p removido — piso mínimo: 360p):
+    // Perfil 0: 1080p (Máxima)
+    // Perfil 1: 720p  (Alta)
+    // Perfil 2: 480p  (Média)
+    // Perfil 3: 360p  (Baixa — piso mínimo aceitável)
 
     $command = sprintf(
         '%s -y -i %s' .
         // ── Filtros de vídeo ──────────────────────────────────────────────────
-        ' -filter_complex "[0:v]split=4[v0][v1][v2][v3];[v0]scale=-2:720[v0out];[v1]scale=-2:480[v1out];[v2]scale=-2:360[v2out];[v3]scale=-2:144[v3out]"' .
+        ' -filter_complex "[0:v]split=4[v0][v1][v2][v3];[v0]scale=-2:1080[v0out];[v1]scale=-2:720[v1out];[v2]scale=-2:480[v2out];[v3]scale=-2:360[v3out]"' .
         ' -map "[v0out]" -map 0:a:0? -map "[v1out]" -map 0:a:0? -map "[v2out]" -map 0:a:0? -map "[v3out]" -map 0:a:0?' .
         // ── Codec de vídeo ────────────────────────────────────────────────────
         ' -c:v libx264 -preset %s -crf %d' .
-        ' -b:v:0 2500k -maxrate:v:0 2675k -bufsize:v:0 3750k -profile:v:0 main' .
-        ' -b:v:1 1200k -maxrate:v:1 1284k -bufsize:v:1 1800k -profile:v:1 main' .
-        ' -b:v:2 800k  -maxrate:v:2 856k  -bufsize:v:2 1200k -profile:v:2 main' .
-        ' -b:v:3 400k  -maxrate:v:3 428k  -bufsize:v:3 600k  -profile:v:3 baseline' .
+        ' -b:v:0 5000k -maxrate:v:0 5350k -bufsize:v:0 7500k -profile:v:0 high' .
+        ' -b:v:1 2500k -maxrate:v:1 2675k -bufsize:v:1 3750k -profile:v:1 main' .
+        ' -b:v:2 1200k -maxrate:v:2 1284k -bufsize:v:2 1800k -profile:v:2 main' .
+        ' -b:v:3 800k  -maxrate:v:3 856k  -bufsize:v:3 1200k -profile:v:3 main' .
         // ── Codec de áudio — flags anti-glitch ───────────────────────────────
         // -c:a aac           : codec AAC (nativo do FFmpeg, sem encoder delay externo)
         // -ar 48000          : forçar sample rate consistente em TODOS os streams
@@ -375,7 +372,7 @@ function video_prepare_hls(string $input_path): array {
         //                      segmento .ts começa em zero (requerido pelo MPEG-TS)
         //                      e elimina o "priming silence" do AAC nos cortes de segmento
         ' -c:a aac -ar 48000 -async 1 -avoid_negative_ts make_zero' .
-        ' -b:a:0 128k -b:a:1 96k -b:a:2 96k -b:a:3 64k' .
+        ' -b:a:0 192k -b:a:1 128k -b:a:2 96k -b:a:3 96k' .
         // ── HLS ───────────────────────────────────────────────────────────────
         ' -f hls -hls_time 4 -hls_playlist_type vod -hls_flags independent_segments' .
         ' -master_pl_name master.m3u8' .
