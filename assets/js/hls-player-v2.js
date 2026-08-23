@@ -12,13 +12,61 @@
  *   - O ABR controller continua a ajustar automaticamente após a primeira medição.
  *   - Qualidade mínima: 360p (144p foi descartada). O player prefere buffering
  *     a degradar demasiado a imagem.
+ *   - Warm Start: a largura de banda real medida durante a reprodução é guardada
+ *     em sessionStorage e reutilizada como estimativa inicial no próximo vídeo.
+ *     Assim, o 2º, 3º, ... vídeo arrancam sempre na qualidade certa em vez de
+ *     voltarem ao "chute inicial" da Network Information API.
  */
+
+// ─── Warm Start: memória de largura de banda entre vídeos ─────────────────────
+// Chave usada no sessionStorage (não persiste após fechar o browser)
+var _WARM_START_KEY = 'mytube_warm_bps';
+
+/**
+ * Guarda a largura de banda real medida pelo hls.js para uso no próximo vídeo.
+ * Aplicamos um factor de segurança de 80% para absorver picos momentâneos.
+ * @param {number} measuredBps - Valor em bps reportado por hls.bandwidthEstimate
+ */
+function _saveWarmBandwidth(measuredBps) {
+    if (!measuredBps || measuredBps <= 0) return;
+    // Factor de segurança: usamos 80% do pico medido para não sermos demasiado
+    // optimistas (a rede pode ter variado durante a reprodução)
+    var safeBps = Math.round(measuredBps * 0.80);
+    try {
+        sessionStorage.setItem(_WARM_START_KEY, safeBps);
+        console.log('[HLS Debug] 💾 Warm start guardado: ' + Math.round(safeBps / 1000) + ' kbps');
+    } catch (e) {
+        // sessionStorage pode estar bloqueado em modo privado — ignorar silenciosamente
+    }
+}
+
+/**
+ * Lê a largura de banda guardada da sessão anterior (ou do vídeo anterior).
+ * @returns {number|null} Valor em bps, ou null se não houver memória
+ */
+function _readWarmBandwidth() {
+    try {
+        var val = sessionStorage.getItem(_WARM_START_KEY);
+        return val ? parseInt(val, 10) : null;
+    } catch (e) {
+        return null;
+    }
+}
 
 /**
  * Estima a velocidade inicial da net para o ABR controller do hls.js.
+ * Prioridade: Warm Start (medido no vídeo anterior) > Network Information API > Default.
  * @returns {number} Estimativa em bits por segundo (bps)
  */
 function _estimateInitialBandwidth() {
+    // ── 1ª prioridade: Warm Start (memória da sessão) ──────────────────────────
+    var warmBps = _readWarmBandwidth();
+    if (warmBps && warmBps > 0) {
+        console.log('[HLS Debug] 🔥 Warm start ativo: usando ' + Math.round(warmBps / 1000) + ' kbps da sessão anterior');
+        return warmBps;
+    }
+
+    // ── 2ª prioridade: Network Information API (arranque frio) ─────────────────
     // Não disponível em Safari/iOS — retornar default alto
     if (!navigator.connection) {
         return 10 * 1000 * 1000; // 10 Mbps default
@@ -72,7 +120,8 @@ function initHlsPlayer(videoEl, url) {
         }
 
         const estimatedBps = _estimateInitialBandwidth();
-        console.log(`[HLS Debug] 1. Init: URL=${url}, estimatedBps=${estimatedBps}, downlink=${navigator.connection ? navigator.connection.downlink : 'N/A'}`);
+        const warmActive = !!_readWarmBandwidth();
+        console.log(`[HLS Debug] 1. Init: URL=${url}, estimatedBps=${estimatedBps}, warmStart=${warmActive}, downlink=${navigator.connection ? navigator.connection.downlink : 'N/A'}`);
 
         const hls = new Hls({
             autoStartLoad: false,
@@ -138,7 +187,16 @@ function initHlsPlayer(videoEl, url) {
         });
 
         hls.on(Hls.Events.FRAG_LOADED, function (event, data) {
-            if (!_firstFragLoaded && data.frag.sn !== 'initSegment') {
+            if (data.frag.sn === 'initSegment') return;
+
+            // ── Warm Start: guardar a largura de banda real medida pelo hls.js ──
+            // Fazemos isto em TODOS os segmentos (não só o primeiro) para que a
+            // estimativa fique cada vez mais precisa ao longo da reprodução.
+            if (hls.bandwidthEstimate && hls.bandwidthEstimate > 0) {
+                _saveWarmBandwidth(hls.bandwidthEstimate);
+            }
+
+            if (!_firstFragLoaded) {
                 _firstFragLoaded = true;
                 console.log(`[HLS Debug] 5. FRAG_LOADED (1º segmento concluído): Reativando ABR`);
                 hls.autoLevelEnabled = true;
@@ -174,7 +232,14 @@ function initHlsPlayer(videoEl, url) {
  */
 function destroyHlsPlayer(videoEl) {
     if (videoEl && videoEl._hlsInstance) {
-        videoEl._hlsInstance.destroy();
+        // ── Warm Start: salvar a BW final antes de destruir ────────────────────
+        // Garante que mesmo que o utilizador passe de vídeo a meio, guardamos
+        // a última medição válida.
+        var hls = videoEl._hlsInstance;
+        if (hls.bandwidthEstimate && hls.bandwidthEstimate > 0) {
+            _saveWarmBandwidth(hls.bandwidthEstimate);
+        }
+        hls.destroy();
         videoEl._hlsInstance = null;
     }
     if (videoEl) {
