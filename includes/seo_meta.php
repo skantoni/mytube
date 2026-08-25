@@ -83,11 +83,13 @@ if (isset($page_seo)) {
     {
       "@type": "Person",
       "name": "Skeny Bemba Mendes António",
+      "url": "https://www.linkedin.com/in/skeny-ant%C3%B3nio-38029a278/",
       "roleName": "CT-fundador & Criador"
     },
     {
       "@type": "Person",
       "name": "Joaquim Abel dos Santos Júnior",
+      "url": "<?php echo htmlspecialchars($seo_config['site_url'], ENT_QUOTES); ?>",
       "roleName": "Co-fundador & Idealizador"
     }
   ],
