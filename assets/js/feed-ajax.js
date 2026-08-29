@@ -594,7 +594,6 @@ class FeedManager {
             <div class="video-player">
                     <video 
                     id="video-${video.id}"
-                    crossorigin="anonymous"
                     loop
                     muted
                     playsinline

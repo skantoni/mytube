@@ -58,6 +58,9 @@ self.addEventListener('fetch', event => {
   // Ignorar extensões não-HTTP, chrome-extension, etc.
   if (!url.protocol.startsWith('http')) return;
 
+  // IGNORAR CDN DE VÍDEOS COMPLETAMENTE (Previne bug crítico de CORS no Chrome com <video>)
+  if (url.hostname === 'cdn.mytube.social') return;
+
   // Ignorar requests de API / PHP dinâmico / uploads de vídeo
   const isDynamic =
     url.pathname.includes('/api/') ||
