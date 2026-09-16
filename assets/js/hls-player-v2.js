@@ -157,7 +157,6 @@ function initHlsPlayer(videoEl, url) {
         videoEl._hlsInstance = hls;
 
         let _targetLevel = 0;
-        let _minLevel = 0;     // Piso mínimo real — calculado no MANIFEST_PARSED
         let _firstFragLoaded = false;
 
         hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
@@ -167,32 +166,18 @@ function initHlsPlayer(videoEl, url) {
                 console.log(`[HLS Debug]    Level ${i}: ${lvl.width}x${lvl.height} @ ${lvl.bitrate} bps`);
             });
 
-            // ── Calcular o piso mínimo real para ESTE vídeo ────────────────────
-            // Vídeos antigos têm 144p como level 0 — não podemos assumir que
-            // level 0 é sempre 360p. Procuramos o primeiro nível com height >= 360.
-            // Se não existir nenhum (vídeo muito antigo só com 240p/144p), usamos o
-            // nível mais alto disponível como mínimo aceitável.
-            _minLevel = totalLevels - 1; // fallback: nível mais alto disponível
-            for (let i = 0; i < totalLevels; i++) {
-                if (data.levels[i].height >= 360) {
-                    _minLevel = i;
-                    break;
-                }
-            }
-            console.log(`[HLS Debug] 2b. Piso mínimo calculado: level ${_minLevel} (${data.levels[_minLevel].width}x${data.levels[_minLevel].height})`);
-
-            // ── Selecionar nível inicial com base na largura de banda estimada ──
-            // Usa _minLevel como piso — nunca inicia abaixo de 360p.
-            _targetLevel = _minLevel; // default: piso mínimo aceitável
+            // Todos os vídeos em produção têm 360p como qualidade mínima (level 0).
+            // A lógica de _minLevel foi removida — já não existem vídeos com 144p.
+            _targetLevel = 0; // default: level 0 = 360p (piso mínimo)
             if (totalLevels > 1) {
                 if (estimatedBps >= 15 * 1000 * 1000) {
-                    _targetLevel = totalLevels - 1;           // 1080p
+                    _targetLevel = totalLevels - 1; // 1080p
                 } else if (estimatedBps >= 8 * 1000 * 1000) {
-                    _targetLevel = Math.max(_minLevel, totalLevels - 2); // 720p
+                    _targetLevel = totalLevels - 2; // 720p
                 } else if (estimatedBps >= 3 * 1000 * 1000) {
-                    _targetLevel = Math.max(_minLevel, totalLevels - 3); // 480p
+                    _targetLevel = Math.max(0, totalLevels - 3); // 480p
                 } else {
-                    _targetLevel = _minLevel; // 360p — piso mínimo
+                    _targetLevel = 0; // 360p — piso mínimo
                 }
             }
 
@@ -204,17 +189,6 @@ function initHlsPlayer(videoEl, url) {
             hls.currentLevel  = _targetLevel;
 
             hls.startLoad();
-        });
-
-        // ── Enforçar o piso mínimo no ABR livre ───────────────────────────────
-        // Quando o hls.js tenta descer abaixo do piso (ex: 144p em vídeos antigos),
-        // forçamos de volta para _minLevel. Funciona tanto em vídeos novos (360p
-        // como nível 0) como em vídeos antigos (que ainda têm 144p).
-        hls.on(Hls.Events.LEVEL_SWITCHING, function (event, data) {
-            if (_firstFragLoaded && data.level < _minLevel) {
-                console.log(`[HLS Debug] 🚫 ABR tentou descer para level ${data.level} (abaixo do piso). A forçar level ${_minLevel}.`);
-                hls.nextLoadLevel = _minLevel;
-            }
         });
 
         hls.on(Hls.Events.LEVEL_SWITCHED, function (event, data) {
