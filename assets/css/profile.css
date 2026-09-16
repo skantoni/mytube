@@ -400,14 +400,17 @@
 
 .empty-videos {
     text-align: center;
-    padding: 80px 20px;
+    padding: 60px 20px;
     color: #94a3b8;
 }
 
 .empty-videos i {
-    font-size: 4rem;
-    color: #3b82f6;
-    margin-bottom: 24px;
+    font-size: 1.5rem;
+    margin: 18px auto 20px auto;
+    color: #94a3b8;
+    opacity: 0.6;
+    //text-align: center;
+    margin-bottom: 16px;
 }
 
 .empty-videos h4 {
@@ -417,8 +420,14 @@
 }
 
 .empty-videos p {
-    font-size: 1rem;
-    margin: 0 0 32px 0;
+    font-size: 1.05rem;
+    margin: 0 0 24px 0;
+}
+
+.empty-videos .btn-empty-state {
+    border-radius: 80px;
+    padding: 1px 28px;
+    font-weight: 400;
 }
 
 /* Grid de vídeos */

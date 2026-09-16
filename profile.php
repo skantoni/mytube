@@ -540,11 +540,9 @@ $has_more_videos = $total_user_videos > count($user_videos);
             <?php if (empty($user_videos)): ?>
                 <div class="empty-videos">
                     <i class="fas fa-video"></i>
-                    <h4>Nenhum vídeo ainda</h4>
-                    <p>Compartilhe seu primeiro vídeo com o mundo!</p>
-                    <a href="upload.php" class="btn btn-primary">
-                        <i class="fas fa-plus"></i>
-                        Criar Primeiro Vídeo
+                    <p>Você ainda não postou nenhum vídeo.</p>
+                    <a href="upload.php" class="btn btn-primary btn-empty-state">
+                        <i class="fas fa-plus"></i> Postar Primeiro Vídeo
                     </a>
                 </div>
             <?php else: ?>
