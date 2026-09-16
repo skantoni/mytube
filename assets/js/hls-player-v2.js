@@ -186,15 +186,7 @@ function initHlsPlayer(videoEl, url) {
         });
 
         hls.on(Hls.Events.FRAG_LOADING, function (event, data) {
-            if (!_firstFragLoaded) {
-                
-                // Opção 1 (Estilo TikTok): Trancar a qualidade no nível escolhido inicialmente!
-                // Assim que o HLS pede o 1º fragmento (baseado na estimativa inicial), desligamos o ABR.
-                if (hls.autoLevelEnabled) {
-                    hls.autoLevelEnabled = false;
-                    hls.currentLevel = data.frag.level;
-                }
-            }
+            // Apenas observamos, sem alterar o estado do HLS aqui para não abortar o download
         });
 
         hls.on(Hls.Events.FRAG_LOADED, function (event, data) {
@@ -207,6 +199,13 @@ function initHlsPlayer(videoEl, url) {
 
             if (!_firstFragLoaded) {
                 _firstFragLoaded = true;
+                
+                // Opção 1 (Estilo TikTok): Trancar a qualidade no nível do 1º fragmento!
+                // Usamos hls.nextLoadLevel em vez de hls.currentLevel para evitar o flush
+                // do buffer que causa o erro "frag load aborted".
+                if (hls.autoLevelEnabled) {
+                    hls.nextLoadLevel = data.frag.level;
+                }
             }
         });
 
