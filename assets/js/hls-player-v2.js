@@ -194,6 +194,14 @@ function initHlsPlayer(videoEl, url) {
         hls.on(Hls.Events.FRAG_LOADING, function (event, data) {
             if (!_firstFragLoaded) {
                 console.log(`[HLS Debug] 4. FRAG_LOADING (1º segmento): Pedindo level ${data.frag.level}`);
+                
+                // Opção 1 (Estilo TikTok): Trancar a qualidade no nível escolhido inicialmente!
+                // Assim que o HLS pede o 1º fragmento (baseado na estimativa inicial), desligamos o ABR.
+                if (hls.autoLevelEnabled) {
+                    hls.autoLevelEnabled = false;
+                    hls.currentLevel = data.frag.level;
+                    console.log(`[HLS Debug] 🔒 QUALIDADE TRANCADA (Opção 1) no level ${data.frag.level}. Não mudará mais neste vídeo!`);
+                }
             }
         });
 
@@ -201,15 +209,13 @@ function initHlsPlayer(videoEl, url) {
             if (data.frag.sn === 'initSegment') return;
 
             // ── Warm Start: guardar a largura de banda real medida pelo hls.js ──
-            // Fazemos isto em TODOS os segmentos para que a estimativa fique cada
-            // vez mais precisa ao longo da reprodução.
             if (hls.bandwidthEstimate && hls.bandwidthEstimate > 0) {
                 _saveWarmBandwidth(hls.bandwidthEstimate);
             }
 
             if (!_firstFragLoaded) {
                 _firstFragLoaded = true;
-                console.log(`[HLS Debug] 5. FRAG_LOADED (1º segmento concluído): ABR livre`);
+                console.log(`[HLS Debug] 5. FRAG_LOADED (1º segmento concluído).`);
             }
         });
 
