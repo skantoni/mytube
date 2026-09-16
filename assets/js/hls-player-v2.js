@@ -123,6 +123,21 @@ function initHlsPlayer(videoEl, url) {
         const warmActive = !!_readWarmBandwidth();
         console.log(`[HLS Debug] 1. Init: URL=${url}, estimatedBps=${estimatedBps}, warmStart=${warmActive}, downlink=${navigator.connection ? navigator.connection.downlink : 'N/A'}`);
 
+        // ── Cache Buster Estático: Contornar caches agressivas de ISPs em Angola ──
+        // Usamos uma string estática (ex: 'v2_cors') em vez de Date.now().
+        // Motivo: Date.now() destruiria a cache da Cloudflare (cada pedido seria único),
+        // causando sobrecarga no R2. Uma string estática obriga os ISPs a ignorar 
+        // a versão antiga sem CORS que eles têm presa na proxy deles, mas permite 
+        // que a Cloudflare faça cache da nova versão corretamente.
+        class CacheBustingLoader extends Hls.DefaultConfig.loader {
+            load(context, config, callbacks) {
+                const cacheBuster = `cb=v2_cors`;
+                const separator = context.url.includes('?') ? '&' : '?';
+                context.url += `${separator}${cacheBuster}`;
+                super.load(context, config, callbacks);
+            }
+        }
+
         const hls = new Hls({
             autoStartLoad: false,
             capLevelToPlayerSize: false,
@@ -132,7 +147,9 @@ function initHlsPlayer(videoEl, url) {
             maxBufferHole: 0.5,
             fragLoadingTimeOut: 20000,
             levelLoadingTimeOut: 10000,
-            debug: false // Pode ser alterado para true se quisermos log de tudo
+            debug: false, // Pode ser alterado para true se quisermos log de tudo
+            pLoader: CacheBustingLoader, // Playlist Loader (master.m3u8, etc)
+            fLoader: CacheBustingLoader  // Fragment Loader (.ts)
         });
 
         hls.loadSource(url);
