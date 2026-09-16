@@ -32,17 +32,22 @@ function r2_get_client() {
         require_once $aws_phar;
         
         $client = new Aws\S3\S3Client([
-            'region' => R2_REGION,
+            'region'  => R2_REGION,
             'version' => 'latest',
             'endpoint' => R2_ENDPOINT,
             'credentials' => [
-                'key' => R2_ACCESS_KEY_ID,
+                'key'    => R2_ACCESS_KEY_ID,
                 'secret' => R2_SECRET_ACCESS_KEY,
             ],
-            'use_path_style_endpoint' => false,  // CORRIGIDO: R2 usa virtual-hosted style
+            'use_path_style_endpoint' => false,  // R2 usa virtual-hosted style
             // Desabilitar checksum para compatibilidade com R2
             'request_checksum_calculation' => 'when_required',
             'response_checksum_validation' => 'when_required',
+            // Timeouts: evitar bloqueios indefinidos em uploads/downloads lentos
+            'http' => [
+                'timeout'         => 300,  // 5 minutos por pedido (para ficheiros grandes)
+                'connect_timeout' => 30,   // 30s para estabelecer a ligação
+            ],
         ]);
     }
     
