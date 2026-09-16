@@ -34,7 +34,6 @@ function _saveWarmBandwidth(measuredBps) {
     var safeBps = Math.round(measuredBps * 0.80);
     try {
         sessionStorage.setItem(_WARM_START_KEY, safeBps);
-        console.log('[HLS Debug] 💾 Warm start guardado: ' + Math.round(safeBps / 1000) + ' kbps');
     } catch (e) {
         // sessionStorage pode estar bloqueado em modo privado — ignorar silenciosamente
     }
@@ -62,7 +61,6 @@ function _estimateInitialBandwidth() {
     // ── 1ª prioridade: Warm Start (memória da sessão) ──────────────────────────
     var warmBps = _readWarmBandwidth();
     if (warmBps && warmBps > 0) {
-        console.log('[HLS Debug] 🔥 Warm start ativo: usando ' + Math.round(warmBps / 1000) + ' kbps da sessão anterior');
         return warmBps;
     }
 
@@ -121,7 +119,6 @@ function initHlsPlayer(videoEl, url) {
 
         const estimatedBps = _estimateInitialBandwidth();
         const warmActive = !!_readWarmBandwidth();
-        console.log(`[HLS Debug] 1. Init: URL=${url}, estimatedBps=${estimatedBps}, warmStart=${warmActive}, downlink=${navigator.connection ? navigator.connection.downlink : 'N/A'}`);
 
         // ── Cache Buster Estático: Contornar caches agressivas de ISPs em Angola ──
         // Usamos uma string estática (ex: 'v2_cors') em vez de Date.now().
@@ -175,9 +172,7 @@ function initHlsPlayer(videoEl, url) {
 
         hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
             const totalLevels = data.levels.length;
-            console.log(`[HLS Debug] 2. MANIFEST_PARSED: totalLevels=${totalLevels}`);
             data.levels.forEach((lvl, i) => {
-                console.log(`[HLS Debug]    Level ${i}: ${lvl.width}x${lvl.height} @ ${lvl.bitrate} bps`);
             });
             // Nota: com autoStartLoad:true o hls.js já começou a carregar.
             // Não chamamos hls.startLoad() nem manipulamos o nível aqui —
@@ -188,19 +183,16 @@ function initHlsPlayer(videoEl, url) {
             const levelInfo = hls.levels[data.level];
             const resolution = levelInfo ? `${levelInfo.width}x${levelInfo.height}` : 'desconhecida';
             const kbps = levelInfo ? Math.round(levelInfo.bitrate / 1000) : 0;
-            console.log(`[HLS Debug] 🔄 LEVEL_SWITCHED: Agora no level ${data.level} (${resolution} @ ${kbps} kbps)`);
         });
 
         hls.on(Hls.Events.FRAG_LOADING, function (event, data) {
             if (!_firstFragLoaded) {
-                console.log(`[HLS Debug] 4. FRAG_LOADING (1º segmento): Pedindo level ${data.frag.level}`);
                 
                 // Opção 1 (Estilo TikTok): Trancar a qualidade no nível escolhido inicialmente!
                 // Assim que o HLS pede o 1º fragmento (baseado na estimativa inicial), desligamos o ABR.
                 if (hls.autoLevelEnabled) {
                     hls.autoLevelEnabled = false;
                     hls.currentLevel = data.frag.level;
-                    console.log(`[HLS Debug] 🔒 QUALIDADE TRANCADA (Opção 1) no level ${data.frag.level}. Não mudará mais neste vídeo!`);
                 }
             }
         });
@@ -215,13 +207,11 @@ function initHlsPlayer(videoEl, url) {
 
             if (!_firstFragLoaded) {
                 _firstFragLoaded = true;
-                console.log(`[HLS Debug] 5. FRAG_LOADED (1º segmento concluído).`);
             }
         });
 
         hls.on(Hls.Events.ERROR, function (event, data) {
             if (data.fatal) {
-                console.error(`[HLS Debug] FATAL ERROR: ${data.type}`);
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
                         hls.startLoad();
