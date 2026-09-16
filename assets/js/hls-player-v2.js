@@ -138,16 +138,31 @@ function initHlsPlayer(videoEl, url) {
             }
         }
 
+        // ─── Calcular o nível de arranque ANTES de criar a instância ─────────
+        // Com autoStartLoad:true o hls.js começa imediatamente após o manifesto,
+        // por isso o startLevel tem de estar na config — não no MANIFEST_PARSED.
+        // Mapeamos a estimativa de largura de banda para um nível fixo:
+        //   levels[0]=360p | levels[1]=480p | levels[2]=720p | levels[3]=1080p
+        // Como os níveis são sempre ordenados do menor para o maior pelo hls.js,
+        // usamos índices negativos a partir do topo (totalLevels é desconhecido
+        // aqui, por isso usamos -1 = topo, e confiamos no abrEwmaDefaultEstimate
+        // para o ABR escolher o nível certo automaticamente no arranque).
+        //
+        // Estratégia: startLevel=-1 (auto ABR desde o início) + abrEwmaDefaultEstimate
+        // já semeado com o warm start ou navigator.connection. O hls.js usa o EWMA
+        // para escolher o nível de arranque internamente — sem delay manual.
+
         const hls = new Hls({
-            autoStartLoad: false,
+            autoStartLoad: true,             // ← Arranque imediato sem delay manual
+            startLevel: -1,                  // ← ABR escolhe com base no EWMA semeado
             capLevelToPlayerSize: false,
-            abrEwmaDefaultEstimate: estimatedBps,
+            abrEwmaDefaultEstimate: estimatedBps, // ← Warm start / navigator.connection
             maxBufferLength: 30,
             maxMaxBufferLength: 60,
             maxBufferHole: 0.5,
             fragLoadingTimeOut: 20000,
             levelLoadingTimeOut: 10000,
-            debug: false, // Pode ser alterado para true se quisermos log de tudo
+            debug: false,
             pLoader: CacheBustingLoader, // Playlist Loader (master.m3u8, etc)
             fLoader: CacheBustingLoader  // Fragment Loader (.ts)
         });
@@ -156,7 +171,6 @@ function initHlsPlayer(videoEl, url) {
         hls.attachMedia(videoEl);
         videoEl._hlsInstance = hls;
 
-        let _targetLevel = 0;
         let _firstFragLoaded = false;
 
         hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
@@ -165,30 +179,9 @@ function initHlsPlayer(videoEl, url) {
             data.levels.forEach((lvl, i) => {
                 console.log(`[HLS Debug]    Level ${i}: ${lvl.width}x${lvl.height} @ ${lvl.bitrate} bps`);
             });
-
-            // Todos os vídeos em produção têm 360p como qualidade mínima (level 0).
-            // A lógica de _minLevel foi removida — já não existem vídeos com 144p.
-            _targetLevel = 0; // default: level 0 = 360p (piso mínimo)
-            if (totalLevels > 1) {
-                if (estimatedBps >= 15 * 1000 * 1000) {
-                    _targetLevel = totalLevels - 1; // 1080p
-                } else if (estimatedBps >= 8 * 1000 * 1000) {
-                    _targetLevel = totalLevels - 2; // 720p
-                } else if (estimatedBps >= 3 * 1000 * 1000) {
-                    _targetLevel = Math.max(0, totalLevels - 3); // 480p
-                } else {
-                    _targetLevel = 0; // 360p — piso mínimo
-                }
-            }
-
-            console.log(`[HLS Debug] 3. Locking targetLevel to ${_targetLevel} (Bitrate alvo: ${data.levels[_targetLevel].bitrate})`);
-
-            hls.autoLevelEnabled = false;
-            hls.startLevel    = _targetLevel;
-            hls.nextLoadLevel = _targetLevel;
-            hls.currentLevel  = _targetLevel;
-
-            hls.startLoad();
+            // Nota: com autoStartLoad:true o hls.js já começou a carregar.
+            // Não chamamos hls.startLoad() nem manipulamos o nível aqui —
+            // o abrEwmaDefaultEstimate já guiou o ABR para o nível correto.
         });
 
         hls.on(Hls.Events.LEVEL_SWITCHED, function (event, data) {
@@ -208,17 +201,15 @@ function initHlsPlayer(videoEl, url) {
             if (data.frag.sn === 'initSegment') return;
 
             // ── Warm Start: guardar a largura de banda real medida pelo hls.js ──
-            // Fazemos isto em TODOS os segmentos (não só o primeiro) para que a
-            // estimativa fique cada vez mais precisa ao longo da reprodução.
+            // Fazemos isto em TODOS os segmentos para que a estimativa fique cada
+            // vez mais precisa ao longo da reprodução.
             if (hls.bandwidthEstimate && hls.bandwidthEstimate > 0) {
                 _saveWarmBandwidth(hls.bandwidthEstimate);
             }
 
             if (!_firstFragLoaded) {
                 _firstFragLoaded = true;
-                console.log(`[HLS Debug] 5. FRAG_LOADED (1º segmento concluído): Reativando ABR`);
-                hls.autoLevelEnabled = true;
-                hls.currentLevel = -1;
+                console.log(`[HLS Debug] 5. FRAG_LOADED (1º segmento concluído): ABR livre`);
             }
         });
 
