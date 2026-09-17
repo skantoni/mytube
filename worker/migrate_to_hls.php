@@ -86,33 +86,13 @@ while (true) {
     $tmp_mp4 = sys_get_temp_dir() . '/mytube_migrate_' . $video_id . '_' . time() . '.mp4';
     mlog("   ?? A descarregar do R2...");
 
-    $downloaded = r2_download_to_file($video_path, $tmp_mp4);
-    if (!$downloaded) {
-        mlog("   ? Falha ao descarregar — a saltar e marcar como problema.");
-        // Não falhar o script — saltar para o próximo
-        // Para não ficar em loop, marcamos com um sufixo especial (ou ignoramos)
-        // Aqui simplesmente atualizamos o título para sinalizar e avançamos
-        $total_failed++;
-        // Marcar para não tentar de novo: adicionar _hls_failed à coluna num campo separado
-        // Como não temos campo, vamos renomear o video_path com flag (estratégia simples)
-        try {
-            $pdo->prepare("UPDATE videos SET video_path = CONCAT(video_path, '?hls_skip=1') WHERE id=?")->execute([$video_id]);
-        } catch (Throwable $e) {}
-        continue;
-    }
-
-    mlog("   ? Download OK (" . round(filesize($tmp_mp4) / 1048576, 1) . " MB)");
+    $downloaded = r2_download_to_file($video_path, $tmp_mp4); $filesize_mb = file_exists($tmp_mp4) ? round(filesize($tmp_mp4) / 1048576, 2) : 0; if (!$downloaded || filesize($tmp_mp4) < 1024) { mlog('   ? Falha ao descarregar ou ficheiro vazio (' . $filesize_mb . ' MB) — a saltar.'); @unlink($tmp_mp4); $total_failed++; try { $pdo->prepare('UPDATE videos SET video_path = CONCAT(video_path, ''?hls_skip=1'') WHERE id=?')->execute([$video_id]); } catch (Throwable $e) {} continue; } mlog('   ? Download OK (' . $filesize_mb . ' MB)');
 
     // -- Passo 2: Gerar HLS com FFmpeg -----------------------------------------
     mlog("   ?? A gerar 4 qualidades HLS (1080p, 720p, 480p, 360p)...");
     $hls_result = video_prepare_hls($tmp_mp4);
 
-    if (!$hls_result['success']) {
-        mlog("   ? FFmpeg falhou: " . $hls_result['error']);
-        @unlink($tmp_mp4);
-        $total_failed++;
-        continue;
-    }
+    if (!$hls_result['success']) { mlog('   ? FFmpeg falhou: ' . $hls_result['error']); @unlink($tmp_mp4); $total_failed++; try { $pdo->prepare('UPDATE videos SET video_path = CONCAT(video_path, ''?hls_skip=1'') WHERE id=?')->execute([$video_id]); } catch (Throwable $e) {} continue; }
 
     $hls_dir = $hls_result['output_dir'];
     mlog("   ? HLS gerado em: $hls_dir");
@@ -131,11 +111,7 @@ while (true) {
     foreach ($subdirs as $d) { @rmdir($d); }
     @rmdir($hls_dir);
 
-    if (!$r2_result['success']) {
-        mlog("   ? Upload R2 falhou: " . $r2_result['error']);
-        $total_failed++;
-        continue;
-    }
+    if (!$r2_result['success']) { mlog('   ? Upload R2 falhou: ' . $r2_result['error']); $total_failed++; try { $pdo->prepare('UPDATE videos SET video_path = CONCAT(video_path, ''?hls_skip=1'') WHERE id=?')->execute([$video_id]); } catch (Throwable $e) {} continue; }
 
     $new_path = R2_PATH_PREFIX . $r2_result['key'];
     mlog("   ? Upload OK ? $new_path");
@@ -165,3 +141,6 @@ while (true) {
 $elapsed = round((time() - $start_time) / 60, 1);
 mlog("?? Script terminado em {$elapsed} minutos. Migrados: $total_migrated | Falhados: $total_failed");
 exit(0);
+
+
+
