@@ -89,8 +89,9 @@ function _estimateInitialBandwidth() {
  * Inicializa o player de vídeo com suporte a HLS ou nativo.
  * @param {HTMLVideoElement} videoEl - O elemento <video>
  * @param {string} url - URL do vídeo (pode ser .m3u8 ou .mp4)
+ * @param {boolean} autoStartLoad - Se deve começar a transferir fragmentos automaticamente
  */
-function initHlsPlayer(videoEl, url) {
+function initHlsPlayer(videoEl, url, autoStartLoad = true) {
     if (!videoEl || !url) {
         return;
     }
@@ -121,11 +122,6 @@ function initHlsPlayer(videoEl, url) {
         const warmActive = !!_readWarmBandwidth();
 
         // ── Cache Buster Estático: Contornar caches agressivas de ISPs em Angola ──
-        // Usamos uma string estática (ex: 'v2_cors') em vez de Date.now().
-        // Motivo: Date.now() destruiria a cache da Cloudflare (cada pedido seria único),
-        // causando sobrecarga no R2. Uma string estática obriga os ISPs a ignorar 
-        // a versão antiga sem CORS que eles têm presa na proxy deles, mas permite 
-        // que a Cloudflare faça cache da nova versão corretamente.
         class CacheBustingLoader extends Hls.DefaultConfig.loader {
             load(context, config, callbacks) {
                 const cacheBuster = `cb=v2_cors`;
@@ -136,21 +132,8 @@ function initHlsPlayer(videoEl, url) {
         }
 
         // ─── Calcular o nível de arranque ANTES de criar a instância ─────────
-        // Com autoStartLoad:true o hls.js começa imediatamente após o manifesto,
-        // por isso o startLevel tem de estar na config — não no MANIFEST_PARSED.
-        // Mapeamos a estimativa de largura de banda para um nível fixo:
-        //   levels[0]=360p | levels[1]=480p | levels[2]=720p | levels[3]=1080p
-        // Como os níveis são sempre ordenados do menor para o maior pelo hls.js,
-        // usamos índices negativos a partir do topo (totalLevels é desconhecido
-        // aqui, por isso usamos -1 = topo, e confiamos no abrEwmaDefaultEstimate
-        // para o ABR escolher o nível certo automaticamente no arranque).
-        //
-        // Estratégia: startLevel=-1 (auto ABR desde o início) + abrEwmaDefaultEstimate
-        // já semeado com o warm start ou navigator.connection. O hls.js usa o EWMA
-        // para escolher o nível de arranque internamente — sem delay manual.
-
         const hls = new Hls({
-            autoStartLoad: true,             // ← Arranque imediato sem delay manual
+            autoStartLoad: autoStartLoad,    // ← Controlado por parâmetro (evita roubo de banda no 3G)
             startLevel: -1,                  // ← ABR escolhe com base no EWMA semeado
             capLevelToPlayerSize: false,
             abrEwmaDefaultEstimate: estimatedBps, // ← Warm start / navigator.connection
@@ -167,6 +150,13 @@ function initHlsPlayer(videoEl, url) {
         hls.loadSource(url);
         hls.attachMedia(videoEl);
         videoEl._hlsInstance = hls;
+
+        // Garantir que o hls carrega quando o vídeo recebe ordem para tocar
+        videoEl.addEventListener('play', () => {
+            if (hls) {
+                hls.startLoad();
+            }
+        });
 
         let _firstFragLoaded = false;
 

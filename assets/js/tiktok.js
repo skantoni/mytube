@@ -666,7 +666,16 @@ class TikTokPlayer {
         // Reconstruir o src com suporte a HLS (para novos vídeos .m3u8) e MP4 (legado)
         const videoUrl = video.dataset.videoUrl || resolveVideoUrl(videoData.videoPath);
         if (typeof initHlsPlayer === 'function') {
-            initHlsPlayer(video, videoUrl);
+            const nq = window.networkQuality;
+            const isLowQuality = nq && nq.quality === 'low';
+            const isCurrentVideo = (videoData.index === this.currentVideoIndex);
+            
+            // Inicia o download de fragmentos automaticamente apenas se for o vídeo atual,
+            // ou se for uma rede rápida (permite preloading agressivo do próximo vídeo).
+            // Numa rede 3G lenta, isto evita que o próximo vídeo roube banda ao atual.
+            const shouldAutoStart = isCurrentVideo || !isLowQuality;
+            
+            initHlsPlayer(video, videoUrl, shouldAutoStart);
         } else {
             // Fallback caso o hls-player.js não esteja carregado
             const source = document.createElement('source');
@@ -854,6 +863,12 @@ class TikTokPlayer {
             this.materializeVideo(videoData);
         }
         if (videoData.video) {
+            // Garantir que o HLS começa a transferir fragmentos caso tenha sido 
+            // inicializado com autoStartLoad = false (ex: vídeos pré-carregados numa rede 3G)
+            if (videoData.video._hlsInstance) {
+                videoData.video._hlsInstance.startLoad();
+            }
+
             // Respeitar o estado de mute atual (global)
             const globalMuted = this.getCurrentMuteState();
             const userInteracted = localStorage.getItem('mytube_user_interacted') === 'true';
