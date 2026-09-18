@@ -30,7 +30,7 @@ class TikTokPlayer {
         this.intersectionObserver = null;
         this.recycleObserver = null;
         this.eventsBound = false;
-        this.maxMaterialized = 5;
+        this.maxMaterialized = 8; // Fix C: era 5 — ao voltar 3/4 vídeos já não recarrega
         // Controle de views: evitar requests duplicados
         this._viewsUpdated = new Set();
         this._viewsInFlight = new Set();
@@ -551,9 +551,16 @@ class TikTokPlayer {
                         }
                     }
                 } else {
-                    // Vídeo saiu da view - pausar e resetar flag
+                    // Vídeo saiu do viewport — pausar e libertar banda
                     this.pauseVideo(videoData);
                     videoData.manuallyPaused = false;
+
+                    // Fix E: parar o download de fragmentos para poupar banda.
+                    // O buffer já construído é PRESERVADO (não há re-download ao voltar).
+                    // hls.startLoad() é chamado em playVideo() quando o vídeo voltar ao foco.
+                    if (videoData.video && videoData.video._hlsInstance) {
+                        videoData.video._hlsInstance.stopLoad();
+                    }
                 }
             });
         }, options);
@@ -604,21 +611,24 @@ class TikTokPlayer {
         const player = videoData.element.querySelector('.video-player');
         if (!player) return;
 
-        // Salvar estado de reprodução
+        // Salvar estado de reprodução antes de destruir
         videoData.savedTime = video.currentTime || 0;
         videoData.wasMuted = video.muted;
 
-        // Pausar e liberar recursos de mídia (decoder, buffers)
-        video.pause();
-        video.removeAttribute('src');
-        // Remover elementos <source> para garantir a purga do buffer
-        while (video.firstChild) {
-            video.removeChild(video.firstChild);
+        // Fix E: destroyHlsPlayer destrói a instância hls.js + limpa src + buffer.
+        // ANTES desta fix, o hls._hlsInstance ficava vivo a consumir memória e rede!
+        // Para vídeos MP4 legado, destroyHlsPlayer faz apenas pause+src+load (correto).
+        if (typeof destroyHlsPlayer === 'function') {
+            destroyHlsPlayer(video);
+        } else {
+            video.pause();
+            video.removeAttribute('src');
+            while (video.firstChild) { video.removeChild(video.firstChild); }
+            video.load();
         }
-        video.load(); // Forçar o descarregamento da rede/buffer
 
-        // Apenas esconder visualmente ou aplicar estilo de placeholder (sem remover a tag <video>!)
-        // Isso preserva o "token de interação do usuário" associado a este elemento no mobile.
+        // Esconder visualmente sem remover a tag <video>
+        // (preserva o "token de interação do utilizador" no mobile)
         video.classList.add('video-unloaded');
         video.style.opacity = '0';
 
@@ -659,25 +669,17 @@ class TikTokPlayer {
         }
 
         video.loop = true;
-        // Respeitar sempre a vontade global estrita para evitar mute forçado do browser
         video.muted = this.getCurrentMuteState();
+        // Nota: para vídeos HLS com hls.js, o atributo preload é ignorado.
+        // A gestão de buffer é feita pelo hls.js via maxBufferLength e stopLoad()/startLoad().
+        // Para MP4 legado, 'metadata' é o valor correto para não descarregar o ficheiro todo.
         video.preload = 'metadata';
 
-        // Reconstruir o src com suporte a HLS (para novos vídeos .m3u8) e MP4 (legado)
+        // Reconstruir o src com suporte a HLS e MP4 legado
         const videoUrl = video.dataset.videoUrl || resolveVideoUrl(videoData.videoPath);
         if (typeof initHlsPlayer === 'function') {
-            const nq = window.networkQuality;
-            const isLowQuality = nq && nq.quality === 'low';
-            const isCurrentVideo = (videoData.index === this.currentVideoIndex);
-            
-            // Inicia o download de fragmentos automaticamente apenas se for o vídeo atual,
-            // ou se for uma rede rápida (permite preloading agressivo do próximo vídeo).
-            // Numa rede 3G lenta, isto evita que o próximo vídeo roube banda ao atual.
-            const shouldAutoStart = isCurrentVideo || !isLowQuality;
-            
-            initHlsPlayer(video, videoUrl, shouldAutoStart);
+            initHlsPlayer(video, videoUrl); // Revert: sem gambiarra de shouldAutoStart
         } else {
-            // Fallback caso o hls-player.js não esteja carregado
             const source = document.createElement('source');
             source.src = videoUrl;
             source.type = videoUrl.includes('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/mp4';
@@ -700,10 +702,15 @@ class TikTokPlayer {
         videoData.video = video;
         videoData.materialized = true;
 
-        // Carregar conteúdo
-        const nq = window.networkQuality;
-        if (nq) video.preload = nq.getPreload();
-        video.load();
+        // Fix: NÃO chamar video.load() para vídeos HLS!
+        // Para HLS, o hls.js já gere o carregamento internamente via loadSource().
+        // Chamar video.load() após initHlsPlayer reinicia o MediaSource e provoca erros.
+        // Para MP4 legado (sem _hlsInstance), video.load() é correto e necessário.
+        if (!video._hlsInstance) {
+            const nq = window.networkQuality;
+            if (nq) video.preload = nq.getPreload();
+            video.load();
+        }
     }
 
     enforceMaxMaterialized() {
@@ -863,8 +870,10 @@ class TikTokPlayer {
             this.materializeVideo(videoData);
         }
         if (videoData.video) {
-            // Garantir que o HLS começa a transferir fragmentos caso tenha sido 
-            // inicializado com autoStartLoad = false (ex: vídeos pré-carregados numa rede 3G)
+            // Fix E: retomar o download de fragmentos HLS.
+            // Quando o vídeo sai do viewport, o IntersectionObserver chama stopLoad().
+            // Ao voltar, este startLoad() retoma a partir do ponto onde parou.
+            // O buffer existente é preservado — é uma retoma, não um re-download.
             if (videoData.video._hlsInstance) {
                 videoData.video._hlsInstance.startLoad();
             }
@@ -872,8 +881,6 @@ class TikTokPlayer {
             // Respeitar o estado de mute atual (global)
             const globalMuted = this.getCurrentMuteState();
             const userInteracted = localStorage.getItem('mytube_user_interacted') === 'true';
-            
-            // Só tentar com som se o utilizador já interagiu E o som global estiver ativo
             const shouldHaveAudio = userInteracted && !globalMuted;
             
             if (shouldHaveAudio) {

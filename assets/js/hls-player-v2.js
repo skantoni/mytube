@@ -1,36 +1,34 @@
 /**
- * hls-player.js — MyTube HLS Player
+ * hls-player-v2.js — MyTube HLS Player
  *
  * Usa a biblioteca hls.js para tocar vídeos no formato HLS (.m3u8).
  * Compatível com vídeos .mp4 antigos (usa o player nativo nesses casos).
  *
- * Estratégia de qualidade inicial (como as Big Techs):
- *   - Usa abrEwmaDefaultEstimate para "pré-aquecer" o ABR controller com uma
- *     estimativa de largura de banda ANTES de qualquer medição real.
- *   - Valor é lido da Network Information API se disponível, caso contrário usa
- *     10 Mbps como default (suficiente para começar em 720p na maioria dos casos).
- *   - O ABR controller continua a ajustar automaticamente após a primeira medição.
- *   - Qualidade mínima: 360p (144p foi descartada). O player prefere buffering
- *     a degradar demasiado a imagem.
- *   - Warm Start: a largura de banda real medida durante a reprodução é guardada
- *     em sessionStorage e reutilizada como estimativa inicial no próximo vídeo.
- *     Assim, o 2º, 3º, ... vídeo arrancam sempre na qualidade certa em vez de
- *     voltarem ao "chute inicial" da Network Information API.
+ * Estratégia de qualidade (ABR):
+ *   - abrEwmaDefaultEstimate: "semeia" o ABR controller com uma estimativa de
+ *     largura de banda antes de qualquer medição real.
+ *   - Warm Start: a BW medida no vídeo anterior é guardada em sessionStorage e
+ *     reutilizada no próximo. O 2º, 3º, ... vídeo arranc sempre na qualidade certa.
+ *   - Cold Start: se não houver warm start, usamos 1.5 Mbps como default conservador
+ *     (adequado para 3G angolano). É melhor começar em 360p e subir do que começar
+ *     em 720p, bloquear e mostrar ecrã preto.
+ *
+ * Gestão de banda (stopLoad / startLoad):
+ *   - Quando um vídeo sai do viewport, o tiktok.js chama hls.stopLoad() para parar
+ *     de consumir banda no background.
+ *   - Quando volta ao viewport, playVideo() chama hls.startLoad() para retomar.
+ *   - O buffer já construído é preservado — não há re-download.
  */
 
 // ─── Warm Start: memória de largura de banda entre vídeos ─────────────────────
-// Chave usada no sessionStorage (não persiste após fechar o browser)
 var _WARM_START_KEY = 'mytube_warm_bps';
 
 /**
- * Guarda a largura de banda real medida pelo hls.js para uso no próximo vídeo.
- * Aplicamos um factor de segurança de 80% para absorver picos momentâneos.
- * @param {number} measuredBps - Valor em bps reportado por hls.bandwidthEstimate
+ * Guarda a BW real (80% do pico medido como margem de segurança).
+ * @param {number} measuredBps
  */
 function _saveWarmBandwidth(measuredBps) {
     if (!measuredBps || measuredBps <= 0) return;
-    // Factor de segurança: usamos 80% do pico medido para não sermos demasiado
-    // optimistas (a rede pode ter variado durante a reprodução)
     var safeBps = Math.round(measuredBps * 0.80);
     try {
         sessionStorage.setItem(_WARM_START_KEY, safeBps);
@@ -40,8 +38,8 @@ function _saveWarmBandwidth(measuredBps) {
 }
 
 /**
- * Lê a largura de banda guardada da sessão anterior (ou do vídeo anterior).
- * @returns {number|null} Valor em bps, ou null se não houver memória
+ * Lê a BW guardada da sessão.
+ * @returns {number|null}
  */
 function _readWarmBandwidth() {
     try {
@@ -53,149 +51,119 @@ function _readWarmBandwidth() {
 }
 
 /**
- * Estima a velocidade inicial da net para o ABR controller do hls.js.
- * Prioridade: Warm Start (medido no vídeo anterior) > Network Information API > Default.
- * @returns {number} Estimativa em bits por segundo (bps)
+ * Estima a BW inicial para semear o ABR controller.
+ * Prioridade: Warm Start > Network Information API > Default conservador.
+ * @returns {number} bps
  */
 function _estimateInitialBandwidth() {
-    // ── 1ª prioridade: Warm Start (memória da sessão) ──────────────────────────
+    // 1ª prioridade: Warm Start (medição real do vídeo anterior)
     var warmBps = _readWarmBandwidth();
     if (warmBps && warmBps > 0) {
         return warmBps;
     }
 
-    // ── 2ª prioridade: Network Information API (arranque frio) ─────────────────
-    // Não disponível em Safari/iOS — retornar default alto
+    // 2ª prioridade: Network Information API
     if (!navigator.connection) {
-        return 10 * 1000 * 1000; // 10 Mbps default
+        // Fix A: default conservador de 1.5 Mbps (3G angolano típico)
+        // Melhor começar em 360p e subir do que começar em 720p e bloquear.
+        return 1500 * 1000;
     }
 
     const conn = navigator.connection;
     const mbps = conn.downlink;
 
-    // A Network Information API serve para dar um "chute inicial"
-    if (mbps >= 15 || conn.effectiveType === '4g') {
-        return 15 * 1000 * 1000; // 15 Mbps → forçar início em 1080p
-    } else if (mbps >= 8) {
-        return 10 * 1000 * 1000; // 8-15 Mbps → início em 720p
+    // Mapeamento cuidadoso: 4g genérico pode ser 5 Mbps ou 50 Mbps
+    if (conn.effectiveType === '4g' && mbps >= 15) {
+        return 15 * 1000 * 1000; // 4G rápido → 1080p
+    } else if (mbps >= 8 || conn.effectiveType === '4g') {
+        return 8 * 1000 * 1000;  // 4G médio → 720p
     } else if (mbps >= 3) {
-        return 4 * 1000 * 1000;  // 3-8 Mbps → início em 480p
+        return 3 * 1000 * 1000;  // 3G+ → 480p
     } else {
-        return 800 * 1000; // ≤ 3 Mbps → início em 360p (piso mínimo, 144p descartada)
+        return 800 * 1000;       // 3G lento / 2G → 360p (mínimo)
     }
 }
 
 /**
- * Inicializa o player de vídeo com suporte a HLS ou nativo.
- * @param {HTMLVideoElement} videoEl - O elemento <video>
- * @param {string} url - URL do vídeo (pode ser .m3u8 ou .mp4)
- * @param {boolean} autoStartLoad - Se deve começar a transferir fragmentos automaticamente
+ * Inicializa o player HLS ou nativo.
+ * @param {HTMLVideoElement} videoEl
+ * @param {string} url — URL do .m3u8 ou .mp4
  */
-function initHlsPlayer(videoEl, url, autoStartLoad = true) {
-    if (!videoEl || !url) {
-        return;
-    }
+function initHlsPlayer(videoEl, url) {
+    if (!videoEl || !url) return;
 
     const isHls = url.includes('.m3u8');
 
     if (!isHls) {
-        // Vídeo antigo .mp4, usar nativo
+        // MP4 legado — nativo do browser
         videoEl.src = url;
         return;
     }
 
-    // ─── ORDEM CORRETA (padrão oficial hls.js) ────────────────────────────────
-    // 1º: Verificar Hls.isSupported() — usa MSE (Chrome, Edge, Firefox)
-    // 2º: Fallback para HLS nativo — apenas Safari/iOS retorna "probably"
-    // ─────────────────────────────────────────────────────────────────────────
-
+    // Chrome / Edge / Firefox → hls.js (MSE)
+    // Safari / iOS           → HLS nativo (fallback no else)
     const hlsDefined = typeof Hls !== 'undefined';
 
     if (hlsDefined && Hls.isSupported()) {
-        // Chrome, Edge, Firefox → usar hls.js (via MediaSource API)
+        // Destruir instância anterior se existir
         if (videoEl._hlsInstance) {
             videoEl._hlsInstance.destroy();
             videoEl._hlsInstance = null;
         }
 
         const estimatedBps = _estimateInitialBandwidth();
-        const warmActive = !!_readWarmBandwidth();
 
-        // ── Cache Buster Estático: Contornar caches agressivas de ISPs em Angola ──
+        // ── Cache Buster Estático ───────────────────────────────────────────────
+        // String estática 'v2_cors' em vez de Date.now() para não destruir a cache
+        // da Cloudflare. Apenas contorna a cache das ISPs angolanas (Unitel/Africell)
+        // que guardaram versões antigas sem CORS.
         class CacheBustingLoader extends Hls.DefaultConfig.loader {
             load(context, config, callbacks) {
-                const cacheBuster = `cb=v2_cors`;
-                const separator = context.url.includes('?') ? '&' : '?';
-                context.url += `${separator}${cacheBuster}`;
+                const sep = context.url.includes('?') ? '&' : '?';
+                context.url += `${sep}cb=v2_cors`;
                 super.load(context, config, callbacks);
             }
         }
 
-        // ─── Calcular o nível de arranque ANTES de criar a instância ─────────
+        // Fix B: Buffer adaptativo por qualidade de rede
+        // Redes lentas (3G): 10s de buffer suficiente para arrancar e poupar RAM
+        // Redes rápidas (4G/WiFi): 30s para experiência suave sem re-buffering
+        const nq = window.networkQuality;
+        const isLow = nq && nq.quality === 'low';
+        const maxBufLen    = isLow ? 10 : 30;  // Fix B — era sempre 30
+        const maxMaxBufLen = isLow ? 20 : 60;  // Fix B — era sempre 60
+
         const hls = new Hls({
-            autoStartLoad: autoStartLoad,    // ← Controlado por parâmetro (evita roubo de banda no 3G)
-            startLevel: -1,                  // ← ABR escolhe com base no EWMA semeado
+            autoStartLoad: true,
+            startLevel: -1,                        // ABR decide com base no EWMA semeado
             capLevelToPlayerSize: false,
-            abrEwmaDefaultEstimate: estimatedBps, // ← Warm start / navigator.connection
-            maxBufferLength: 30,
-            maxMaxBufferLength: 60,
+            abrEwmaDefaultEstimate: estimatedBps,  // Warm start / Network API / 1.5 Mbps
+            maxBufferLength:    maxBufLen,          // Fix B
+            maxMaxBufferLength: maxMaxBufLen,       // Fix B
             maxBufferHole: 0.5,
-            fragLoadingTimeOut: 20000,
-            levelLoadingTimeOut: 10000,
+            fragLoadingTimeOut:  8000,              // Fix D — era 20000 (20s!) → agora 8s
+            levelLoadingTimeOut: 6000,              // Fix D — era 10000 → agora 6s
             debug: false,
-            pLoader: CacheBustingLoader, // Playlist Loader (master.m3u8, etc)
-            fLoader: CacheBustingLoader  // Fragment Loader (.ts)
+            pLoader: CacheBustingLoader,
+            fLoader: CacheBustingLoader
         });
 
         hls.loadSource(url);
         hls.attachMedia(videoEl);
         videoEl._hlsInstance = hls;
 
-        // Garantir que o hls carrega quando o vídeo recebe ordem para tocar
-        videoEl.addEventListener('play', () => {
-            if (hls) {
-                hls.startLoad();
-            }
-        });
-
-        let _firstFragLoaded = false;
-
-        hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
-            const totalLevels = data.levels.length;
-            data.levels.forEach((lvl, i) => {
-            });
-            // Nota: com autoStartLoad:true o hls.js já começou a carregar.
-            // Não chamamos hls.startLoad() nem manipulamos o nível aqui —
-            // o abrEwmaDefaultEstimate já guiou o ABR para o nível correto.
-        });
-
         hls.on(Hls.Events.LEVEL_SWITCHED, function (event, data) {
-            const levelInfo = hls.levels[data.level];
-            const resolution = levelInfo ? `${levelInfo.width}x${levelInfo.height}` : 'desconhecida';
-            const kbps = levelInfo ? Math.round(levelInfo.bitrate / 1000) : 0;
-        });
-
-        hls.on(Hls.Events.FRAG_LOADING, function (event, data) {
-            // Apenas observamos, sem alterar o estado do HLS aqui para não abortar o download
+            const lvl = hls.levels[data.level];
+            if (lvl) {
+                console.log(`[HLS] 🔄 ${lvl.width}x${lvl.height} @ ${Math.round(lvl.bitrate / 1000)} kbps`);
+            }
         });
 
         hls.on(Hls.Events.FRAG_LOADED, function (event, data) {
             if (data.frag.sn === 'initSegment') return;
-
-            // ── Warm Start: guardar a largura de banda real medida pelo hls.js ──
+            // Warm Start: actualizar a estimativa de BW após cada fragmento
             if (hls.bandwidthEstimate && hls.bandwidthEstimate > 0) {
                 _saveWarmBandwidth(hls.bandwidthEstimate);
-            }
-
-            if (!_firstFragLoaded) {
-                _firstFragLoaded = true;
-                
-                // Opção 1 (Estilo TikTok): Trancar a qualidade no nível do 1º fragmento!
-                // Usamos hls.nextLoadLevel em vez de hls.currentLevel para evitar o flush
-                // do buffer que causa o erro "frag load aborted".
-                if (hls.autoLevelEnabled) {
-                    hls.nextLoadLevel = data.frag.level;
-                }
             }
         });
 
@@ -203,6 +171,7 @@ function initHlsPlayer(videoEl, url, autoStartLoad = true) {
             if (data.fatal) {
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
+                        // Tentar retomar o download em vez de destruir
                         hls.startLoad();
                         break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
@@ -214,22 +183,22 @@ function initHlsPlayer(videoEl, url, autoStartLoad = true) {
                 }
             }
         });
-    } else {
+
+    } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+        // Safari / iOS — HLS nativo
         videoEl.src = url;
     }
 }
 
 /**
- * Destruir a instância HLS de um elemento de vídeo (ao mudar de vídeo ou fechar modal).
- * Limpa também o buffer interno do browser para evitar sobreposição de áudio.
+ * Destrói a instância HLS e limpa o elemento de vídeo.
+ * Deve ser chamado ao virtualizar um vídeo distante ou ao fechar o feed.
  * @param {HTMLVideoElement} videoEl
  */
 function destroyHlsPlayer(videoEl) {
     if (videoEl && videoEl._hlsInstance) {
-        // ── Warm Start: salvar a BW final antes de destruir ────────────────────
-        // Garante que mesmo que o utilizador passe de vídeo a meio, guardamos
-        // a última medição válida.
-        var hls = videoEl._hlsInstance;
+        const hls = videoEl._hlsInstance;
+        // Guardar BW antes de destruir (para warm start do próximo vídeo)
         if (hls.bandwidthEstimate && hls.bandwidthEstimate > 0) {
             _saveWarmBandwidth(hls.bandwidthEstimate);
         }
