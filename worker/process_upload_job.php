@@ -337,6 +337,11 @@ if (!$hls_result['success']) {
 
 $hls_dir = $hls_result['output_dir'];
 
+update_progress($pdo, $job_id, 'A gerar thumbnail...');
+$thumb_temp_path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'thumb_' . $uniqueName . '.webp';
+$thumb_success = video_generate_thumbnail($processed_video_path, $thumb_temp_path, 1);
+$db_thumbnail_path = null;
+
 update_progress($pdo, $job_id, 'A enviar vídeo HLS para armazenamento...');
 
 if (R2_ENABLED) {
@@ -346,6 +351,14 @@ if (R2_ENABLED) {
         $upload_success = true;
         $db_video_path  = R2_PATH_PREFIX . $r2_result['key'];
         wlog("Upload R2 HLS OK: $db_video_path");
+        
+        if ($thumb_success) {
+            $r2_thumb = r2_upload_video($thumb_temp_path, $uniqueName . '_thumb.webp', 'image/webp');
+            if ($r2_thumb['success']) {
+                $db_thumbnail_path = R2_PATH_PREFIX . $r2_thumb['key'];
+                wlog("Upload R2 Thumbnail OK: $db_thumbnail_path");
+            }
+        }
     } else {
         wlog("R2 falhou: " . $r2_result['error'] . " — a usar armazenamento local");
         $local_path = ROOT_DIR . '/uploads/videos/' . $uniqueName;
@@ -357,6 +370,13 @@ if (R2_ENABLED) {
             $upload_success = true;
             $db_video_path  = $uniqueName . '/master.m3u8';
             wlog("Armazenamento local HLS OK: $local_path");
+            
+            if ($thumb_success) {
+                $local_thumb = ROOT_DIR . '/uploads/videos/' . $uniqueName . '_thumb.webp';
+                if (rename($thumb_temp_path, $local_thumb)) {
+                    $db_thumbnail_path = $uniqueName . '_thumb.webp';
+                }
+            }
         }
     }
 } else {
@@ -368,6 +388,13 @@ if (R2_ENABLED) {
         $upload_success = true;
         $db_video_path  = $uniqueName . '/master.m3u8';
         wlog("Armazenamento local HLS OK: $local_path");
+        
+        if ($thumb_success) {
+            $local_thumb = dirname($local_path) . '/' . $uniqueName . '_thumb.webp';
+            if (rename($thumb_temp_path, $local_thumb)) {
+                $db_thumbnail_path = $uniqueName . '_thumb.webp';
+            }
+        }
     }
 }
 
@@ -375,6 +402,10 @@ if (R2_ENABLED) {
 if (is_dir($hls_dir) && $hls_dir !== ($local_path ?? '')) {
     array_map('unlink', glob("$hls_dir/*.*"));
     @rmdir($hls_dir);
+}
+
+if (file_exists($thumb_temp_path)) {
+    @unlink($thumb_temp_path);
 }
 
 // Limpar ficheiro mp4 original processado
@@ -403,29 +434,30 @@ try {
     if ($has_music_cols && $has_moderation_cols) {
         $pdo->prepare("
             UPDATE videos SET
-                video_path=?, moderation_status=?, moderation_score=?,
+                video_path=?, thumbnail_path=?, moderation_status=?, moderation_score=?,
                 moderation_checked_at=NOW(), music_name=?, music_artist=?
             WHERE id=?
-        ")->execute([$db_video_path, $moderation_status, $moderation_score,
+        ")->execute([$db_video_path, $db_thumbnail_path, $moderation_status, $moderation_score,
                      $music_name, $music_artist, $video_id]);
     } elseif ($has_moderation_cols) {
         $pdo->prepare("
             UPDATE videos SET
-                video_path=?, moderation_status=?, moderation_score=?, moderation_checked_at=NOW()
+                video_path=?, thumbnail_path=?, moderation_status=?, moderation_score=?, moderation_checked_at=NOW()
             WHERE id=?
-        ")->execute([$db_video_path, $moderation_status, $moderation_score, $video_id]);
+        ")->execute([$db_video_path, $db_thumbnail_path, $moderation_status, $moderation_score, $video_id]);
     } elseif ($has_music_cols) {
         $pdo->prepare("
-            UPDATE videos SET video_path=?, music_name=?, music_artist=? WHERE id=?
-        ")->execute([$db_video_path, $music_name, $music_artist, $video_id]);
+            UPDATE videos SET video_path=?, thumbnail_path=?, music_name=?, music_artist=? WHERE id=?
+        ")->execute([$db_video_path, $db_thumbnail_path, $music_name, $music_artist, $video_id]);
     } else {
-        $pdo->prepare("UPDATE videos SET video_path=? WHERE id=?")->execute([$db_video_path, $video_id]);
+        $pdo->prepare("UPDATE videos SET video_path=?, thumbnail_path=? WHERE id=?")->execute([$db_video_path, $db_thumbnail_path, $video_id]);
     }
 
     // Sincronizar hashtags
     if ($video_id > 0) {
         hashtag_sync_video_relations($pdo, $video_id, $parsed_hashtags);
     }
+
 
     // Incrementar pontos de ranking
     ranking_points_increment($pdo, $user_id, 10);

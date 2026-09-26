@@ -598,6 +598,7 @@ class FeedManager {
                     muted
                     playsinline
                     preload="metadata"
+                    ${video.thumbnail_path ? `poster="${resolveVideoUrl(video.thumbnail_path)}"` : ''}
                     data-has-audio="true"
                     data-video-id="${video.id}"
                     data-video-path="${video.video_path}"

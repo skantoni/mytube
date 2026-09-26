@@ -406,6 +406,51 @@ function video_prepare_hls(string $input_path): array {
 }
 
 /**
+ * Extrai um frame do vídeo (thumbnail) no formato WEBP.
+ * Pode receber um caminho local ou uma URL (ex: master.m3u8 remoto).
+ * 
+ * @param string $input_path Caminho local ou URL HTTP do vídeo
+ * @param string $output_path Caminho onde o WEBP será guardado
+ * @param int $time_offset Segundos de onde extrair (default 1)
+ * @return bool True se o thumbnail foi gerado com sucesso
+ */
+function video_generate_thumbnail(string $input_path, string $output_path, int $time_offset = 1): bool {
+    if (!video_exec_available()) {
+        return false;
+    }
+
+    $ffmpeg = video_get_ffmpeg_binary();
+    if (!$ffmpeg) {
+        return false;
+    }
+
+    // -ss antes do -i é muito mais rápido porque faz o seek sem decodificar o vídeo todo
+    // -vframes 1: extrai apenas 1 frame
+    // -q:v 50: qualidade WEBP
+    // scale=-1:720 : redimensiona para 720p (altura), mantendo o rácio
+    $command = sprintf(
+        '%s -y -ss %d -i %s -vframes 1 -c:v libwebp -q:v 50 -vf "scale=-1:720" %s 2>&1',
+        escapeshellarg($ffmpeg),
+        $time_offset,
+        escapeshellarg($input_path),
+        escapeshellarg($output_path)
+    );
+
+    error_log('video_generate_thumbnail: command = ' . $command);
+
+    $output = [];
+    $exit_code = 1;
+    exec($command, $output, $exit_code);
+
+    if ($exit_code !== 0 || !file_exists($output_path) || filesize($output_path) === 0) {
+        error_log('Falha ao gerar thumbnail: ' . implode("\n", array_slice($output, -5)));
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * Faz download de um ficheiro de audio a partir de uma URL segura (Deezer CDN).
  * Usa cURL como método principal (mais fiável que file_get_contents para HTTPS).
  * Retorna o caminho do ficheiro temporario ou null em caso de erro.
