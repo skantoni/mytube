@@ -426,13 +426,16 @@ function video_generate_thumbnail(string $input_path, string $output_path, int $
 
     // -ss antes do -i é muito mais rápido porque faz o seek sem decodificar o vídeo todo
     // -vframes 1: extrai apenas 1 frame
-    // -q:v 50: qualidade WEBP
-    // scale=-1:720 : redimensiona para 720p (altura), mantendo o rácio
+    // -q:v 50: qualidade WEBP (0=melhor, 100=pior; 50 é bom equilíbrio)
+    // scale=-2:720: redimensiona para 720p mantendo rácio (múltiplo de 2 obrigatório para alguns codecs)
+    // Nota: evitar aspas duplas dentro do sprintf para compatibilidade com exec() no Linux
+    $vf_filter = 'scale=-2:720';
     $command = sprintf(
-        '%s -y -ss %d -i %s -vframes 1 -c:v libwebp -q:v 50 -vf "scale=-1:720" %s 2>&1',
+        '%s -y -ss %d -i %s -vframes 1 -c:v libwebp -q:v 50 -vf %s %s 2>&1',
         escapeshellarg($ffmpeg),
         $time_offset,
         escapeshellarg($input_path),
+        escapeshellarg($vf_filter),
         escapeshellarg($output_path)
     );
 
@@ -443,7 +446,11 @@ function video_generate_thumbnail(string $input_path, string $output_path, int $
     exec($command, $output, $exit_code);
 
     if ($exit_code !== 0 || !file_exists($output_path) || filesize($output_path) === 0) {
-        error_log('Falha ao gerar thumbnail: ' . implode("\n", array_slice($output, -5)));
+        $err_detail = implode("\n", array_slice($output, -10));
+        error_log('Falha ao gerar thumbnail (exit ' . $exit_code . '): ' . $err_detail);
+        if (file_exists($output_path)) {
+            @unlink($output_path);
+        }
         return false;
     }
 
