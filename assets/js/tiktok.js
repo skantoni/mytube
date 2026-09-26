@@ -139,16 +139,23 @@ class TikTokPlayer {
                 video.onerror = () => {
                     const vd = this.videos.find(v => v.video === video);
                     if (vd) {
-                        vd._retryCount = (vd._retryCount || 0) + 1;
-                        const maxRetries = 3;
-                        if (vd._retryCount <= maxRetries) {
-                            const delay = Math.min(5000 * vd._retryCount, 15000);
-                            console.warn(`Vídeo ${videoId} falhou ao carregar. Retry ${vd._retryCount}/${maxRetries} em ${delay/1000}s`);
-                            setTimeout(() => {
-                                if (video.src || video.querySelector('source')) {
-                                    video.load();
-                                }
-                            }, delay);
+                        const err = video.error ? video.error.code : 'unknown';
+                        console.warn(`[Video Error] Elemento video reportou erro: ${err} no video_id ${videoId}`);
+                        
+                        // Para HLS.js o recovery já é feito internamente pelo hls-player-v2.js (recoverMediaError)
+                        // Chamar video.load() destrói o buffer e o MediaSource gerido pelo HLS.js
+                        if (!video._hlsInstance) {
+                            vd._retryCount = (vd._retryCount || 0) + 1;
+                            const maxRetries = 3;
+                            if (vd._retryCount <= maxRetries) {
+                                const delay = Math.min(5000 * vd._retryCount, 15000);
+                                console.warn(`Retry nativo ${vd._retryCount}/${maxRetries} em ${delay/1000}s`);
+                                setTimeout(() => {
+                                    if (video.src || video.querySelector('source')) {
+                                        video.load();
+                                    }
+                                }, delay);
+                            }
                         }
                     }
                 };
