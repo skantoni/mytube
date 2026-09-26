@@ -33,10 +33,14 @@ ini_set('memory_limit', '512M');
 $worker_start = microtime(true);
 $log_prefix   = '[' . date('Y-m-d H:i:s') . '][worker] ';
 
+$log_file = ROOT_DIR . '/worker/worker.log';
+
 function wlog(string $msg): void {
-    global $log_prefix;
-    echo $log_prefix . $msg . "\n";
+    global $log_prefix, $log_file;
+    $line = $log_prefix . $msg . "\n";
+    echo $line;
     flush();
+    @file_put_contents($log_file, $line, FILE_APPEND | LOCK_EX);
 }
 
 // ── Verificar tabela upload_jobs ─────────────────────────────────────────────
