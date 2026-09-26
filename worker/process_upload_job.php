@@ -339,7 +339,9 @@ $hls_dir = $hls_result['output_dir'];
 
 update_progress($pdo, $job_id, 'A gerar thumbnail...');
 $thumb_temp_path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'thumb_' . $uniqueName . '.webp';
+wlog("Thumb: input=$processed_video_path | exists=" . (file_exists($processed_video_path) ? 'SIM' : 'NÃO') . " | output=$thumb_temp_path");
 $thumb_success = video_generate_thumbnail($processed_video_path, $thumb_temp_path, 1);
+wlog("Thumb: geração=" . ($thumb_success ? 'OK' : 'FALHOU') . " | ficheiro_gerado=" . (file_exists($thumb_temp_path) ? 'SIM (' . filesize($thumb_temp_path) . ' bytes)' : 'NÃO'));
 $db_thumbnail_path = null;
 
 update_progress($pdo, $job_id, 'A enviar vídeo HLS para armazenamento...');
@@ -357,7 +359,11 @@ if (R2_ENABLED) {
             if ($r2_thumb['success']) {
                 $db_thumbnail_path = R2_PATH_PREFIX . $r2_thumb['key'];
                 wlog("Upload R2 Thumbnail OK: $db_thumbnail_path");
+            } else {
+                wlog("❌ Upload R2 Thumbnail FALHOU: " . ($r2_thumb['error'] ?? 'erro desconhecido'));
             }
+        } else {
+            wlog("⚠️ Thumbnail não gerado — a continuar sem thumbnail");
         }
     } else {
         wlog("R2 falhou: " . $r2_result['error'] . " — a usar armazenamento local");
