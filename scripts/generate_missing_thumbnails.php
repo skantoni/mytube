@@ -69,7 +69,9 @@ foreach ($videos as $video) {
     if (R2_ENABLED) {
         $r2_thumb = r2_upload_video($temp_thumb, 'thumbnails/' . $unique_name, 'image/webp');
         if ($r2_thumb['success']) {
-            $db_thumbnail_path = R2_PATH_PREFIX . $r2_thumb['key'];
+            // Remover R2_VIDEO_FOLDER para evitar duplo prefixo em resolveVideoUrl
+            $thumb_key_clean = str_replace(R2_VIDEO_FOLDER, '', $r2_thumb['key']);
+            $db_thumbnail_path = R2_PATH_PREFIX . $thumb_key_clean;
         }
     } else {
         $local_thumb_dir = ROOT_DIR . '/uploads/videos/thumbnails';

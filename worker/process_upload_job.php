@@ -361,7 +361,10 @@ if (R2_ENABLED) {
         if ($thumb_success) {
             $r2_thumb = r2_upload_video($thumb_temp_path, 'thumbnails/' . $uniqueName . '_thumb.webp', 'image/webp');
             if ($r2_thumb['success']) {
-                $db_thumbnail_path = R2_PATH_PREFIX . $r2_thumb['key'];
+                // r2_upload_video inclui R2_VIDEO_FOLDER no key (ex: 'videos/thumbnails/xxx.webp')
+                // mas resolveVideoUrl já adiciona R2_VIDEO_FOLDER ao resolver — remover para evitar duplo prefixo
+                $thumb_key_clean = str_replace(R2_VIDEO_FOLDER, '', $r2_thumb['key']);
+                $db_thumbnail_path = R2_PATH_PREFIX . $thumb_key_clean;
                 wlog("Upload R2 Thumbnail OK: $db_thumbnail_path");
             } else {
                 wlog("❌ Upload R2 Thumbnail FALHOU: " . ($r2_thumb['error'] ?? 'erro desconhecido'));
