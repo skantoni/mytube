@@ -500,112 +500,50 @@ class TikTokPlayer {
     setupScrolling() {
         const container = document.querySelector('.tiktok-container');
         if (!container) return;
-        
-        let scrollTimeout;
 
+        // Pausar tudo durante o scroll — evita áudio em vídeos intermédios
         container.addEventListener('scroll', () => {
             if (!this.isScrolling) {
                 this.pauseAllVideos();
+                this.isScrolling = true;
             }
-            
-            this.isScrolling = true;
-            clearTimeout(scrollTimeout);
+        }, { passive: true });
 
-            scrollTimeout = setTimeout(() => {
+        // 'scrollend' nativo (Chrome 114+, Firefox 109+):
+        // Dispara UMA vez, após o CSS snap terminar de animar.
+        // É o evento correcto para este padrão — sem timeout, sem polling.
+        if ('onscrollend' in window) {
+            container.addEventListener('scrollend', () => {
                 this.isScrolling = false;
                 this.handleScrollEnd();
-            }, this.scrollEndDelay);
-        }, { passive: true });
-    }
-
-    setupIntersectionObserver() {
-        // Desconectar observer antigo se existir
-        if (this.intersectionObserver) {
-            this.intersectionObserver.disconnect();
+            }, { passive: true });
+        } else {
+            // Fallback para browsers mais antigos
+            let scrollTimeout;
+            container.addEventListener('scroll', () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    this.isScrolling = false;
+                    this.handleScrollEnd();
+                }, this.scrollEndDelay);
+            }, { passive: true });
         }
-
-        // Map de debounce timers por vídeo — evita play/pause race condition em scroll rápido
-        // Sem debounce: ratio oscila 0.76 → 0.64 em ms, play() é interrompido por pause() → AbortError
-        const debounceTimers = new Map();
-
-        const options = {
-            root: document.querySelector('.tiktok-container'),
-            rootMargin: '0px',
-            threshold: [0.5, 0.7]  // Duplo threshold: 0.7 para entrar, 0.5 para sair (histerese)
-        };
-
-        this.intersectionObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                const videoData = this.videos.find(v => v.element === entry.target);
-                if (!videoData) return;
-
-                // Cancelar debounce anterior para este vídeo (scroll rápido anula decisão anterior)
-                if (debounceTimers.has(videoData.videoId)) {
-                    clearTimeout(debounceTimers.get(videoData.videoId));
-                    debounceTimers.delete(videoData.videoId);
-                }
-
-                if (entry.isIntersecting && entry.intersectionRatio >= 0.7) {
-                    // Debounce de 150ms: só toca se o vídeo ainda estiver em foco depois desse tempo
-                    const timer = setTimeout(() => {
-                        debounceTimers.delete(videoData.videoId);
-                        console.log(`[Observer] Vídeo ${videoData.videoId} entrou em foco (${entry.intersectionRatio.toFixed(2)}). Tocando...`);
-                        // Pausar TODOS os outros vídeos primeiro
-                        this.pauseAllVideos();
-
-                        const previousIndex = this.currentVideoIndex;
-
-                        // Vídeo está visível - tocar APENAS se não foi pausado manualmente
-                        this.currentVideoIndex = videoData.index;
-                        this.persistFeedState(videoData.videoId);
-                        if (!videoData.manuallyPaused) {
-                            this.playVideo(videoData);
-                        } else {
-                            console.log(`[Observer] Vídeo ${videoData.videoId} não tocado (manuallyPaused = true)`);
-                        }
-                        this.updateViews(videoData.videoId);
-                        this.updateDesktopNavButtons();
-
-                        // Se mudou de vídeo e o sidebar de comentários está aberto, recarregar comentários
-                        if (previousIndex !== videoData.index) {
-                            const sidebar = document.getElementById('commentsSidebar');
-                            if (sidebar && sidebar.classList.contains('open') && window.commentsSystem) {
-                                window.commentsSystem.openComments(videoData.videoId);
-                            }
-                        }
-                    }, 150);
-                    debounceTimers.set(videoData.videoId, timer);
-
-                } else if (!entry.isIntersecting || entry.intersectionRatio < 0.5) {
-                    // Debounce de 100ms para sair — histerese evita flicker na fronteira
-                    const timer = setTimeout(() => {
-                        debounceTimers.delete(videoData.videoId);
-                        if (videoData.video && !videoData.video.paused) {
-                            console.log(`[Observer] Vídeo ${videoData.videoId} saiu de foco (${entry.intersectionRatio.toFixed(2)}). Pausando...`);
-                        }
-                        this.pauseVideo(videoData);
-                        videoData.manuallyPaused = false;
-
-                        // Parar download HLS para poupar banda
-                        if (videoData.video && videoData.video._hlsInstance) {
-                            videoData.video._hlsInstance.stopLoad();
-                        }
-                    }, 100);
-                    debounceTimers.set(videoData.videoId, timer);
-                }
-            });
-        }, options);
-
-        this.videos.forEach(videoData => {
-            this.intersectionObserver.observe(videoData.element);
-        });
     }
 
     // ============================================
-    // VIRTUAL SCROLL - Manter max 5 <video> no DOM
+    // DETECÇÃO DE VÍDEO ACTIVO — Scroll Snap Index Tracking
     // ============================================
+    // Não usamos IntersectionObserver para decidir play/pause.
+    // CSS scroll-snap garante que cada vídeo ocupa 100vh exactos.
+    // Aqui apenas identificamos qual é o índice activo após o scroll parar.
+    // Solução idêntica ao TikTok / YouTube Shorts.
+    setupIntersectionObserver() {
+        // Manter recycleObserver para materialização antecipada (pré-carregar DOM)
+        // mas REMOVER o observer de play/pause — isso é responsabilidade do scroll
+        this._setupRecycleObserver();
+    }
 
-    setupRecycleObserver() {
+    _setupRecycleObserver() {
         if (this.recycleObserver) {
             this.recycleObserver.disconnect();
         }
@@ -613,12 +551,11 @@ class TikTokPlayer {
         const container = document.querySelector('.tiktok-container');
         if (!container) return;
 
-        // Observer com margem ampla — materializa vídeos 1 viewport antes de ficarem visíveis
+        // Margem de 100%: materializa o vídeo anterior e o seguinte antes de ficarem visíveis
         this.recycleObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 const videoData = this.videos.find(v => v.element === entry.target);
                 if (!videoData) return;
-
                 if (entry.isIntersecting && !videoData.materialized) {
                     this.materializeVideo(videoData);
                 }
@@ -634,6 +571,15 @@ class TikTokPlayer {
             this.recycleObserver.observe(vd.element);
         });
     }
+
+    setupRecycleObserver() {
+        // Alias público para retrocompatibilidade com o evento videosLoaded
+        this._setupRecycleObserver();
+    }
+
+    // ============================================
+    // VIRTUAL SCROLL - Manter max N <video> no DOM
+    // ============================================
 
     virtualizeVideo(videoData) {
         if (!videoData.materialized || !videoData.video) return;
@@ -836,15 +782,15 @@ class TikTokPlayer {
             this.materializeVideo(currentVideo);
         }
 
-        if (!currentVideo.loaded && currentVideo.video) {
-            const nq = window.networkQuality;
-            if (nq) currentVideo.video.preload = nq.getPreload();
-            
-            // NÃO usar .load() em instâncias HLS.js, pois isso reinicia o MediaSource e quebra a reprodução
-            if (!currentVideo.video._hlsInstance) {
-                currentVideo.video.load();
-            }
+        // Pausar todos os outros antes de tocar o actual
+        this.pauseAllVideos();
+
+        // ← PONTO CENTRAL: tocar o vídeo do índice activo
+        if (!currentVideo.manuallyPaused) {
+            this.playVideo(currentVideo);
+            this.updateViews(currentVideo.videoId);
         }
+
         this.preloadNearbyVideos();
     }
 
@@ -901,14 +847,6 @@ class TikTokPlayer {
             this.materializeVideo(videoData);
         }
         if (videoData.video) {
-            // Fix E: retomar o download de fragmentos HLS.
-            // Quando o vídeo sai do viewport, o IntersectionObserver chama stopLoad().
-            // Ao voltar, este startLoad() retoma a partir do ponto onde parou.
-            // O buffer existente é preservado — é uma retoma, não um re-download.
-            if (videoData.video._hlsInstance) {
-                videoData.video._hlsInstance.startLoad();
-            }
-
             // Respeitar o estado de mute atual (global)
             const globalMuted = this.getCurrentMuteState();
             const userInteracted = localStorage.getItem('mytube_user_interacted') === 'true';
