@@ -523,57 +523,75 @@ class TikTokPlayer {
         if (this.intersectionObserver) {
             this.intersectionObserver.disconnect();
         }
-        
+
+        // Map de debounce timers por vídeo — evita play/pause race condition em scroll rápido
+        // Sem debounce: ratio oscila 0.76 → 0.64 em ms, play() é interrompido por pause() → AbortError
+        const debounceTimers = new Map();
+
         const options = {
             root: document.querySelector('.tiktok-container'),
             rootMargin: '0px',
-            threshold: 0.7
+            threshold: [0.5, 0.7]  // Duplo threshold: 0.7 para entrar, 0.5 para sair (histerese)
         };
 
         this.intersectionObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 const videoData = this.videos.find(v => v.element === entry.target);
                 if (!videoData) return;
-                
-                if (entry.isIntersecting && entry.intersectionRatio >= 0.7) {
-                    console.log(`[Observer] Vídeo ${videoData.videoId} (Index ${videoData.index}) entrou em foco (Ratio: ${entry.intersectionRatio.toFixed(2)}). Tocando...`);
-                    // Pausar TODOS os outros vídeos primeiro
-                    this.pauseAllVideos();
-                    
-                    const previousIndex = this.currentVideoIndex;
-                    
-                    // Vídeo está visível - tocar APENAS se não foi pausado manualmente
-                    this.currentVideoIndex = videoData.index;
-                    this.persistFeedState(videoData.videoId);
-                    if (!videoData.manuallyPaused) {
-                        this.playVideo(videoData);
-                    } else {
-                        console.log(`[Observer] Vídeo ${videoData.videoId} não tocado (manuallyPaused = true)`);
-                    }
-                    this.updateViews(videoData.videoId);
-                    this.updateDesktopNavButtons();
-                    
-                    // Se mudou de vídeo e o sidebar de comentários está aberto, recarregar comentários
-                    if (previousIndex !== videoData.index) {
-                        const sidebar = document.getElementById('commentsSidebar');
-                        if (sidebar && sidebar.classList.contains('open') && window.commentsSystem) {
-                            window.commentsSystem.openComments(videoData.videoId);
-                        }
-                    }
-                } else {
-                    // Vídeo saiu do viewport ou não tem ratio suficiente — pausar e libertar banda
-                    if (videoData.video && !videoData.video.paused) {
-                        console.log(`[Observer] Vídeo ${videoData.videoId} fora de foco (Ratio: ${entry.intersectionRatio.toFixed(2)}). Pausando...`);
-                    }
-                    this.pauseVideo(videoData);
-                    videoData.manuallyPaused = false;
 
-                    // Fix E: parar o download de fragmentos para poupar banda.
-                    // O buffer já construído é PRESERVADO (não há re-download ao voltar).
-                    // hls.startLoad() é chamado em playVideo() quando o vídeo voltar ao foco.
-                    if (videoData.video && videoData.video._hlsInstance) {
-                        videoData.video._hlsInstance.stopLoad();
-                    }
+                // Cancelar debounce anterior para este vídeo (scroll rápido anula decisão anterior)
+                if (debounceTimers.has(videoData.videoId)) {
+                    clearTimeout(debounceTimers.get(videoData.videoId));
+                    debounceTimers.delete(videoData.videoId);
+                }
+
+                if (entry.isIntersecting && entry.intersectionRatio >= 0.7) {
+                    // Debounce de 150ms: só toca se o vídeo ainda estiver em foco depois desse tempo
+                    const timer = setTimeout(() => {
+                        debounceTimers.delete(videoData.videoId);
+                        console.log(`[Observer] Vídeo ${videoData.videoId} entrou em foco (${entry.intersectionRatio.toFixed(2)}). Tocando...`);
+                        // Pausar TODOS os outros vídeos primeiro
+                        this.pauseAllVideos();
+
+                        const previousIndex = this.currentVideoIndex;
+
+                        // Vídeo está visível - tocar APENAS se não foi pausado manualmente
+                        this.currentVideoIndex = videoData.index;
+                        this.persistFeedState(videoData.videoId);
+                        if (!videoData.manuallyPaused) {
+                            this.playVideo(videoData);
+                        } else {
+                            console.log(`[Observer] Vídeo ${videoData.videoId} não tocado (manuallyPaused = true)`);
+                        }
+                        this.updateViews(videoData.videoId);
+                        this.updateDesktopNavButtons();
+
+                        // Se mudou de vídeo e o sidebar de comentários está aberto, recarregar comentários
+                        if (previousIndex !== videoData.index) {
+                            const sidebar = document.getElementById('commentsSidebar');
+                            if (sidebar && sidebar.classList.contains('open') && window.commentsSystem) {
+                                window.commentsSystem.openComments(videoData.videoId);
+                            }
+                        }
+                    }, 150);
+                    debounceTimers.set(videoData.videoId, timer);
+
+                } else if (!entry.isIntersecting || entry.intersectionRatio < 0.5) {
+                    // Debounce de 100ms para sair — histerese evita flicker na fronteira
+                    const timer = setTimeout(() => {
+                        debounceTimers.delete(videoData.videoId);
+                        if (videoData.video && !videoData.video.paused) {
+                            console.log(`[Observer] Vídeo ${videoData.videoId} saiu de foco (${entry.intersectionRatio.toFixed(2)}). Pausando...`);
+                        }
+                        this.pauseVideo(videoData);
+                        videoData.manuallyPaused = false;
+
+                        // Parar download HLS para poupar banda
+                        if (videoData.video && videoData.video._hlsInstance) {
+                            videoData.video._hlsInstance.stopLoad();
+                        }
+                    }, 100);
+                    debounceTimers.set(videoData.videoId, timer);
                 }
             });
         }, options);
@@ -895,29 +913,57 @@ class TikTokPlayer {
             const globalMuted = this.getCurrentMuteState();
             const userInteracted = localStorage.getItem('mytube_user_interacted') === 'true';
             const shouldHaveAudio = userInteracted && !globalMuted;
-            
+
+            // Helper: executar após o play() resolver — aplica pause diferido se pedido entretanto
+            const afterPlay = (ok) => {
+                videoData._playPending = false;
+                if (videoData._pauseAfterPlay) {
+                    videoData._pauseAfterPlay = false;
+                    videoData.video.pause();
+                    videoData.element.classList.add('paused');
+                    if (videoData.video._hlsInstance) videoData.video._hlsInstance.stopLoad();
+                    return false;  // indica que foi pausado
+                }
+                return ok;
+            };
+
+            videoData._playPending = true;
+            videoData._pauseAfterPlay = false;
+
             if (shouldHaveAudio) {
                 videoData.video.muted = false;
                 videoData.video.play()
                     .then(() => {
+                        if (!afterPlay(true)) return;
                         console.log(`[playVideo] Vídeo ${videoData.videoId} a tocar COM som`);
                         videoData.element.classList.remove('paused');
                         this.hideAudioPrompt(videoData.videoId);
                         this.updateAudioButtonState(videoData.videoId, false);
                     })
                     .catch(e => {
+                        afterPlay(false);
+                        if (e.name === 'AbortError') {
+                            // Pausado intencionalmente antes de play() resolver — ignorar silenciosamente
+                            console.log(`[playVideo] Vídeo ${videoData.videoId} pausado antes de play() resolver (AbortError ignorado)`);
+                            return;
+                        }
                         console.warn(`[playVideo] Erro ao tocar ${videoData.videoId} COM som:`, e);
                         // Fallback: tentar sem som no mobile (autoplay prevent)
                         videoData.video.muted = true;
+                        videoData._playPending = true;
                         videoData.video.play()
                             .then(() => {
+                                if (!afterPlay(true)) return;
                                 console.log(`[playVideo] Vídeo ${videoData.videoId} a tocar SEM som (fallback)`);
                                 videoData.element.classList.remove('paused');
                                 this.showAudioPrompt(videoData.videoId);
                                 this.updateAudioButtonState(videoData.videoId, true);
                             })
                             .catch(e2 => {
-                                console.error(`[playVideo] Falha final ao tocar ${videoData.videoId} (fallback):`, e2);
+                                afterPlay(false);
+                                if (e2.name !== 'AbortError') {
+                                    console.error(`[playVideo] Falha final ao tocar ${videoData.videoId} (fallback):`, e2);
+                                }
                                 this.showAudioPrompt(videoData.videoId);
                             });
                     });
@@ -926,6 +972,7 @@ class TikTokPlayer {
                 videoData.video.muted = true;
                 videoData.video.play()
                     .then(() => {
+                        if (!afterPlay(true)) return;
                         videoData.element.classList.remove('paused');
                         if (!userInteracted) {
                             this.showAudioPrompt(videoData.videoId);
@@ -933,8 +980,11 @@ class TikTokPlayer {
                         this.updateAudioButtonState(videoData.videoId, true);
                     })
                     .catch(e => {
-                        if (!userInteracted) {
-                            this.showAudioPrompt(videoData.videoId);
+                        afterPlay(false);
+                        if (e.name !== 'AbortError') {
+                            if (!userInteracted) {
+                                this.showAudioPrompt(videoData.videoId);
+                            }
                         }
                     });
             }
@@ -943,6 +993,12 @@ class TikTokPlayer {
 
     pauseVideo(videoData) {
         if (videoData && videoData.video) {
+            // Se há uma play() Promise pendente, deixá-la rejeitar antes de pausar
+            // para evitar AbortError que quebra o estado interno do vídeo
+            if (videoData._playPending) {
+                videoData._pauseAfterPlay = true;
+                return;
+            }
             videoData.video.pause();
             videoData.element.classList.add('paused');
             videoData.element.classList.remove('buffering');
