@@ -536,6 +536,7 @@ class TikTokPlayer {
                 if (!videoData) return;
                 
                 if (entry.isIntersecting && entry.intersectionRatio >= 0.7) {
+                    console.log(`[Observer] Vídeo ${videoData.videoId} (Index ${videoData.index}) entrou em foco (Ratio: ${entry.intersectionRatio.toFixed(2)}). Tocando...`);
                     // Pausar TODOS os outros vídeos primeiro
                     this.pauseAllVideos();
                     
@@ -546,6 +547,8 @@ class TikTokPlayer {
                     this.persistFeedState(videoData.videoId);
                     if (!videoData.manuallyPaused) {
                         this.playVideo(videoData);
+                    } else {
+                        console.log(`[Observer] Vídeo ${videoData.videoId} não tocado (manuallyPaused = true)`);
                     }
                     this.updateViews(videoData.videoId);
                     this.updateDesktopNavButtons();
@@ -558,7 +561,10 @@ class TikTokPlayer {
                         }
                     }
                 } else {
-                    // Vídeo saiu do viewport — pausar e libertar banda
+                    // Vídeo saiu do viewport ou não tem ratio suficiente — pausar e libertar banda
+                    if (videoData.video && !videoData.video.paused) {
+                        console.log(`[Observer] Vídeo ${videoData.videoId} fora de foco (Ratio: ${entry.intersectionRatio.toFixed(2)}). Pausando...`);
+                    }
                     this.pauseVideo(videoData);
                     videoData.manuallyPaused = false;
 
@@ -894,20 +900,24 @@ class TikTokPlayer {
                 videoData.video.muted = false;
                 videoData.video.play()
                     .then(() => {
+                        console.log(`[playVideo] Vídeo ${videoData.videoId} a tocar COM som`);
                         videoData.element.classList.remove('paused');
                         this.hideAudioPrompt(videoData.videoId);
                         this.updateAudioButtonState(videoData.videoId, false);
                     })
                     .catch(e => {
+                        console.warn(`[playVideo] Erro ao tocar ${videoData.videoId} COM som:`, e);
                         // Fallback: tentar sem som no mobile (autoplay prevent)
                         videoData.video.muted = true;
                         videoData.video.play()
                             .then(() => {
+                                console.log(`[playVideo] Vídeo ${videoData.videoId} a tocar SEM som (fallback)`);
                                 videoData.element.classList.remove('paused');
                                 this.showAudioPrompt(videoData.videoId);
                                 this.updateAudioButtonState(videoData.videoId, true);
                             })
                             .catch(e2 => {
+                                console.error(`[playVideo] Falha final ao tocar ${videoData.videoId} (fallback):`, e2);
                                 this.showAudioPrompt(videoData.videoId);
                             });
                     });

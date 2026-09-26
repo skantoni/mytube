@@ -134,7 +134,7 @@ function initHlsPlayer(videoEl, url) {
         const maxMaxBufLen = isLow ? 20 : 60;  // Fix B — era sempre 60
 
         const hls = new Hls({
-            autoStartLoad: true,
+            autoStartLoad: false,  // Modificado: NÃO carregar até estar no ecrã (playVideo chama startLoad)
             startLevel: -1,                        // ABR decide com base no EWMA semeado
             capLevelToPlayerSize: false,
             abrEwmaDefaultEstimate: estimatedBps,  // Warm start / Network API / 1.5 Mbps
