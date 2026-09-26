@@ -98,9 +98,16 @@ try {
     }
 
     if ($video['thumbnail_path']) {
-        $thumbnail_path = '../uploads/thumbnails/' . $video['thumbnail_path'];
-        if (file_exists($thumbnail_path)) {
-            unlink($thumbnail_path);
+        // Apagar thumbnail (seja local ou R2)
+        if (!empty($video['thumbnail_path'])) {
+            if (r2_is_r2_path($video['thumbnail_path'])) {
+                r2_delete_video($video['thumbnail_path']);
+            } else {
+                $local_thumb = ROOT_DIR . '/uploads/videos/' . $video['thumbnail_path'];
+                if (file_exists($local_thumb)) {
+                    @unlink($local_thumb);
+                }
+            }
         }
     }
 

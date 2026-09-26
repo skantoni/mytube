@@ -353,7 +353,7 @@ if (R2_ENABLED) {
         wlog("Upload R2 HLS OK: $db_video_path");
         
         if ($thumb_success) {
-            $r2_thumb = r2_upload_video($thumb_temp_path, $uniqueName . '_thumb.webp', 'image/webp');
+            $r2_thumb = r2_upload_video($thumb_temp_path, 'thumbnails/' . $uniqueName . '_thumb.webp', 'image/webp');
             if ($r2_thumb['success']) {
                 $db_thumbnail_path = R2_PATH_PREFIX . $r2_thumb['key'];
                 wlog("Upload R2 Thumbnail OK: $db_thumbnail_path");
@@ -372,9 +372,13 @@ if (R2_ENABLED) {
             wlog("Armazenamento local HLS OK: $local_path");
             
             if ($thumb_success) {
-                $local_thumb = ROOT_DIR . '/uploads/videos/' . $uniqueName . '_thumb.webp';
+                $local_thumb_dir = ROOT_DIR . '/uploads/videos/thumbnails';
+                if (!is_dir($local_thumb_dir)) {
+                    mkdir($local_thumb_dir, 0755, true);
+                }
+                $local_thumb = $local_thumb_dir . '/' . $uniqueName . '_thumb.webp';
                 if (rename($thumb_temp_path, $local_thumb)) {
-                    $db_thumbnail_path = $uniqueName . '_thumb.webp';
+                    $db_thumbnail_path = 'thumbnails/' . $uniqueName . '_thumb.webp';
                 }
             }
         }
@@ -390,9 +394,13 @@ if (R2_ENABLED) {
         wlog("Armazenamento local HLS OK: $local_path");
         
         if ($thumb_success) {
-            $local_thumb = dirname($local_path) . '/' . $uniqueName . '_thumb.webp';
+            $local_thumb_dir = ROOT_DIR . '/uploads/videos/thumbnails';
+            if (!is_dir($local_thumb_dir)) {
+                mkdir($local_thumb_dir, 0755, true);
+            }
+            $local_thumb = $local_thumb_dir . '/' . $uniqueName . '_thumb.webp';
             if (rename($thumb_temp_path, $local_thumb)) {
-                $db_thumbnail_path = $uniqueName . '_thumb.webp';
+                $db_thumbnail_path = 'thumbnails/' . $uniqueName . '_thumb.webp';
             }
         }
     }

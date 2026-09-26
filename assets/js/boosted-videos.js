@@ -1225,7 +1225,7 @@
                 
                 let videoHtml = '';
                 if (log.video_path) {
-                    const thumb = log.thumbnail_path ? `uploads/thumbnails/${esc(log.thumbnail_path)}` : '';
+                    const thumb = log.thumbnail_path ? resolveVideoUrl(log.thumbnail_path) : '';
                     videoHtml = `
                     <a href="index.php?video_id=${log.video_id}" target="_blank" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:8px">
                         ${thumb ? `<img src="${thumb}" style="width:40px;height:40px;object-fit:cover;border-radius:4px">` : `<div style="width:40px;height:40px;background:#1e293b;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#64748b"><i class="fas fa-video"></i></div>`}

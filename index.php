@@ -61,7 +61,7 @@ if ($start_video_id > 0) {
         ];
         
         if (!empty($video_info['thumbnail_path'])) {
-            $page_seo['image'] = SITE_URL . '/uploads/thumbnails/' . $video_info['thumbnail_path'];
+            $page_seo['image'] = resolve_video_url($video_info['thumbnail_path']);
         }
     }
 }

@@ -67,14 +67,16 @@ foreach ($videos as $video) {
     $unique_name = "recover_{$video_id}_" . time() . "_thumb.webp";
 
     if (R2_ENABLED) {
-        $r2_thumb = r2_upload_video($temp_thumb, $unique_name, 'image/webp');
+        $r2_thumb = r2_upload_video($temp_thumb, 'thumbnails/' . $unique_name, 'image/webp');
         if ($r2_thumb['success']) {
             $db_thumbnail_path = R2_PATH_PREFIX . $r2_thumb['key'];
         }
     } else {
-        $local_thumb = ROOT_DIR . '/uploads/videos/' . $unique_name;
+        $local_thumb_dir = ROOT_DIR . '/uploads/videos/thumbnails';
+        if (!is_dir($local_thumb_dir)) mkdir($local_thumb_dir, 0755, true);
+        $local_thumb = $local_thumb_dir . '/' . $unique_name;
         if (copy($temp_thumb, $local_thumb)) {
-            $db_thumbnail_path = $unique_name;
+            $db_thumbnail_path = 'thumbnails/' . $unique_name;
         }
     }
 

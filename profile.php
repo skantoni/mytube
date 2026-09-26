@@ -558,7 +558,7 @@ $has_more_videos = $total_user_videos > count($user_videos);
                         <div class="video-thumbnail<?php echo ($is_processing || $is_pending) ? ' video-card--disabled' : ''; ?>" data-video-id="<?php echo (int)$video['id']; ?>" <?php echo $card_onclick; ?> style="<?php echo ($is_processing || $is_pending) ? 'cursor:default;' : ''; ?>">
                             <div class="thumbnail-container">
                                 <?php if (!empty($video['thumbnail_path'])): ?>
-                                    <img src="uploads/thumbnails/<?php echo htmlspecialchars($video['thumbnail_path']); ?>"
+                                    <img src="<?php echo htmlspecialchars(resolve_video_url($video['thumbnail_path'])); ?>"
                                          alt="<?php echo htmlspecialchars($video['title']); ?>"
                                          loading="lazy"
                                          decoding="async">
@@ -912,7 +912,7 @@ $has_more_videos = $total_user_videos > count($user_videos);
         function buildVideoCard(video) {
             const title = escHtml(video.title || 'Sem título');
             const timeAgo = escHtml(video.time_ago || 'agora');
-            const thumbSrc = video.thumbnail_path ? `uploads/thumbnails/${encodeURIComponent(video.thumbnail_path)}` : '';
+            const thumbSrc = video.thumbnail_path ? resolveVideoUrl(video.thumbnail_path) : '';
             const videoSrc = video.video_url || (video.video_path ? resolveVideoUrl(video.video_path) : '');
             
             const modStatus = video.moderation_status || 'approved';
@@ -1349,7 +1349,7 @@ $has_more_videos = $total_user_videos > count($user_videos);
                     const rankClass = v.rank === 1 ? 'gold' : v.rank === 2 ? 'silver' : v.rank === 3 ? 'bronze' : '';
                     const medal = v.rank === 1 ? '🥇' : v.rank === 2 ? '🥈' : v.rank === 3 ? '🥉' : v.rank;
                     const thumbSrc = v.thumbnail_path
-                        ? `uploads/thumbnails/${v.thumbnail_path}`
+                        ? resolveVideoUrl(v.thumbnail_path)
                         : (v.video_url || resolveVideoUrl(v.video_path));
                     const isVideo = !v.thumbnail_path;
 

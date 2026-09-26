@@ -356,7 +356,7 @@ $status_labels = [
                             $status = $status_labels[$camp['status']];
                         ?>
                             <div class="campaign-item">
-                                <img src="<?php echo $camp['thumbnail_path'] ? 'uploads/thumbnails/'.$camp['thumbnail_path'] : 'assets/images/logo_icon.png'; ?>" class="camp-thumb" style="object-fit: <?php echo $camp['thumbnail_path'] ? 'cover' : 'contain'; ?>; background: var(--bg-surface);">
+                                <img src="<?php echo $camp['thumbnail_path'] ? resolve_video_url($camp['thumbnail_path']) : 'assets/images/logo_icon.png'; ?>" class="camp-thumb" style="object-fit: <?php echo $camp['thumbnail_path'] ? 'cover' : 'contain'; ?>; background: var(--bg-surface);">
                                 <div class="camp-details">
                                     <div class="camp-title"><?php echo htmlspecialchars($camp['video_title']); ?></div>
                                     <div class="camp-meta">
@@ -394,7 +394,7 @@ $status_labels = [
                             $status = $status_labels[$camp['status']];
                         ?>
                             <div class="campaign-item">
-                                <img src="<?php echo $camp['thumbnail_path'] ? 'uploads/thumbnails/'.$camp['thumbnail_path'] : 'assets/images/logo_icon.png'; ?>" class="camp-thumb" style="object-fit: <?php echo $camp['thumbnail_path'] ? 'cover' : 'contain'; ?>; background: var(--bg-surface);">
+                                <img src="<?php echo $camp['thumbnail_path'] ? resolve_video_url($camp['thumbnail_path']) : 'assets/images/logo_icon.png'; ?>" class="camp-thumb" style="object-fit: <?php echo $camp['thumbnail_path'] ? 'cover' : 'contain'; ?>; background: var(--bg-surface);">
                                 <div class="camp-details">
                                     <div class="camp-title"><?php echo htmlspecialchars($camp['video_title']); ?></div>
                                     <div class="camp-meta">
@@ -432,7 +432,7 @@ $status_labels = [
                     <div class="campaign-list">
                         <?php foreach ($pending_campaigns as $camp): ?>
                             <div class="campaign-item">
-                                <img src="<?php echo $camp['thumbnail_path'] ? 'uploads/thumbnails/'.$camp['thumbnail_path'] : 'assets/images/logo_icon.png'; ?>" class="camp-thumb" style="object-fit: <?php echo $camp['thumbnail_path'] ? 'cover' : 'contain'; ?>; background: var(--bg-surface);">
+                                <img src="<?php echo $camp['thumbnail_path'] ? resolve_video_url($camp['thumbnail_path']) : 'assets/images/logo_icon.png'; ?>" class="camp-thumb" style="object-fit: <?php echo $camp['thumbnail_path'] ? 'cover' : 'contain'; ?>; background: var(--bg-surface);">
                                 <div class="camp-details">
                                     <div class="camp-title"><?php echo htmlspecialchars($camp['video_title']); ?></div>
                                     <div class="camp-meta">
@@ -691,7 +691,7 @@ $status_labels = [
                     const grid = document.getElementById('videoGrid');
                     data.videos.forEach(v => {
                         const mediaHtml = v.thumbnail_path 
-                            ? `<img src="uploads/thumbnails/${v.thumbnail_path}" class="vid-thumb">`
+                            ? `<img src="${resolveVideoUrl(v.thumbnail_path)}" class="vid-thumb">`
                             : `<video muted preload="metadata" src="${v.video_url}" onloadeddata="this.currentTime = 0.5;" class="vid-thumb" style="object-fit: cover;"></video>`;
 
                         const shortTitle = v.title.length > 35 ? v.title.substring(0,35) + '...' : v.title;

@@ -431,8 +431,8 @@ try {
                 <?php foreach ($pending_videos as $v): ?>
                     <article class="ap-mod-card" id="modCard_<?php echo (int)$v['id']; ?>" data-video-id="<?php echo (int)$v['id']; ?>">
                         <div class="ap-mod-thumb" onclick="window.open('index.php?video_id=<?php echo (int)$v['id']; ?>','_blank')">
-                            <?php if (!empty($v['thumbnail_path']) && file_exists(__DIR__ . '/uploads/thumbnails/' . $v['thumbnail_path'])): ?>
-                                <img src="uploads/thumbnails/<?php echo htmlspecialchars($v['thumbnail_path']); ?>" alt="" loading="lazy">
+                            <?php if (!empty($v['thumbnail_path'])): ?>
+                                <img src="<?php echo htmlspecialchars(resolve_video_url($v['thumbnail_path'])); ?>" alt="" loading="lazy">
                             <?php elseif (!empty($v['video_path'])): ?>
                                 <video preload="none" muted playsinline>
                                     <source src="<?php echo htmlspecialchars(resolve_video_url($v['video_path'])); ?>" type="video/mp4">
@@ -611,8 +611,8 @@ try {
                          data-user-id="<?php echo (int)$video['user_id']; ?>"
                          data-views="<?php echo (int)$video['views_count']; ?>">
                     <div class="boosted-video-media" onclick="window.location.href='index.php?video_id=<?php echo (int)$video['id']; ?>'">
-                        <?php if (!empty($video['thumbnail_path']) && file_exists(__DIR__ . '/uploads/thumbnails/' . $video['thumbnail_path'])): ?>
-                            <img src="uploads/thumbnails/<?php echo htmlspecialchars($video['thumbnail_path']); ?>"
+                        <?php if (!empty($video['thumbnail_path'])): ?>
+                            <img src="<?php echo htmlspecialchars(resolve_video_url($video['thumbnail_path'])); ?>"
                                  alt="<?php echo htmlspecialchars($video['title']); ?>" loading="lazy">
                         <?php elseif (!empty($video['video_path'])): ?>
                             <video preload="metadata" muted loop playsinline class="video-preview-player lazy-video">
@@ -792,8 +792,8 @@ try {
                                     <td class="ap-td-rank"><?php echo $i + 1; ?></td>
                                     <td>
                                         <div class="ap-td-video-title">
-                                            <?php if (!empty($tv['thumbnail_path']) && file_exists(__DIR__ . '/uploads/thumbnails/' . $tv['thumbnail_path'])): ?>
-                                                <img src="uploads/thumbnails/<?php echo htmlspecialchars($tv['thumbnail_path']); ?>"
+                                            <?php if (!empty($tv['thumbnail_path'])): ?>
+                                                <img src="<?php echo htmlspecialchars(resolve_video_url($tv['thumbnail_path'])); ?>"
                                                      alt="" class="ap-td-thumb" loading="lazy">
                                             <?php else: ?>
                                                 <div class="ap-td-thumb ap-td-thumb-empty"><i class="fas fa-video"></i></div>
@@ -971,8 +971,8 @@ try {
                 <tr id="adRow<?php echo (int)$ad['id']; ?>">
                     <td>
                         <div class="ap-td-video-title">
-                            <?php if (!empty($ad['thumbnail_path']) && file_exists(__DIR__ . '/uploads/thumbnails/' . $ad['thumbnail_path'])): ?>
-                                <img src="uploads/thumbnails/<?php echo htmlspecialchars($ad['thumbnail_path']); ?>" alt="" class="ap-td-thumb" loading="lazy">
+                            <?php if (!empty($ad['thumbnail_path'])): ?>
+                                <img src="<?php echo htmlspecialchars(resolve_video_url($ad['thumbnail_path'])); ?>" alt="" class="ap-td-thumb" loading="lazy">
                             <?php else: ?>
                                 <div class="ap-td-thumb ap-td-thumb-empty"><i class="fas fa-video"></i></div>
                             <?php endif; ?>
@@ -1272,8 +1272,8 @@ try {
                                 <td>
                                     <div style="display:flex; align-items:center; gap:12px">
                                         <div style="width:60px; height:80px; border-radius:8px; overflow:hidden; background:#2a2a35; flex-shrink:0">
-                                            <?php if (!empty($vid['thumbnail_path']) && file_exists(__DIR__ . '/uploads/thumbnails/' . $vid['thumbnail_path'])): ?>
-                                                <img src="uploads/thumbnails/<?php echo htmlspecialchars($vid['thumbnail_path']); ?>" style="width:100%; height:100%; object-fit:cover" alt="Thumb">
+                                            <?php if (!empty($vid['thumbnail_path'])): ?>
+                                                <img src="<?php echo htmlspecialchars(resolve_video_url($vid['thumbnail_path'])); ?>" style="width:100%; height:100%; object-fit:cover" alt="Thumb">
                                             <?php elseif (!empty($vid['video_path'])): ?>
                                                 <video preload="metadata" muted autoplay loop playsinline class="video-preview-player" style="width:100%; height:100%; object-fit:cover">
                                                     <source src="<?php echo htmlspecialchars(resolve_video_url($vid['video_path'])); ?>" type="video/mp4">

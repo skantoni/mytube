@@ -197,7 +197,7 @@
             cont.innerHTML = videos.map((v, i) => `
                 <div class="trending-video-card" onclick="window.location.href='index.php?video_id=${v.id}'">
                     <div class="trending-video-thumb">
-                        ${v.thumbnail_path ? `<img src="uploads/thumbnails/${encodeURIComponent(v.thumbnail_path)}" alt="Thumbnail" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;">` : `<video muted preload="metadata" src="${resolveVideoUrl(v.video_path)}" onloadeddata="this.currentTime = 0.5;" style="width:100%;height:100%;object-fit:cover;"></video>`}
+                        ${v.thumbnail_path ? `<img src="${resolveVideoUrl(v.thumbnail_path)}" alt="Thumbnail" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;">` : `<video muted preload="metadata" src="${resolveVideoUrl(v.video_path)}" onloadeddata="this.currentTime = 0.5;" style="width:100%;height:100%;object-fit:cover;"></video>`}
                         <div class="trending-video-rank">#${v.position}</div>
                         <div class="trending-video-stats">
                             <span><i class="fas fa-eye"></i> ${formatNum(v.views_count)}</span>
@@ -410,7 +410,7 @@
         cont.innerHTML = videos.map((v, i) => `
             <div class="trending-video-card" onclick="window.location.href='index.php?video_id=${v.id}'">
                 <div class="trending-video-thumb">
-                    ${v.thumbnail_path ? `<img src="uploads/thumbnails/${encodeURIComponent(v.thumbnail_path)}" alt="Thumbnail" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;">` : `<video muted preload="metadata" src="${resolveVideoUrl(v.video_path)}" onloadeddata="this.currentTime = 0.5;" style="width:100%;height:100%;object-fit:cover;"></video>`}
+                    ${v.thumbnail_path ? `<img src="${resolveVideoUrl(v.thumbnail_path)}" alt="Thumbnail" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;">` : `<video muted preload="metadata" src="${resolveVideoUrl(v.video_path)}" onloadeddata="this.currentTime = 0.5;" style="width:100%;height:100%;object-fit:cover;"></video>`}
                     <div class="trending-video-rank">#${i + 1}</div>
                     <div class="trending-video-stats">
                         <span><i class="fas fa-eye"></i> ${formatNum(v.views_count)}</span>
@@ -451,7 +451,7 @@
                     cont.innerHTML = data.videos.map((v, i) => `
                         <div class="trending-video-card" onclick="window.location.href='index.php?video_id=${v.id}'">
                             <div class="trending-video-thumb">
-                                ${v.thumbnail_path ? `<img src="uploads/thumbnails/${encodeURIComponent(v.thumbnail_path)}" alt="Thumbnail" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;">` : `<video muted preload="metadata" src="${resolveVideoUrl(v.video_path)}" onloadeddata="this.currentTime = 0.5;" style="width:100%;height:100%;object-fit:cover;"></video>`}
+                                ${v.thumbnail_path ? `<img src="${resolveVideoUrl(v.thumbnail_path)}" alt="Thumbnail" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;">` : `<video muted preload="metadata" src="${resolveVideoUrl(v.video_path)}" onloadeddata="this.currentTime = 0.5;" style="width:100%;height:100%;object-fit:cover;"></video>`}
                                 <div class="trending-video-rank">#${v.position}</div>
                                 <div class="trending-video-stats">
                                     <span><i class="fas fa-eye"></i> ${formatNum(v.views_count)}</span>
