@@ -61,7 +61,7 @@ if ($start_video_id > 0) {
         ];
         
         if (!empty($video_info['thumbnail_path'])) {
-            $page_seo['image'] = SITE_URL . '/uploads/thumbnails/' . $video_info['thumbnail_path'];
+            $page_seo['image'] = resolve_video_url($video_info['thumbnail_path']);
         }
     }
 }
@@ -92,6 +92,57 @@ if ($start_video_id > 0) {
     <?php include __DIR__ . '/includes/favicon.php'; ?>
     <!-- Google AdSense Verification Code -->
     <meta name="google-adsense-account" content="ca-pub-7296999127636132">
+    <?php
+    // ── Fix 1: Preload do primeiro vídeo HLS ──────────────────────────────────
+    // Busca o video_path do 1º vídeo que o feed vai devolver e emite um
+    // <link rel="preload"> para o .m3u8, fazendo o browser iniciar o download
+    // do manifest HLS DURANTE o parsing do HTML — antes de qualquer JS correr.
+    // Ganho estimado: 500ms–1s no tempo até ao primeiro frame visível.
+    // Só corre em feeds normais (não landing page) e quando há um vídeo disponível.
+    $preload_m3u8_url = null;
+    $is_feed_page = isLoggedIn() || $guest_explore;
+    if ($is_feed_page && $feed_mode === 'normal' && $start_video_id <= 0) {
+        try {
+            if (isLoggedIn()) {
+                // Feed de utilizador logado: buscar o vídeo mais recente não seu
+                $stmt_pre = $pdo->prepare("
+                    SELECT v.video_path
+                    FROM videos v
+                    WHERE v.is_public = 1 AND v.is_hidden = 0
+                      AND v.moderation_status = 'approved'
+                      AND v.user_id != ?
+                    ORDER BY v.created_at DESC
+                    LIMIT 1
+                ");
+                $stmt_pre->execute([$_SESSION['user_id']]);
+            } else {
+                // Guest: qualquer vídeo recente público
+                $stmt_pre = $pdo->prepare("
+                    SELECT v.video_path
+                    FROM videos v
+                    WHERE v.is_public = 1 AND v.is_hidden = 0
+                      AND v.moderation_status = 'approved'
+                    ORDER BY v.created_at DESC
+                    LIMIT 1
+                ");
+                $stmt_pre->execute([]);
+            }
+            $pre_row = $stmt_pre->fetch();
+            if ($pre_row && !empty($pre_row['video_path'])) {
+                $raw_url = resolve_video_url($pre_row['video_path']);
+                // Só fazer preload se for HLS (evitar preload inútil de MP4)
+                if (str_contains($raw_url, '.m3u8')) {
+                    $preload_m3u8_url = htmlspecialchars($raw_url, ENT_QUOTES, 'UTF-8');
+                }
+            }
+        } catch (Exception $e) {
+            // Silenciar — o preload é uma optimização opcional, não bloqueia nada
+            error_log('⚠️ index.php: Falha no preload HLS — ' . $e->getMessage());
+        }
+    }
+    if ($preload_m3u8_url): ?>
+    <link rel="preload" href="<?php echo $preload_m3u8_url; ?>" as="fetch" crossorigin="anonymous">
+    <?php endif; ?>
 </head>
 <body>
     <div class="splash-screen" id="splashScreen" aria-label="Tela de abertura">

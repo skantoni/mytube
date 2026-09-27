@@ -45,8 +45,8 @@ try {
     $thumbnail_url = null;
     $video_url = null;
     
-    if ($video['thumbnail_path'] && file_exists('../uploads/thumbnails/' . $video['thumbnail_path'])) {
-        $thumbnail_url = 'uploads/thumbnails/' . $video['thumbnail_path'];
+    if ($video['thumbnail_path']) {
+        $thumbnail_url = resolve_video_url($video['thumbnail_path']);
     }
     
     if ($video['video_path']) {

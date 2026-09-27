@@ -30,7 +30,7 @@ class TikTokPlayer {
         this.intersectionObserver = null;
         this.recycleObserver = null;
         this.eventsBound = false;
-        this.maxMaterialized = 5;
+        this.maxMaterialized = 8; // Fix C: era 5 — ao voltar 3/4 vídeos já não recarrega
         // Controle de views: evitar requests duplicados
         this._viewsUpdated = new Set();
         this._viewsInFlight = new Set();
@@ -124,31 +124,50 @@ class TikTokPlayer {
                 // Buffering: adicionar/remover classe para animação de loading
                 video.onwaiting = () => {
                     const vd = this.videos.find(v => v.video === video);
-                    if (vd) vd.element.classList.add('buffering');
+                    if (vd) {
+                        if (vd.bufferTimeout) clearTimeout(vd.bufferTimeout);
+                        vd.bufferTimeout = setTimeout(() => {
+                            vd.element.classList.add('buffering');
+                        }, 300);
+                    }
                 };
                 video.onplaying = () => {
                     const vd = this.videos.find(v => v.video === video);
-                    if (vd) vd.element.classList.remove('buffering');
+                    if (vd) {
+                        if (vd.bufferTimeout) clearTimeout(vd.bufferTimeout);
+                        vd.element.classList.remove('buffering');
+                    }
                 };
                 video.oncanplay = () => {
                     const vd = this.videos.find(v => v.video === video);
-                    if (vd) vd.element.classList.remove('buffering');
+                    if (vd) {
+                        if (vd.bufferTimeout) clearTimeout(vd.bufferTimeout);
+                        vd.element.classList.remove('buffering');
+                    }
                 };
+                // A lógica onplaying e oncanplay já foi substituída acima
                 
                 // Recovery: tentar recarregar vídeo em caso de erro (508, rede, etc)
                 video.onerror = () => {
                     const vd = this.videos.find(v => v.video === video);
                     if (vd) {
-                        vd._retryCount = (vd._retryCount || 0) + 1;
-                        const maxRetries = 3;
-                        if (vd._retryCount <= maxRetries) {
-                            const delay = Math.min(5000 * vd._retryCount, 15000);
-                            console.warn(`Vídeo ${videoId} falhou ao carregar. Retry ${vd._retryCount}/${maxRetries} em ${delay/1000}s`);
-                            setTimeout(() => {
-                                if (video.src || video.querySelector('source')) {
-                                    video.load();
-                                }
-                            }, delay);
+                        const err = video.error ? video.error.code : 'unknown';
+                        console.warn(`[Video Error] Elemento video reportou erro: ${err} no video_id ${videoId}`);
+                        
+                        // Para HLS.js o recovery já é feito internamente pelo hls-player-v2.js (recoverMediaError)
+                        // Chamar video.load() destrói o buffer e o MediaSource gerido pelo HLS.js
+                        if (!video._hlsInstance) {
+                            vd._retryCount = (vd._retryCount || 0) + 1;
+                            const maxRetries = 3;
+                            if (vd._retryCount <= maxRetries) {
+                                const delay = Math.min(5000 * vd._retryCount, 15000);
+                                console.warn(`Retry nativo ${vd._retryCount}/${maxRetries} em ${delay/1000}s`);
+                                setTimeout(() => {
+                                    if (video.src || video.querySelector('source')) {
+                                        video.load();
+                                    }
+                                }, delay);
+                            }
                         }
                     }
                 };
@@ -244,9 +263,20 @@ class TikTokPlayer {
                     
                     // Configurar eventos básicos do vídeo
                     video.onended = () => this.nextVideo();
-                    video.onwaiting = () => { videoData.element.classList.add('buffering'); };
-                    video.onplaying = () => { videoData.element.classList.remove('buffering'); };
-                    video.oncanplay = () => { videoData.element.classList.remove('buffering'); };
+                    video.onwaiting = () => { 
+                        if (videoData.bufferTimeout) clearTimeout(videoData.bufferTimeout);
+                        videoData.bufferTimeout = setTimeout(() => {
+                            videoData.element.classList.add('buffering'); 
+                        }, 300);
+                    };
+                    video.onplaying = () => { 
+                        if (videoData.bufferTimeout) clearTimeout(videoData.bufferTimeout);
+                        videoData.element.classList.remove('buffering'); 
+                    };
+                    video.oncanplay = () => { 
+                        if (videoData.bufferTimeout) clearTimeout(videoData.bufferTimeout);
+                        videoData.element.classList.remove('buffering'); 
+                    };
                 }
             }
         }
@@ -493,81 +523,50 @@ class TikTokPlayer {
     setupScrolling() {
         const container = document.querySelector('.tiktok-container');
         if (!container) return;
-        
-        let scrollTimeout;
 
+        // Pausar tudo durante o scroll — evita áudio em vídeos intermédios
         container.addEventListener('scroll', () => {
             if (!this.isScrolling) {
                 this.pauseAllVideos();
+                this.isScrolling = true;
             }
-            
-            this.isScrolling = true;
-            clearTimeout(scrollTimeout);
+        }, { passive: true });
 
-            scrollTimeout = setTimeout(() => {
+        // 'scrollend' nativo (Chrome 114+, Firefox 109+):
+        // Dispara UMA vez, após o CSS snap terminar de animar.
+        // É o evento correcto para este padrão — sem timeout, sem polling.
+        if ('onscrollend' in window) {
+            container.addEventListener('scrollend', () => {
                 this.isScrolling = false;
                 this.handleScrollEnd();
-            }, this.scrollEndDelay);
-        }, { passive: true });
-    }
-
-    setupIntersectionObserver() {
-        // Desconectar observer antigo se existir
-        if (this.intersectionObserver) {
-            this.intersectionObserver.disconnect();
+            }, { passive: true });
+        } else {
+            // Fallback para browsers mais antigos
+            let scrollTimeout;
+            container.addEventListener('scroll', () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    this.isScrolling = false;
+                    this.handleScrollEnd();
+                }, this.scrollEndDelay);
+            }, { passive: true });
         }
-        
-        const options = {
-            root: document.querySelector('.tiktok-container'),
-            rootMargin: '0px',
-            threshold: 0.7
-        };
-
-        this.intersectionObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                const videoData = this.videos.find(v => v.element === entry.target);
-                if (!videoData) return;
-                
-                if (entry.isIntersecting && entry.intersectionRatio >= 0.7) {
-                    // Pausar TODOS os outros vídeos primeiro
-                    this.pauseAllVideos();
-                    
-                    const previousIndex = this.currentVideoIndex;
-                    
-                    // Vídeo está visível - tocar APENAS se não foi pausado manualmente
-                    this.currentVideoIndex = videoData.index;
-                    this.persistFeedState(videoData.videoId);
-                    if (!videoData.manuallyPaused) {
-                        this.playVideo(videoData);
-                    }
-                    this.updateViews(videoData.videoId);
-                    this.updateDesktopNavButtons();
-                    
-                    // Se mudou de vídeo e o sidebar de comentários está aberto, recarregar comentários
-                    if (previousIndex !== videoData.index) {
-                        const sidebar = document.getElementById('commentsSidebar');
-                        if (sidebar && sidebar.classList.contains('open') && window.commentsSystem) {
-                            window.commentsSystem.openComments(videoData.videoId);
-                        }
-                    }
-                } else {
-                    // Vídeo saiu da view - pausar e resetar flag
-                    this.pauseVideo(videoData);
-                    videoData.manuallyPaused = false;
-                }
-            });
-        }, options);
-
-        this.videos.forEach(videoData => {
-            this.intersectionObserver.observe(videoData.element);
-        });
     }
 
     // ============================================
-    // VIRTUAL SCROLL - Manter max 5 <video> no DOM
+    // DETECÇÃO DE VÍDEO ACTIVO — Scroll Snap Index Tracking
     // ============================================
+    // Não usamos IntersectionObserver para decidir play/pause.
+    // CSS scroll-snap garante que cada vídeo ocupa 100vh exactos.
+    // Aqui apenas identificamos qual é o índice activo após o scroll parar.
+    // Solução idêntica ao TikTok / YouTube Shorts.
+    setupIntersectionObserver() {
+        // Manter recycleObserver para materialização antecipada (pré-carregar DOM)
+        // mas REMOVER o observer de play/pause — isso é responsabilidade do scroll
+        this._setupRecycleObserver();
+    }
 
-    setupRecycleObserver() {
+    _setupRecycleObserver() {
         if (this.recycleObserver) {
             this.recycleObserver.disconnect();
         }
@@ -575,12 +574,11 @@ class TikTokPlayer {
         const container = document.querySelector('.tiktok-container');
         if (!container) return;
 
-        // Observer com margem ampla — materializa vídeos 1 viewport antes de ficarem visíveis
+        // Margem de 100%: materializa o vídeo anterior e o seguinte antes de ficarem visíveis
         this.recycleObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 const videoData = this.videos.find(v => v.element === entry.target);
                 if (!videoData) return;
-
                 if (entry.isIntersecting && !videoData.materialized) {
                     this.materializeVideo(videoData);
                 }
@@ -597,6 +595,15 @@ class TikTokPlayer {
         });
     }
 
+    setupRecycleObserver() {
+        // Alias público para retrocompatibilidade com o evento videosLoaded
+        this._setupRecycleObserver();
+    }
+
+    // ============================================
+    // VIRTUAL SCROLL - Manter max N <video> no DOM
+    // ============================================
+
     virtualizeVideo(videoData) {
         if (!videoData.materialized || !videoData.video) return;
 
@@ -604,21 +611,24 @@ class TikTokPlayer {
         const player = videoData.element.querySelector('.video-player');
         if (!player) return;
 
-        // Salvar estado de reprodução
+        // Salvar estado de reprodução antes de destruir
         videoData.savedTime = video.currentTime || 0;
         videoData.wasMuted = video.muted;
 
-        // Pausar e liberar recursos de mídia (decoder, buffers)
-        video.pause();
-        video.removeAttribute('src');
-        // Remover elementos <source> para garantir a purga do buffer
-        while (video.firstChild) {
-            video.removeChild(video.firstChild);
+        // Fix E: destroyHlsPlayer destrói a instância hls.js + limpa src + buffer.
+        // ANTES desta fix, o hls._hlsInstance ficava vivo a consumir memória e rede!
+        // Para vídeos MP4 legado, destroyHlsPlayer faz apenas pause+src+load (correto).
+        if (typeof destroyHlsPlayer === 'function') {
+            destroyHlsPlayer(video);
+        } else {
+            video.pause();
+            video.removeAttribute('src');
+            while (video.firstChild) { video.removeChild(video.firstChild); }
+            video.load();
         }
-        video.load(); // Forçar o descarregamento da rede/buffer
 
-        // Apenas esconder visualmente ou aplicar estilo de placeholder (sem remover a tag <video>!)
-        // Isso preserva o "token de interação do usuário" associado a este elemento no mobile.
+        // Esconder visualmente sem remover a tag <video>
+        // (preserva o "token de interação do utilizador" no mobile)
         video.classList.add('video-unloaded');
         video.style.opacity = '0';
 
@@ -651,24 +661,37 @@ class TikTokPlayer {
             videoData.video = video;
             // Assinar eventos 1x
             video.onended = () => this.nextVideo();
-            video.onwaiting = () => { videoData.element.classList.add('buffering'); };
-            video.onplaying = () => { videoData.element.classList.remove('buffering'); };
-            video.oncanplay = () => { videoData.element.classList.remove('buffering'); };
+            video.onwaiting = () => { 
+                if (videoData.bufferTimeout) clearTimeout(videoData.bufferTimeout);
+                // Aguarda 300ms antes de mostrar o ícone. Se o vídeo voltar a tocar antes, o onplaying limpa isto.
+                videoData.bufferTimeout = setTimeout(() => {
+                    videoData.element.classList.add('buffering'); 
+                }, 300);
+            };
+            video.onplaying = () => { 
+                if (videoData.bufferTimeout) clearTimeout(videoData.bufferTimeout);
+                videoData.element.classList.remove('buffering'); 
+            };
+            video.oncanplay = () => { 
+                if (videoData.bufferTimeout) clearTimeout(videoData.bufferTimeout);
+                videoData.element.classList.remove('buffering'); 
+            };
         } else if (!video) {
             return; 
         }
 
         video.loop = true;
-        // Respeitar sempre a vontade global estrita para evitar mute forçado do browser
         video.muted = this.getCurrentMuteState();
+        // Nota: para vídeos HLS com hls.js, o atributo preload é ignorado.
+        // A gestão de buffer é feita pelo hls.js via maxBufferLength e stopLoad()/startLoad().
+        // Para MP4 legado, 'metadata' é o valor correto para não descarregar o ficheiro todo.
         video.preload = 'metadata';
 
-        // Reconstruir o src com suporte a HLS (para novos vídeos .m3u8) e MP4 (legado)
+        // Reconstruir o src com suporte a HLS e MP4 legado
         const videoUrl = video.dataset.videoUrl || resolveVideoUrl(videoData.videoPath);
         if (typeof initHlsPlayer === 'function') {
-            initHlsPlayer(video, videoUrl);
+            initHlsPlayer(video, videoUrl); // Revert: sem gambiarra de shouldAutoStart
         } else {
-            // Fallback caso o hls-player.js não esteja carregado
             const source = document.createElement('source');
             source.src = videoUrl;
             source.type = videoUrl.includes('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/mp4';
@@ -691,10 +714,15 @@ class TikTokPlayer {
         videoData.video = video;
         videoData.materialized = true;
 
-        // Carregar conteúdo
-        const nq = window.networkQuality;
-        if (nq) video.preload = nq.getPreload();
-        video.load();
+        // Fix: NÃO chamar video.load() para vídeos HLS!
+        // Para HLS, o hls.js já gere o carregamento internamente via loadSource().
+        // Chamar video.load() após initHlsPlayer reinicia o MediaSource e provoca erros.
+        // Para MP4 legado (sem _hlsInstance), video.load() é correto e necessário.
+        if (!video._hlsInstance) {
+            const nq = window.networkQuality;
+            if (nq) video.preload = nq.getPreload();
+            video.load();
+        }
     }
 
     enforceMaxMaterialized() {
@@ -789,15 +817,15 @@ class TikTokPlayer {
             this.materializeVideo(currentVideo);
         }
 
-        if (!currentVideo.loaded && currentVideo.video) {
-            const nq = window.networkQuality;
-            if (nq) currentVideo.video.preload = nq.getPreload();
-            
-            // NÃO usar .load() em instâncias HLS.js, pois isso reinicia o MediaSource e quebra a reprodução
-            if (!currentVideo.video._hlsInstance) {
-                currentVideo.video.load();
-            }
+        // Pausar todos os outros antes de tocar o actual
+        this.pauseAllVideos();
+
+        // ← PONTO CENTRAL: tocar o vídeo do índice activo
+        if (!currentVideo.manuallyPaused) {
+            this.playVideo(currentVideo);
+            this.updateViews(currentVideo.videoId);
         }
+
         this.preloadNearbyVideos();
     }
 
@@ -827,7 +855,24 @@ class TikTokPlayer {
 
     preloadNearbyVideos() {
         const nq = window.networkQuality;
-        const offsets = (nq && nq.quality === 'low') ? [1] : [-1, 1];
+        const quality = nq ? nq.quality : 'medium';
+
+        // ── Fix 2: Preload adaptativo de 2-3 vídeos à frente ─────────────────
+        // Antes: apenas [-1, 1] — só 1 vídeo à frente e 1 atrás.
+        // Agora:
+        //   - Redes lentas (3G / quality=low)  → [1]          (1 à frente)
+        //   - Redes médias (quality=medium)     → [-1, 1, 2]   (2 à frente)
+        //   - Redes rápidas (4G / quality=high) → [-1, 1, 2, 3] (3 à frente)
+        // O vídeo atrás (-1) é sempre incluído quando há rede suficiente,
+        // pois o utilizador pode fazer scroll para cima.
+        let offsets;
+        if (quality === 'low') {
+            offsets = [1];
+        } else if (quality === 'high') {
+            offsets = [-1, 1, 2, 3];
+        } else {
+            offsets = [-1, 1, 2];
+        }
         
         offsets.forEach(offset => {
             const index = this.currentVideoIndex + offset;
@@ -847,6 +892,7 @@ class TikTokPlayer {
         });
     }
 
+
     playVideo(videoData) {
         if (!videoData) return;
         // Garantir materialização antes de reproduzir
@@ -857,28 +903,64 @@ class TikTokPlayer {
             // Respeitar o estado de mute atual (global)
             const globalMuted = this.getCurrentMuteState();
             const userInteracted = localStorage.getItem('mytube_user_interacted') === 'true';
-            
-            // Só tentar com som se o utilizador já interagiu E o som global estiver ativo
             const shouldHaveAudio = userInteracted && !globalMuted;
-            
+
+            // Helper: executar após o play() resolver — aplica pause diferido se pedido entretanto
+            const afterPlay = (ok) => {
+                videoData._playPending = false;
+                if (videoData._pauseAfterPlay) {
+                    videoData._pauseAfterPlay = false;
+                    videoData.video.pause();
+                    
+                    if (videoData.manuallyPaused) {
+                        videoData.element.classList.add('paused');
+                    } else {
+                        videoData.element.classList.remove('paused');
+                    }
+                    
+                    if (videoData.video._hlsInstance) videoData.video._hlsInstance.stopLoad();
+                    return false;  // indica que foi pausado
+                }
+                return ok;
+            };
+
+            videoData._playPending = true;
+            videoData._pauseAfterPlay = false;
+
             if (shouldHaveAudio) {
                 videoData.video.muted = false;
                 videoData.video.play()
                     .then(() => {
+                        if (!afterPlay(true)) return;
+                        console.log(`[playVideo] Vídeo ${videoData.videoId} a tocar COM som`);
                         videoData.element.classList.remove('paused');
                         this.hideAudioPrompt(videoData.videoId);
                         this.updateAudioButtonState(videoData.videoId, false);
                     })
                     .catch(e => {
+                        afterPlay(false);
+                        if (e.name === 'AbortError') {
+                            // Pausado intencionalmente antes de play() resolver — ignorar silenciosamente
+                            console.log(`[playVideo] Vídeo ${videoData.videoId} pausado antes de play() resolver (AbortError ignorado)`);
+                            return;
+                        }
+                        console.warn(`[playVideo] Erro ao tocar ${videoData.videoId} COM som:`, e);
                         // Fallback: tentar sem som no mobile (autoplay prevent)
                         videoData.video.muted = true;
+                        videoData._playPending = true;
                         videoData.video.play()
                             .then(() => {
+                                if (!afterPlay(true)) return;
+                                console.log(`[playVideo] Vídeo ${videoData.videoId} a tocar SEM som (fallback)`);
                                 videoData.element.classList.remove('paused');
                                 this.showAudioPrompt(videoData.videoId);
                                 this.updateAudioButtonState(videoData.videoId, true);
                             })
                             .catch(e2 => {
+                                afterPlay(false);
+                                if (e2.name !== 'AbortError') {
+                                    console.error(`[playVideo] Falha final ao tocar ${videoData.videoId} (fallback):`, e2);
+                                }
                                 this.showAudioPrompt(videoData.videoId);
                             });
                     });
@@ -887,6 +969,7 @@ class TikTokPlayer {
                 videoData.video.muted = true;
                 videoData.video.play()
                     .then(() => {
+                        if (!afterPlay(true)) return;
                         videoData.element.classList.remove('paused');
                         if (!userInteracted) {
                             this.showAudioPrompt(videoData.videoId);
@@ -894,8 +977,11 @@ class TikTokPlayer {
                         this.updateAudioButtonState(videoData.videoId, true);
                     })
                     .catch(e => {
-                        if (!userInteracted) {
-                            this.showAudioPrompt(videoData.videoId);
+                        afterPlay(false);
+                        if (e.name !== 'AbortError') {
+                            if (!userInteracted) {
+                                this.showAudioPrompt(videoData.videoId);
+                            }
                         }
                     });
             }
@@ -904,8 +990,22 @@ class TikTokPlayer {
 
     pauseVideo(videoData) {
         if (videoData && videoData.video) {
+            // Se há uma play() Promise pendente, deixá-la rejeitar antes de pausar
+            // para evitar AbortError que quebra o estado interno do vídeo
+            if (videoData._playPending) {
+                videoData._pauseAfterPlay = true;
+                return;
+            }
             videoData.video.pause();
-            videoData.element.classList.add('paused');
+            
+            // Só mostramos o ícone de Play (classe .paused) se o vídeo
+            // foi pausado MANUALMENTE pelo utilizador.
+            if (videoData.manuallyPaused) {
+                videoData.element.classList.add('paused');
+            } else {
+                videoData.element.classList.remove('paused');
+            }
+            
             videoData.element.classList.remove('buffering');
         }
     }

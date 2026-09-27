@@ -33,10 +33,14 @@ ini_set('memory_limit', '512M');
 $worker_start = microtime(true);
 $log_prefix   = '[' . date('Y-m-d H:i:s') . '][worker] ';
 
+$log_file = ROOT_DIR . '/worker/worker.log';
+
 function wlog(string $msg): void {
-    global $log_prefix;
-    echo $log_prefix . $msg . "\n";
+    global $log_prefix, $log_file;
+    $line = $log_prefix . $msg . "\n";
+    echo $line;
     flush();
+    @file_put_contents($log_file, $line, FILE_APPEND | LOCK_EX);
 }
 
 // ── Verificar tabela upload_jobs ─────────────────────────────────────────────
@@ -320,41 +324,109 @@ if ($has_moderation_cols) {
     $moderation_score  = $mod_decision['score'];
 }
 
-// ── PASSO 4: Upload do Vídeo (HLS DESATIVADO TEMPORARIAMENTE) ─────────────────
-update_progress($pdo, $job_id, 'A enviar vídeo (MP4) para armazenamento...');
+// ── PASSO 4: Gerar HLS e Upload ───────────────────────────────────────────────
+update_progress($pdo, $job_id, 'A gerar qualidades de vídeo (HLS)...');
 
-$uniqueName     = uniqid() . '_' . time();
+$uniqueName    = uniqid() . '_' . time();
 $upload_success = false;
-$db_video_path  = $uniqueName . '.' . $processed_video_ext;
+$db_video_path  = $uniqueName . '/master.m3u8';
 $local_path     = null;
 
+// Gerar HLS a partir do vídeo já processado (e com música)
+$hls_result = video_prepare_hls($processed_video_path);
+if (!$hls_result['success']) {
+    fail_job($pdo, $job_id, $video_id, 'FFmpeg HLS: ' . ($hls_result['error'] ?? 'Erro desconhecido'));
+    exit(1);
+}
+
+$hls_dir = $hls_result['output_dir'];
+
+update_progress($pdo, $job_id, 'A gerar thumbnail...');
+$thumb_temp_path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'thumb_' . $uniqueName . '.webp';
+wlog("Thumb: input=$processed_video_path | exists=" . (file_exists($processed_video_path) ? 'SIM' : 'NÃO') . " | output=$thumb_temp_path");
+$thumb_success = video_generate_thumbnail($processed_video_path, $thumb_temp_path, 1);
+wlog("Thumb: geração=" . ($thumb_success ? 'OK' : 'FALHOU') . " | ficheiro_gerado=" . (file_exists($thumb_temp_path) ? 'SIM (' . filesize($thumb_temp_path) . ' bytes)' : 'NÃO'));
+$db_thumbnail_path = null;
+
+update_progress($pdo, $job_id, 'A enviar vídeo HLS para armazenamento...');
+
 if (R2_ENABLED) {
-    $r2_result = r2_upload_video($processed_video_path, $db_video_path);
+    $r2_result = r2_upload_directory($hls_dir, $uniqueName);
 
     if ($r2_result['success']) {
         $upload_success = true;
         $db_video_path  = R2_PATH_PREFIX . $r2_result['key'];
-        wlog("Upload R2 MP4 OK: $db_video_path");
+        wlog("Upload R2 HLS OK: $db_video_path");
+        
+        if ($thumb_success) {
+            $r2_thumb = r2_upload_video($thumb_temp_path, 'thumbnails/' . $uniqueName . '_thumb.webp', 'image/webp');
+            if ($r2_thumb['success']) {
+                // r2_upload_video inclui R2_VIDEO_FOLDER no key (ex: 'videos/thumbnails/xxx.webp')
+                // mas resolveVideoUrl já adiciona R2_VIDEO_FOLDER ao resolver — remover para evitar duplo prefixo
+                $thumb_key_clean = str_replace(R2_VIDEO_FOLDER, '', $r2_thumb['key']);
+                $db_thumbnail_path = R2_PATH_PREFIX . $thumb_key_clean;
+                wlog("Upload R2 Thumbnail OK: $db_thumbnail_path");
+            } else {
+                wlog("❌ Upload R2 Thumbnail FALHOU: " . ($r2_thumb['error'] ?? 'erro desconhecido'));
+            }
+        } else {
+            wlog("⚠️ Thumbnail não gerado — a continuar sem thumbnail");
+        }
     } else {
         wlog("R2 falhou: " . $r2_result['error'] . " — a usar armazenamento local");
-        $local_path = ROOT_DIR . '/uploads/videos/' . $db_video_path;
-        if (!is_dir(dirname($local_path))) {
-            mkdir(dirname($local_path), 0755, true);
+        $local_path = ROOT_DIR . '/uploads/videos/' . $uniqueName;
+        if (!is_dir($local_path)) {
+            mkdir($local_path, 0755, true);
         }
-        if (copy($processed_video_path, $local_path)) {
+        // Move directory contents
+        if (rename($hls_dir, $local_path)) {
             $upload_success = true;
-            wlog("Armazenamento local MP4 OK: $local_path");
+            $db_video_path  = $uniqueName . '/master.m3u8';
+            wlog("Armazenamento local HLS OK: $local_path");
+            
+            if ($thumb_success) {
+                $local_thumb_dir = ROOT_DIR . '/uploads/videos/thumbnails';
+                if (!is_dir($local_thumb_dir)) {
+                    mkdir($local_thumb_dir, 0755, true);
+                }
+                $local_thumb = $local_thumb_dir . '/' . $uniqueName . '_thumb.webp';
+                if (rename($thumb_temp_path, $local_thumb)) {
+                    $db_thumbnail_path = 'thumbnails/' . $uniqueName . '_thumb.webp';
+                }
+            }
         }
     }
 } else {
-    $local_path = ROOT_DIR . '/uploads/videos/' . $db_video_path;
+    $local_path = ROOT_DIR . '/uploads/videos/' . $uniqueName;
     if (!is_dir(dirname($local_path))) {
         mkdir(dirname($local_path), 0755, true);
     }
-    if (copy($processed_video_path, $local_path)) {
+    if (rename($hls_dir, $local_path)) {
         $upload_success = true;
-        wlog("Armazenamento local MP4 OK: $local_path");
+        $db_video_path  = $uniqueName . '/master.m3u8';
+        wlog("Armazenamento local HLS OK: $local_path");
+        
+        if ($thumb_success) {
+            $local_thumb_dir = ROOT_DIR . '/uploads/videos/thumbnails';
+            if (!is_dir($local_thumb_dir)) {
+                mkdir($local_thumb_dir, 0755, true);
+            }
+            $local_thumb = $local_thumb_dir . '/' . $uniqueName . '_thumb.webp';
+            if (rename($thumb_temp_path, $local_thumb)) {
+                $db_thumbnail_path = 'thumbnails/' . $uniqueName . '_thumb.webp';
+            }
+        }
     }
+}
+
+// Limpar diretório HLS temporário se não foi movido
+if (is_dir($hls_dir) && $hls_dir !== ($local_path ?? '')) {
+    array_map('unlink', glob("$hls_dir/*.*"));
+    @rmdir($hls_dir);
+}
+
+if (file_exists($thumb_temp_path)) {
+    @unlink($thumb_temp_path);
 }
 
 // Limpar ficheiro mp4 original processado
@@ -363,7 +435,7 @@ if (file_exists($processed_video_path)) {
 }
 
 if (!$upload_success) {
-    fail_job($pdo, $job_id, $video_id, 'Falha ao fazer upload do vídeo para armazenamento.');
+    fail_job($pdo, $job_id, $video_id, 'Falha ao fazer upload da pasta HLS para armazenamento.');
     exit(1);
 }
 
@@ -383,29 +455,30 @@ try {
     if ($has_music_cols && $has_moderation_cols) {
         $pdo->prepare("
             UPDATE videos SET
-                video_path=?, moderation_status=?, moderation_score=?,
+                video_path=?, thumbnail_path=?, moderation_status=?, moderation_score=?,
                 moderation_checked_at=NOW(), music_name=?, music_artist=?
             WHERE id=?
-        ")->execute([$db_video_path, $moderation_status, $moderation_score,
+        ")->execute([$db_video_path, $db_thumbnail_path, $moderation_status, $moderation_score,
                      $music_name, $music_artist, $video_id]);
     } elseif ($has_moderation_cols) {
         $pdo->prepare("
             UPDATE videos SET
-                video_path=?, moderation_status=?, moderation_score=?, moderation_checked_at=NOW()
+                video_path=?, thumbnail_path=?, moderation_status=?, moderation_score=?, moderation_checked_at=NOW()
             WHERE id=?
-        ")->execute([$db_video_path, $moderation_status, $moderation_score, $video_id]);
+        ")->execute([$db_video_path, $db_thumbnail_path, $moderation_status, $moderation_score, $video_id]);
     } elseif ($has_music_cols) {
         $pdo->prepare("
-            UPDATE videos SET video_path=?, music_name=?, music_artist=? WHERE id=?
-        ")->execute([$db_video_path, $music_name, $music_artist, $video_id]);
+            UPDATE videos SET video_path=?, thumbnail_path=?, music_name=?, music_artist=? WHERE id=?
+        ")->execute([$db_video_path, $db_thumbnail_path, $music_name, $music_artist, $video_id]);
     } else {
-        $pdo->prepare("UPDATE videos SET video_path=? WHERE id=?")->execute([$db_video_path, $video_id]);
+        $pdo->prepare("UPDATE videos SET video_path=?, thumbnail_path=? WHERE id=?")->execute([$db_video_path, $db_thumbnail_path, $video_id]);
     }
 
     // Sincronizar hashtags
     if ($video_id > 0) {
         hashtag_sync_video_relations($pdo, $video_id, $parsed_hashtags);
     }
+
 
     // Incrementar pontos de ranking
     ranking_points_increment($pdo, $user_id, 10);

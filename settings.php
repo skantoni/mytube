@@ -961,7 +961,7 @@ try {
                     </div>
                     <i class="fas fa-chevron-right"></i>
                 </div>
-                <a href="anuncios.php" class="settings-item" id="settingsAdsLink"  style="display: none;">
+                <a href="anuncios.php" class="settings-item" id="settingsAdsLink">
                     <div class="settings-item-icon">
                         <i class="fas fa-rocket"></i>
                     </div>
@@ -1041,7 +1041,7 @@ try {
             </div>
         </div>
 
-        <div class="app-version">MyTube v1.10.12</div>
+        <div class="app-version">MyTube v1.12.1</div>
     </main>
 
     <!-- Modal guia Desktop -->

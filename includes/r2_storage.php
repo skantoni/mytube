@@ -32,17 +32,22 @@ function r2_get_client() {
         require_once $aws_phar;
         
         $client = new Aws\S3\S3Client([
-            'region' => R2_REGION,
+            'region'  => R2_REGION,
             'version' => 'latest',
             'endpoint' => R2_ENDPOINT,
             'credentials' => [
-                'key' => R2_ACCESS_KEY_ID,
+                'key'    => R2_ACCESS_KEY_ID,
                 'secret' => R2_SECRET_ACCESS_KEY,
             ],
-            'use_path_style_endpoint' => false,  // CORRIGIDO: R2 usa virtual-hosted style
+            'use_path_style_endpoint' => false,  // R2 usa virtual-hosted style
             // Desabilitar checksum para compatibilidade com R2
             'request_checksum_calculation' => 'when_required',
             'response_checksum_validation' => 'when_required',
+            // Timeouts: evitar bloqueios indefinidos em uploads/downloads lentos
+            'http' => [
+                'timeout'         => 300,  // 5 minutos por pedido (para ficheiros grandes)
+                'connect_timeout' => 30,   // 30s para estabelecer a ligação
+            ],
         ]);
     }
     
@@ -315,11 +320,15 @@ function resolve_video_url(string $video_path): string {
         $parts = explode('/', $file_name);
         $parts = array_map('rawurlencode', $parts);
         $encoded_file_name = implode('/', $parts);
-        return R2_PUBLIC_URL . '/' . R2_VIDEO_FOLDER . $encoded_file_name;
+        $url = R2_PUBLIC_URL . '/' . R2_VIDEO_FOLDER . $encoded_file_name;
+    } else {
+        // Vídeo local (compatibilidade com vídeos antigos)
+        $url = resolve_local_video_url($video_path);
     }
     
-    // Vídeo local (compatibilidade com vídeos antigos)
-    return resolve_local_video_url($video_path);
+    // Adicionar cache buster estático para ultrapassar caches de ISPs
+    $separator = strpos($url, '?') === false ? '?' : '&';
+    return $url . $separator . 'cb=v2_cors';
 }
 
 /**
@@ -371,14 +380,21 @@ function r2_js_config(): string {
      */
     function resolveVideoUrl(videoPath) {
         if (!videoPath) return '';
+        var finalUrl = '';
         if (videoPath.startsWith(window.R2_CONFIG.pathPrefix)) {
             var fileName = videoPath.substring(window.R2_CONFIG.pathPrefix.length);
             // Dividir por barras para codificar apenas os nomes dos ficheiros/pastas e não as barras em si
             var parts = fileName.split('/');
             var encodedFileName = parts.map(encodeURIComponent).join('/');
-            return window.R2_CONFIG.publicUrl + '/' + window.R2_CONFIG.videoFolder + encodedFileName;
+            finalUrl = window.R2_CONFIG.publicUrl + '/' + window.R2_CONFIG.videoFolder + encodedFileName;
+        } else {
+            finalUrl = 'uploads/videos/' + videoPath;
         }
-        return 'uploads/videos/' + videoPath;
+        
+        // Adicionar cache buster estático para ultrapassar caches de ISPs
+        // que guardaram respostas antigas (sem os headers CORS corretos)
+        var separator = finalUrl.indexOf('?') === -1 ? '?' : '&';
+        return finalUrl + separator + 'cb=v2_cors';
     }
 </script>
 HTML;

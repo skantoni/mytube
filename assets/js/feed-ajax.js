@@ -597,7 +597,8 @@ class FeedManager {
                     loop
                     muted
                     playsinline
-                    preload="metadata"
+                    preload="none"
+                    ${video.thumbnail_path ? `poster="${resolveVideoUrl(video.thumbnail_path)}"` : ''}
                     data-has-audio="true"
                     data-video-id="${video.id}"
                     data-video-path="${video.video_path}"
@@ -847,9 +848,8 @@ class FeedManager {
                     <i class="fas fa-video" style="font-size: 4rem; color: #3b82f6; margin-bottom: 20px;"></i>
                     <h3>Ainda não há vídeos</h3>
                     <p>Seja o primeiro a compartilhar um vídeo incrível!</p>
-                    <a href="upload.php" class="btn btn-primary" style="margin-top: 20px;">
-                        <i class="fas fa-plus"></i>
-                        Criar Primeiro Vídeo
+                    <a href="upload.php" class="btn btn-primary" style="margin-top: 4px;">
+                        <i class="fas fa-plus"></i>Criar Primeiro Vídeo
                     </a>
                 </div>
             `;
