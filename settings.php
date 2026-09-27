@@ -1041,7 +1041,7 @@ try {
             </div>
         </div>
 
-        <div class="app-version">MyTube v1.11.5</div>
+        <div class="app-version">MyTube v1.12.1</div>
     </main>
 
     <!-- Modal guia Desktop -->

@@ -858,7 +858,13 @@ class TikTokPlayer {
                 if (videoData._pauseAfterPlay) {
                     videoData._pauseAfterPlay = false;
                     videoData.video.pause();
-                    videoData.element.classList.add('paused');
+                    
+                    if (videoData.manuallyPaused) {
+                        videoData.element.classList.add('paused');
+                    } else {
+                        videoData.element.classList.remove('paused');
+                    }
+                    
                     if (videoData.video._hlsInstance) videoData.video._hlsInstance.stopLoad();
                     return false;  // indica que foi pausado
                 }
@@ -938,7 +944,15 @@ class TikTokPlayer {
                 return;
             }
             videoData.video.pause();
-            videoData.element.classList.add('paused');
+            
+            // Só mostramos o ícone de Play (classe .paused) se o vídeo
+            // foi pausado MANUALMENTE pelo utilizador.
+            if (videoData.manuallyPaused) {
+                videoData.element.classList.add('paused');
+            } else {
+                videoData.element.classList.remove('paused');
+            }
+            
             videoData.element.classList.remove('buffering');
         }
     }
