@@ -820,7 +820,24 @@ class TikTokPlayer {
 
     preloadNearbyVideos() {
         const nq = window.networkQuality;
-        const offsets = (nq && nq.quality === 'low') ? [1] : [-1, 1];
+        const quality = nq ? nq.quality : 'medium';
+
+        // ── Fix 2: Preload adaptativo de 2-3 vídeos à frente ─────────────────
+        // Antes: apenas [-1, 1] — só 1 vídeo à frente e 1 atrás.
+        // Agora:
+        //   - Redes lentas (3G / quality=low)  → [1]          (1 à frente)
+        //   - Redes médias (quality=medium)     → [-1, 1, 2]   (2 à frente)
+        //   - Redes rápidas (4G / quality=high) → [-1, 1, 2, 3] (3 à frente)
+        // O vídeo atrás (-1) é sempre incluído quando há rede suficiente,
+        // pois o utilizador pode fazer scroll para cima.
+        let offsets;
+        if (quality === 'low') {
+            offsets = [1];
+        } else if (quality === 'high') {
+            offsets = [-1, 1, 2, 3];
+        } else {
+            offsets = [-1, 1, 2];
+        }
         
         offsets.forEach(offset => {
             const index = this.currentVideoIndex + offset;
@@ -839,6 +856,7 @@ class TikTokPlayer {
             }
         });
     }
+
 
     playVideo(videoData) {
         if (!videoData) return;
