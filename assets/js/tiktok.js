@@ -124,16 +124,28 @@ class TikTokPlayer {
                 // Buffering: adicionar/remover classe para animação de loading
                 video.onwaiting = () => {
                     const vd = this.videos.find(v => v.video === video);
-                    if (vd) vd.element.classList.add('buffering');
+                    if (vd) {
+                        if (vd.bufferTimeout) clearTimeout(vd.bufferTimeout);
+                        vd.bufferTimeout = setTimeout(() => {
+                            vd.element.classList.add('buffering');
+                        }, 300);
+                    }
                 };
                 video.onplaying = () => {
                     const vd = this.videos.find(v => v.video === video);
-                    if (vd) vd.element.classList.remove('buffering');
+                    if (vd) {
+                        if (vd.bufferTimeout) clearTimeout(vd.bufferTimeout);
+                        vd.element.classList.remove('buffering');
+                    }
                 };
                 video.oncanplay = () => {
                     const vd = this.videos.find(v => v.video === video);
-                    if (vd) vd.element.classList.remove('buffering');
+                    if (vd) {
+                        if (vd.bufferTimeout) clearTimeout(vd.bufferTimeout);
+                        vd.element.classList.remove('buffering');
+                    }
                 };
+                // A lógica onplaying e oncanplay já foi substituída acima
                 
                 // Recovery: tentar recarregar vídeo em caso de erro (508, rede, etc)
                 video.onerror = () => {
@@ -251,9 +263,20 @@ class TikTokPlayer {
                     
                     // Configurar eventos básicos do vídeo
                     video.onended = () => this.nextVideo();
-                    video.onwaiting = () => { videoData.element.classList.add('buffering'); };
-                    video.onplaying = () => { videoData.element.classList.remove('buffering'); };
-                    video.oncanplay = () => { videoData.element.classList.remove('buffering'); };
+                    video.onwaiting = () => { 
+                        if (videoData.bufferTimeout) clearTimeout(videoData.bufferTimeout);
+                        videoData.bufferTimeout = setTimeout(() => {
+                            videoData.element.classList.add('buffering'); 
+                        }, 300);
+                    };
+                    video.onplaying = () => { 
+                        if (videoData.bufferTimeout) clearTimeout(videoData.bufferTimeout);
+                        videoData.element.classList.remove('buffering'); 
+                    };
+                    video.oncanplay = () => { 
+                        if (videoData.bufferTimeout) clearTimeout(videoData.bufferTimeout);
+                        videoData.element.classList.remove('buffering'); 
+                    };
                 }
             }
         }
@@ -638,9 +661,21 @@ class TikTokPlayer {
             videoData.video = video;
             // Assinar eventos 1x
             video.onended = () => this.nextVideo();
-            video.onwaiting = () => { videoData.element.classList.add('buffering'); };
-            video.onplaying = () => { videoData.element.classList.remove('buffering'); };
-            video.oncanplay = () => { videoData.element.classList.remove('buffering'); };
+            video.onwaiting = () => { 
+                if (videoData.bufferTimeout) clearTimeout(videoData.bufferTimeout);
+                // Aguarda 300ms antes de mostrar o ícone. Se o vídeo voltar a tocar antes, o onplaying limpa isto.
+                videoData.bufferTimeout = setTimeout(() => {
+                    videoData.element.classList.add('buffering'); 
+                }, 300);
+            };
+            video.onplaying = () => { 
+                if (videoData.bufferTimeout) clearTimeout(videoData.bufferTimeout);
+                videoData.element.classList.remove('buffering'); 
+            };
+            video.oncanplay = () => { 
+                if (videoData.bufferTimeout) clearTimeout(videoData.bufferTimeout);
+                videoData.element.classList.remove('buffering'); 
+            };
         } else if (!video) {
             return; 
         }
