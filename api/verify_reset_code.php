@@ -15,12 +15,22 @@ if (!csrf_verify()) {
     exit;
 }
 
-$email = trim($_POST['email'] ?? '');
+$identifier = trim($_POST['email'] ?? '');
 $code = trim($_POST['code'] ?? '');
 
-if (empty($email) || empty($code)) {
+if (empty($identifier) || empty($code)) {
     echo json_encode(['success' => false, 'message' => 'E-mail e código são obrigatórios.']);
     exit;
+}
+
+// Normalizar identificador (igual ao send_reset_code.php)
+$email = $identifier;
+if (preg_match('/^[0-9\+\s]+$/', $identifier)) {
+    $cleanPhone = preg_replace('/\D/', '', $identifier);
+    if (strlen($cleanPhone) === 9) {
+        $cleanPhone = '244' . $cleanPhone;
+    }
+    $email = $cleanPhone;
 }
 
 if (!preg_match('/^\d{6}$/', $code)) {
