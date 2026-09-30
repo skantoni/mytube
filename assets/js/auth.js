@@ -405,7 +405,7 @@ function clearForgotMessage() {
 }
 
 // STEP 1: Send code — rate limit helpers
-const RESET_CODE_COOLDOWN_MS = 60000; // 60 seconds
+const RESET_CODE_COOLDOWN_MS = 30000; // 30 seconds
 const RESET_CODE_COOLDOWN_KEY = 'resetCodeLastSent';
 let _resetCodeCooldownTimer = null;
 

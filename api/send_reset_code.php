@@ -86,14 +86,18 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
-    $stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM password_resets WHERE user_id = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+    // Preparado para 5 minutos no futuro (antes era 1 HOUR)
+    $stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM password_resets WHERE user_id = ? AND created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)");
     $stmt->execute([$user['id']]);
     $count = $stmt->fetch()['cnt'];
 
+    // TEMPORARIAMENTE DESACTIVADO PARA TESTES CONFORME PEDIDO
+    /*
     if ($count >= 3) {
-        echo json_encode(['success' => false, 'message' => 'Muitas tentativas. Aguarde 1 hora antes de tentar novamente.']);
+        echo json_encode(['success' => false, 'message' => 'Muitas tentativas. Aguarde 5 minutos antes de tentar novamente.']);
         exit;
     }
+    */
 
     $stmt = $pdo->prepare("UPDATE password_resets SET used = 1 WHERE user_id = ? AND used = 0");
     $stmt->execute([$user['id']]);
