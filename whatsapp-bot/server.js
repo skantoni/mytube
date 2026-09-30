@@ -18,7 +18,6 @@ import makeWASocket, {
     useMultiFileAuthState,
     DisconnectReason,
     fetchLatestBaileysVersion,
-    Browsers,
 } from '@whiskeysockets/baileys';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -27,6 +26,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT     = 3002;
 const AUTH_DIR = path.join(__dirname, 'auth_info');
 const logger   = pino({ level: 'silent' }); // muda para 'info' para ver logs detalhados
+
+// ── Anti-detecção: fingerprint realista ───────────────────────────────────────
+// Imita exatamente um Chrome 124 no Windows 10 — o WhatsApp Web oficial
+// Formato: ['Sistema Operativo', 'Nome do Browser', 'Versão do Browser']
+const BROWSER_FINGERPRINT = ['Windows', 'Chrome', '124.0.0.0'];
+
+// Delay humano antes de enviar: simula o tempo que uma pessoa demora a digitar
+// Para códigos curtos (~50 chars), entre 1.5s e 3s é realista
+const humanTypingDelay = () => Math.floor(Math.random() * 1500) + 1500; // 1500ms a 3000ms
 
 // ── Estado global ─────────────────────────────────────────────────────────────
 let sock    = null;
@@ -79,10 +87,14 @@ async function connectToWhatsApp() {
         auth: state,
         logger,
         printQRInTerminal: false,
-        browser: Browsers.ubuntu('Chrome'),
+        // 🛡️ Anti-fingerprint: imita Chrome 124 real no Windows (não usar Browsers.ubuntu — é detectado)
+        browser: BROWSER_FINGERPRINT,
         syncFullHistory: false,
         generateHighQualityLinkPreview: false,
         connectTimeoutMs: 60000,
+        // 🛡️ Não revelar que é um cliente de terceiros
+        emitOwnEvents: false,
+        shouldIgnoreJid: () => false,
     });
 
     // 4. Registar eventos ANTES de pedir o código
@@ -170,7 +182,13 @@ app.post('/send-message', async (req, res) => {
 
     try {
         const jid = normalizePhoneToJid(String(phone));
+
+        // 🛡️ Anti-detecção: simular presença humana a digitar
+        await sock.sendPresenceUpdate('composing', jid);
+        await new Promise(r => setTimeout(r, humanTypingDelay())); // 1.5s a 3s "a digitar..."
         await sock.sendMessage(jid, { text: message });
+        await sock.sendPresenceUpdate('paused', jid); // parar de "digitar" após enviar
+
         console.log(`📤 Mensagem enviada → ${phone}`);
         return res.json({ success: true, message: 'Mensagem enviada.' });
     } catch (err) {
