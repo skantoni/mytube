@@ -282,7 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div id="contactBlockPhone">
                     <div class="input-group whatsapp-input-group">
                         <input type="tel" name="reg_whatsapp" id="reg_whatsapp"
-                               placeholder="+244 9XX XXX XXX ou 9XX XXX XXX"
+                               placeholder="999 999 999"
                                maxlength="16"
                                inputmode="tel"
                                pattern="[\+0-9\s]+"
