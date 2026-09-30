@@ -1,6 +1,6 @@
 <?php
-// Garantir que SEMPRE retornamos JSON, mesmo em caso de erro fatal
-header('Content-Type: application/json');
+// Buffer de saída PRIMEIRO — para capturar qualquer output inesperado e não corromper o JSON
+ob_start();
 
 // Capturar erros fatais para retornar JSON em vez de 500
 register_shutdown_function(function() {
@@ -16,13 +16,15 @@ register_shutdown_function(function() {
     }
 });
 
-ob_start();
-
 try {
     $request_started_at = microtime(true);
 
+    // Carregar config ANTES de enviar headers — a sessão (e o token CSRF) precisa de existir
     require_once '../includes/config.php';
     require_once '../includes/mail_helper.php';
+
+    // Só agora é seguro declarar o Content-Type (sessão já foi iniciada)
+    header('Content-Type: application/json');
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         echo json_encode(['success' => false, 'message' => 'Método não permitido.']);
