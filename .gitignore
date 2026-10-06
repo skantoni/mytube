@@ -85,6 +85,7 @@ api/tubefest_buy.php
 create_tubefest_table.php
 tubefest.php
 tubefest_promoter.php
+assets/images/tubefest
 
 # ===== OUTROS =====
 .freebuff/
