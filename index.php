@@ -143,6 +143,17 @@ if ($start_video_id > 0) {
     if ($preload_m3u8_url): ?>
     <link rel="preload" href="<?php echo $preload_m3u8_url; ?>" as="fetch" crossorigin="anonymous">
     <?php endif; ?>
+
+    <!-- Preconnect: abrir TCP+TLS ao CDN de vídeos antes de qualquer JS correr.
+         Elimina DNS lookup + handshake (~50–150ms) do 1.º pedido HLS. -->
+    <link rel="preconnect" href="https://cdn.mytube.social" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.mytube.social">
+    <link rel="preconnect" href="https://cdn.dev.mytube.social" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.dev.mytube.social">
+
+    <!-- Preconnect ao CDN de fontes (Font Awesome) — usado em todos os ícones do feed -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 </head>
 <body>
     <div class="splash-screen" id="splashScreen" aria-label="Tela de abertura">
