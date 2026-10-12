@@ -116,8 +116,10 @@ class FeedManager {
         
         if (shouldRestore) {
             this.restoreSavedFeed();
+        } else if (window.__INITIAL_FEED_VIDEOS__ && Array.isArray(window.__INITIAL_FEED_VIDEOS__) && window.__INITIAL_FEED_VIDEOS__.length > 0) {
+            this.initFromSsr();
         } else {
-            // Carregar vídeos novos
+            // Carregar vídeos novos via AJAX (fallback)
             this.loadVideos();
         }
         
@@ -206,7 +208,8 @@ class FeedManager {
             if (hasQueue) {
                 console.log(`[Feed] Restaurando ${queue.length} vídeo(s) não vistos do cache — sem request à API`);
                 
-                // Remover o loading inicial
+                // Limpar container caso houvesse SSR antes de restaurar a fila salva
+                this.videosContainer.innerHTML = '';
                 this.removeInitialLoading();
                 
                 // Reidratar vídeos directamente da cache
@@ -232,6 +235,34 @@ class FeedManager {
             console.error('[Feed] Erro ao restaurar:', e);
             this.loadVideos();
         }
+    }
+
+    // Inicializar feed a partir do Server-Side Rendering (SSR)
+    // Os primeiros vídeos já vieram pré-renderizados no HTML pelo PHP (zero AJAX no arranque)
+    initFromSsr() {
+        console.log(`[Feed] ⚡ SSR: ${window.__INITIAL_FEED_VIDEOS__.length} vídeo(s) pré-renderizados no DOM — arranque instantâneo`);
+        this.removeInitialLoading();
+
+        window.__INITIAL_FEED_VIDEOS__.forEach(v => {
+            this.loadedVideoIds.add(v.id);
+            this._rawVideoData.set(String(v.id), v);
+        });
+
+        this.offset = window.__INITIAL_FEED_NEXT_OFFSET__ || window.__INITIAL_FEED_VIDEOS__.length;
+        this.hasMore = window.__INITIAL_FEED_HAS_MORE__ !== undefined ? window.__INITIAL_FEED_HAS_MORE__ : true;
+        if (window.__INITIAL_FEED_SESSION__) {
+            this.feedSessionId = window.__INITIAL_FEED_SESSION__;
+        }
+
+        // Registrar elementos já renderizados no IntersectionObserver para scroll infinito
+        if (this.videoObserver) {
+            document.querySelectorAll('.video-item:not(.initial-loading)').forEach(videoElement => {
+                this.videoObserver.observe(videoElement);
+            });
+        }
+
+        // Inicializar funcionalidades (likes, comentários, TikTokPlayer, etc.)
+        this.initializeVideoFeatures();
     }
     
     // Salvar estado do feed — guarda o vídeo actual + fila de não vistos

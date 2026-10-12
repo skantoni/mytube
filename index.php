@@ -1,12 +1,11 @@
 <?php
 require_once 'includes/config.php';
 require_once 'includes/r2_storage.php';
+require_once 'includes/hashtag_helper.php';
+require_once 'includes/feed_helper.php';
 
 // Garantir que os dados do usuário estão carregados na sessão
 ensureUserData();
-
-
-// AJAX Feed System - Videos will be loaded dynamically via JavaScript
 
 // Verificar modo de feed: normal ou perfil de usuário
 $feed_mode = 'normal';
@@ -36,6 +35,52 @@ if ($profile_user_id > 0) {
 // Verificar se o usuário logado é admin
 $is_admin = isLoggedIn() && isAdminUser();
 $force_splash = isset($_GET['splash']) && $_GET['splash'] === '1';
+
+// Definir se é página de feed antes de renderizar head (evita bug de variável indefinida)
+$guest_explore = (!isLoggedIn() && (isset($_GET['explore']) || isset($_GET['video_id'])));
+$is_feed_page = isLoggedIn() || $guest_explore;
+
+// ── SSR (Server-Side Rendering) do 1.º lote de vídeos ─────────────────────────
+$initial_feed_data = null;
+$ssr_videos_html = '';
+$preload_m3u8_url = null;
+$feed_session_id = 'feed_' . time() . '_' . bin2hex(random_bytes(4));
+
+if ($is_feed_page) {
+    try {
+        $user_id = (int)($_SESSION['user_id'] ?? 0);
+        $initial_feed_data = fetchFeedData(
+            $pdo,
+            $user_id,
+            $feed_session_id,
+            0,
+            4,
+            !isLoggedIn(),
+            $profile_user_id,
+            $start_video_id
+        );
+
+        if (!empty($initial_feed_data['videos'])) {
+            // Preload 100% certeiro do manifest HLS do 1º vídeo do feed
+            $first_vid = $initial_feed_data['videos'][0];
+            $raw_url = resolve_video_url($first_vid['video_path'] ?? '');
+            if (str_contains($raw_url, '.m3u8')) {
+                $preload_m3u8_url = htmlspecialchars($raw_url, ENT_QUOTES, 'UTF-8');
+            }
+
+            // Gerar o HTML pré-renderizado dos primeiros vídeos
+            $current_uid = (int)($_SESSION['user_id'] ?? 0);
+            $is_adm = isLoggedIn() && isAdminUser();
+            foreach ($initial_feed_data['videos'] as $idx => $v) {
+                $ssr_videos_html .= renderFeedVideoItemHtml($v, $idx, !isLoggedIn(), $current_uid, $is_adm);
+            }
+        }
+    } catch (Exception $e) {
+        error_log('⚠️ index.php: Falha no SSR do feed — ' . $e->getMessage());
+        $initial_feed_data = null;
+        $ssr_videos_html = '';
+    }
+}
 
 // Configurar SEO dinâmico para preview de links caso um vídeo específico seja partilhado
 if ($start_video_id > 0) {
@@ -92,55 +137,8 @@ if ($start_video_id > 0) {
     <?php include __DIR__ . '/includes/favicon.php'; ?>
     <!-- Google AdSense Verification Code -->
     <meta name="google-adsense-account" content="ca-pub-7296999127636132">
-    <?php
-    // ── Fix 1: Preload do primeiro vídeo HLS ──────────────────────────────────
-    // Busca o video_path do 1º vídeo que o feed vai devolver e emite um
-    // <link rel="preload"> para o .m3u8, fazendo o browser iniciar o download
-    // do manifest HLS DURANTE o parsing do HTML — antes de qualquer JS correr.
-    // Ganho estimado: 500ms–1s no tempo até ao primeiro frame visível.
-    // Só corre em feeds normais (não landing page) e quando há um vídeo disponível.
-    $preload_m3u8_url = null;
-    $is_feed_page = isLoggedIn() || $guest_explore;
-    if ($is_feed_page && $feed_mode === 'normal' && $start_video_id <= 0) {
-        try {
-            if (isLoggedIn()) {
-                // Feed de utilizador logado: buscar o vídeo mais recente não seu
-                $stmt_pre = $pdo->prepare("
-                    SELECT v.video_path
-                    FROM videos v
-                    WHERE v.is_public = 1 AND v.is_hidden = 0
-                      AND v.moderation_status = 'approved'
-                      AND v.user_id != ?
-                    ORDER BY v.created_at DESC
-                    LIMIT 1
-                ");
-                $stmt_pre->execute([$_SESSION['user_id']]);
-            } else {
-                // Guest: qualquer vídeo recente público
-                $stmt_pre = $pdo->prepare("
-                    SELECT v.video_path
-                    FROM videos v
-                    WHERE v.is_public = 1 AND v.is_hidden = 0
-                      AND v.moderation_status = 'approved'
-                    ORDER BY v.created_at DESC
-                    LIMIT 1
-                ");
-                $stmt_pre->execute([]);
-            }
-            $pre_row = $stmt_pre->fetch();
-            if ($pre_row && !empty($pre_row['video_path'])) {
-                $raw_url = resolve_video_url($pre_row['video_path']);
-                // Só fazer preload se for HLS (evitar preload inútil de MP4)
-                if (str_contains($raw_url, '.m3u8')) {
-                    $preload_m3u8_url = htmlspecialchars($raw_url, ENT_QUOTES, 'UTF-8');
-                }
-            }
-        } catch (Exception $e) {
-            // Silenciar — o preload é uma optimização opcional, não bloqueia nada
-            error_log('⚠️ index.php: Falha no preload HLS — ' . $e->getMessage());
-        }
-    }
-    if ($preload_m3u8_url): ?>
+    <?php if ($preload_m3u8_url): ?>
+    <!-- Preload do 1º vídeo HLS (100% sincronizado com o SSR) -->
     <link rel="preload" href="<?php echo $preload_m3u8_url; ?>" as="fetch" crossorigin="anonymous">
     <?php endif; ?>
 
@@ -341,14 +339,18 @@ if ($start_video_id > 0) {
         
         <!-- Container TikTok -->
         <div class="tiktok-container" id="videoContainer">
-            <div class="video-item initial-loading" id="initialLoading">
-                <div class="loading-spinner">
-                    <div class="spinner"></div>
-                    Carregando vídeos...
+            <?php if (!empty($ssr_videos_html)): ?>
+                <?php echo $ssr_videos_html; ?>
+            <?php else: ?>
+                <div class="video-item initial-loading" id="initialLoading">
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        Carregando vídeos...
+                    </div>
+                    <h3>Preparando seu feed</h3>
+                    <p>Buscando os melhores vídeos para você</p>
                 </div>
-                <h3>Preparando seu feed</h3>
-                <p>Buscando os melhores vídeos para você</p>
-            </div>
+            <?php endif; ?>
         </div>
         
         <!-- Botões de navegação desktop -->
@@ -453,6 +455,12 @@ if ($start_video_id > 0) {
             window.profileUserId = <?php echo $profile_user_id; ?>;
             window.startVideoId = <?php echo $start_video_id; ?>;
             window.highlightCommentId = <?php echo $highlight_comment_id; ?>;
+            <?php if (!empty($initial_feed_data['videos'])): ?>
+            window.__INITIAL_FEED_VIDEOS__ = <?php echo json_encode($initial_feed_data['videos'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+            window.__INITIAL_FEED_NEXT_OFFSET__ = <?php echo (int)$initial_feed_data['next_offset']; ?>;
+            window.__INITIAL_FEED_HAS_MORE__ = <?php echo !empty($initial_feed_data['has_more']) ? 'true' : 'false'; ?>;
+            window.__INITIAL_FEED_SESSION__ = '<?php echo addslashes($initial_feed_data['feed_session']); ?>';
+            <?php endif; ?>
             
             function showGuestLoginModal() {
                 document.getElementById('guestLoginModal').style.display = 'flex';
@@ -536,15 +544,19 @@ if ($start_video_id > 0) {
         
         <!-- Container TikTok -->
         <div class="tiktok-container" id="videoContainer">
-            <!-- Initial loading state -->
-            <div class="video-item initial-loading" id="initialLoading">
-                <div class="loading-spinner">
-                    <div class="spinner"></div>
-                    Carregando vídeos...
+            <?php if (!empty($ssr_videos_html)): ?>
+                <?php echo $ssr_videos_html; ?>
+            <?php else: ?>
+                <!-- Initial loading state -->
+                <div class="video-item initial-loading" id="initialLoading">
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        Carregando vídeos...
+                    </div>
+                    <h3>Preparando seu feed</h3>
+                    <p>Buscando os melhores vídeos para você</p>
                 </div>
-                <h3>Preparando seu feed</h3>
-                <p>Buscando os melhores vídeos para você</p>
-            </div>
+            <?php endif; ?>
         </div>
         
         <!-- Botões de navegação desktop -->
@@ -786,13 +798,19 @@ if ($start_video_id > 0) {
     <script>
         // Pass PHP variables to JavaScript ANTES de carregar os scripts
         window.isAdmin = <?php echo $is_admin ? 'true' : 'false'; ?>;
-        window.currentUserId = <?php echo $_SESSION['user_id']; ?>;
+        window.currentUserId = <?php echo (int)$_SESSION['user_id']; ?>;
         window.currentUserSchool = <?php echo json_encode($_SESSION['school_short'] ?? null); ?>;
         window.currentUserSchoolName = <?php echo json_encode($_SESSION['school_name'] ?? null); ?>;
         window.feedMode = '<?php echo $feed_mode; ?>';
         window.profileUserId = <?php echo $profile_user_id; ?>;
         window.startVideoId = <?php echo $start_video_id; ?>;
         window.highlightCommentId = <?php echo $highlight_comment_id; ?>;
+        <?php if (!empty($initial_feed_data['videos'])): ?>
+        window.__INITIAL_FEED_VIDEOS__ = <?php echo json_encode($initial_feed_data['videos'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+        window.__INITIAL_FEED_NEXT_OFFSET__ = <?php echo (int)$initial_feed_data['next_offset']; ?>;
+        window.__INITIAL_FEED_HAS_MORE__ = <?php echo !empty($initial_feed_data['has_more']) ? 'true' : 'false'; ?>;
+        window.__INITIAL_FEED_SESSION__ = '<?php echo addslashes($initial_feed_data['feed_session']); ?>';
+        <?php endif; ?>
     </script>
     <?php endif; ?>
     
@@ -861,12 +879,13 @@ if ($start_video_id > 0) {
             }
 
             const forceSplash = <?php echo $force_splash ? 'true' : 'false'; ?>;
+            const skipSplash = <?php echo ($start_video_id > 0) ? 'true' : 'false'; ?>;
             const splashStorageKey = 'mytube_splash_shown';
-            const splashVisibleMs = 500;
-            const splashExitMs = 1900;
+            const splashVisibleMs = 250;
+            const splashExitMs = 500;
             const hasShownSplash = sessionStorage.getItem(splashStorageKey) === '1';
 
-            if (!forceSplash && hasShownSplash) {
+            if (!forceSplash && (hasShownSplash || skipSplash)) {
                 splash.remove();
                 return;
             }
