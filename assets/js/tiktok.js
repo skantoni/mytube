@@ -918,7 +918,10 @@ class TikTokPlayer {
                         videoData.element.classList.remove('paused');
                     }
                     
-                    if (videoData.video._hlsInstance) videoData.video._hlsInstance.stopLoad();
+                    if (videoData.video._hlsInstance) {
+                        videoData.video._hlsInstance.stopLoad();
+                        videoData._hlsLoadStopped = true; // Fix 2b — sinalizar para startLoad() em playVideo()
+                    }
                     return false;  // indica que foi pausado
                 }
                 return ok;
@@ -927,14 +930,14 @@ class TikTokPlayer {
             videoData._playPending = true;
             videoData._pauseAfterPlay = false;
 
-            // Fix 2 — Garantir que o HLS está a descarregar antes de chamar play().
-            // Porquê: o mecanismo _pauseAfterPlay (linha acima) chama hls.stopLoad()
-            // quando o utilizador sai do vídeo enquanto o play() ainda está pendente.
-            // Se o utilizador voltar, play() é chamado mas o HLS ficou parado → buffer
-            // não cresce → vídeo fica preso no ecrã preto até timeout.
-            // startLoad() é idempotente: se o HLS já está a carregar, não faz nada.
-            if (videoData.video && videoData.video._hlsInstance) {
+            // Fix 2 — Retomar o HLS apenas quando foi explicitamente parado pelo mecanismo
+            // _pauseAfterPlay. IMPORTANTE: startLoad(-1) num HLS já em curso chama stopLoad()
+            // internamente (comportamento HLS.js 1.5.x) → apaga o buffer → auto-play falha.
+            // Por isso só chamamos startLoad() quando _hlsLoadStopped = true (flag que
+            // definimos no único sítio onde chamamos stopLoad()).
+            if (videoData.video && videoData.video._hlsInstance && videoData._hlsLoadStopped) {
                 videoData.video._hlsInstance.startLoad(-1);
+                videoData._hlsLoadStopped = false;
             }
 
             if (shouldHaveAudio) {
