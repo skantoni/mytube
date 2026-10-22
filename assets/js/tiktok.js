@@ -818,7 +818,7 @@ class TikTokPlayer {
         }
 
         // Pausar todos os outros antes de tocar o actual
-        this.pauseAllVideos();
+        this.pauseAllVideos(this.currentVideoIndex);
 
         // ← PONTO CENTRAL: tocar o vídeo do índice activo
         if (!currentVideo.manuallyPaused) {
@@ -920,7 +920,6 @@ class TikTokPlayer {
                     
                     if (videoData.video._hlsInstance) {
                         videoData.video._hlsInstance.stopLoad();
-                        videoData._hlsLoadStopped = true; // Fix 2b — sinalizar para startLoad() em playVideo()
                     }
                     return false;  // indica que foi pausado
                 }
@@ -929,16 +928,6 @@ class TikTokPlayer {
 
             videoData._playPending = true;
             videoData._pauseAfterPlay = false;
-
-            // Fix 2 — Retomar o HLS apenas quando foi explicitamente parado pelo mecanismo
-            // _pauseAfterPlay. IMPORTANTE: startLoad(-1) num HLS já em curso chama stopLoad()
-            // internamente (comportamento HLS.js 1.5.x) → apaga o buffer → auto-play falha.
-            // Por isso só chamamos startLoad() quando _hlsLoadStopped = true (flag que
-            // definimos no único sítio onde chamamos stopLoad()).
-            if (videoData.video && videoData.video._hlsInstance && videoData._hlsLoadStopped) {
-                videoData.video._hlsInstance.startLoad(-1);
-                videoData._hlsLoadStopped = false;
-            }
 
             if (shouldHaveAudio) {
                 videoData.video.muted = false;
@@ -1030,8 +1019,9 @@ class TikTokPlayer {
         }
     }
 
-    pauseAllVideos() {
-        this.videos.forEach(videoData => {
+    pauseAllVideos(exceptIndex = null) {
+        this.videos.forEach((videoData, idx) => {
+            if (exceptIndex !== null && idx === exceptIndex) return;
             if (videoData && videoData.video && !videoData.video.paused) {
                 this.pauseVideo(videoData);
             }

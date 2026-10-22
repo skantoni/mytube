@@ -139,18 +139,11 @@ function initHlsPlayer(videoEl, url) {
         const maxBufLen    = isLow ? 10 : 30;  // Fix B — era sempre 30
         const maxMaxBufLen = isLow ? 20 : 60;  // Fix B — era sempre 60
 
-        // Fix 1a — Cold Start: sem warm start, arrancar sempre em 360p (level mais baixo = index 3)
-        // e subir de qualidade. Evita que o ABR "adivinhe" mal e tente 720p/1080p → stall → ecrã preto.
-        // Com warm start (BW medida no vídeo anterior): deixar o ABR decidir normalmente (-1).
-        const warmBps = _readWarmBandwidth();
-        const initialLevel = warmBps ? -1 : 3;
-
         const hls = new Hls({
             autoStartLoad: true,   // HLS carrega assim que attachMedia() é chamado em materializeVideo
-            startLevel: initialLevel,              // Fix 1a — cold start = 360p imediato; warm = ABR decide
+            startLevel: -1,                        // ABR decide automaticamente com base no EWMA semeado
             capLevelToPlayerSize: false,
             abrEwmaDefaultEstimate: estimatedBps,  // Warm start / Network API / 1.5 Mbps
-            startFragPrefetch: true,               // Fix 1b — pré-busca o 1º fragmento antes de attachMedia completar → reduz TTFP
             maxBufferLength:    maxBufLen,          // Fix B
             maxMaxBufferLength: maxMaxBufLen,       // Fix B
             maxBufferHole: 0.5,
