@@ -198,18 +198,25 @@ class TikTokPlayer {
     }
 
     // ============================================
+    // HELPER: Verificar se o browser permite tocar com áudio
+    // ============================================
+    canPlayWithAudio() {
+        const explicitMuted = localStorage.getItem('mytube_global_muted') === 'true';
+        if (explicitMuted) return false;
+
+        // Autoridade do browser: só pode tocar com áudio se o utilizador já interagiu com o documento
+        if (typeof navigator !== 'undefined' && navigator.userActivation) {
+            return navigator.userActivation.hasBeenActive;
+        }
+
+        return window.__mytube_session_interacted === true;
+    }
+
+    // ============================================
     // HELPER: Estado de mute global atual
     // ============================================
     getCurrentMuteState() {
-        // Verificar uma flag explícita do utilizador
-        const explicitMute = localStorage.getItem('mytube_global_muted');
-        if (explicitMute !== null) {
-            return explicitMute === 'true';
-        }
-        
-        // Fallback: verificar se utilizador já interagiu (som ativado)
-        const userInteracted = localStorage.getItem('mytube_user_interacted') === 'true';
-        return !userInteracted;
+        return !this.canPlayWithAudio();
     }
 
     // ============================================
@@ -296,6 +303,8 @@ class TikTokPlayer {
         
         // Um único listener para TODOS os clicks
         container.addEventListener('click', (e) => {
+            window.__mytube_session_interacted = true;
+            localStorage.setItem('mytube_user_interacted', 'true');
             const target = e.target;
             
             // 1. BOTÃO DE LIKE
@@ -448,11 +457,10 @@ class TikTokPlayer {
         
         // Touch events para mobile (melhor responsividade)
         container.addEventListener('touchend', (e) => {
+            window.__mytube_session_interacted = true;
+            localStorage.setItem('mytube_user_interacted', 'true');
             // Apenas processar se não houve scroll
             if (this.isScrolling) return;
-            
-            // O click event já vai processar, mas marcamos interação
-            localStorage.setItem('mytube_user_interacted', 'true');
         }, { passive: true });
     }
 
@@ -900,10 +908,8 @@ class TikTokPlayer {
             this.materializeVideo(videoData);
         }
         if (videoData.video) {
-            // Respeitar o estado de mute atual (global)
-            const globalMuted = this.getCurrentMuteState();
-            const userInteracted = localStorage.getItem('mytube_user_interacted') === 'true';
-            const shouldHaveAudio = userInteracted && !globalMuted;
+            // Respeitar o estado de mute atual e permissão do browser
+            const shouldHaveAudio = this.canPlayWithAudio();
 
             // Helper: executar após o play() resolver — aplica pause diferido se pedido entretanto
             const afterPlay = (ok) => {
@@ -1826,17 +1832,20 @@ class TikTokPlayer {
     }
 
     initializeAudioState() {
-        // Por padrão, tentar sempre com som ativado
+        // Respeitar as políticas de autoplay do navegador:
+        // Se o utilizador ainda não interagiu nesta janela, o primeiro vídeo começa mutado
+        // para garantir reprodução automática 100% instantânea sem bloqueio do browser.
+        const isMuted = this.getCurrentMuteState();
+        
         this.videos.forEach(videoData => {
-            if (videoData.video) videoData.video.muted = false;
+            if (videoData.video) videoData.video.muted = isMuted;
         });
         
-        document.querySelectorAll('.audio-toggle').forEach(btn => {
-            btn.classList.add('active');
-            const icon = btn.querySelector('i');
-            icon.className = 'fas fa-volume-up';
-            btn.title = 'Desativar Som';
-        });
+        this.updateAllAudioButtons(isMuted);
+
+        if (isMuted && this.videos[this.currentVideoIndex]) {
+            this.showAudioPrompt(this.videos[this.currentVideoIndex].videoId);
+        }
         
         // Configurar cliques no prompt de áudio
         this.setupAudioPrompts();
@@ -1874,6 +1883,7 @@ class TikTokPlayer {
 
     enableAudioForAll(videoId) {
         // Marcar que o usuário já interagiu
+        window.__mytube_session_interacted = true;
         localStorage.setItem('mytube_user_interacted', 'true');
         localStorage.setItem('mytube_global_muted', 'false');
         
