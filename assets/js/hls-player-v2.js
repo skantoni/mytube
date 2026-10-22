@@ -119,8 +119,14 @@ function initHlsPlayer(videoEl, url) {
         // que guardaram versões antigas sem CORS.
         class CacheBustingLoader extends Hls.DefaultConfig.loader {
             load(context, config, callbacks) {
-                const sep = context.url.includes('?') ? '&' : '?';
-                context.url += `${sep}cb=v2_cors`;
+                // Fix 3 — não duplicar cb=v2_cors se a URL já o traz (o PHP já adiciona).
+                // Sem esta verificação: master.m3u8?cb=v2_cors → ?cb=v2_cors&cb=v2_cors
+                // → URL diferente da pré-carregada pelo <link rel="preload"> do SSR
+                // → o preload do primeiro vídeo é completamente desperdiçado (cache miss).
+                if (!context.url.includes('cb=v2_cors')) {
+                    const sep = context.url.includes('?') ? '&' : '?';
+                    context.url += `${sep}cb=v2_cors`;
+                }
                 super.load(context, config, callbacks);
             }
         }

@@ -927,6 +927,16 @@ class TikTokPlayer {
             videoData._playPending = true;
             videoData._pauseAfterPlay = false;
 
+            // Fix 2 — Garantir que o HLS está a descarregar antes de chamar play().
+            // Porquê: o mecanismo _pauseAfterPlay (linha acima) chama hls.stopLoad()
+            // quando o utilizador sai do vídeo enquanto o play() ainda está pendente.
+            // Se o utilizador voltar, play() é chamado mas o HLS ficou parado → buffer
+            // não cresce → vídeo fica preso no ecrã preto até timeout.
+            // startLoad() é idempotente: se o HLS já está a carregar, não faz nada.
+            if (videoData.video && videoData.video._hlsInstance) {
+                videoData.video._hlsInstance.startLoad(-1);
+            }
+
             if (shouldHaveAudio) {
                 videoData.video.muted = false;
                 videoData.video.play()
