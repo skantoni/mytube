@@ -1046,8 +1046,8 @@ body * {
     animation: pulse 0.2s ease;
 }
 
-/* Estados especiais */
-.video-item.paused .video-player::after {
+/* Estados especiais: Pausado manualmente pelo utilizador */
+.video-item.paused:not(.buffering) .video-player::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -1057,32 +1057,93 @@ body * {
     height: 60px;
     background: rgba(59, 130, 246, 0.85);
     border-radius: 50%;
-    z-index: 3;
+    z-index: 10;
     opacity: 0.9;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: center;
     background-size: 30px 30px;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-/* Pulsar apenas quando o vídeo está carregando (buffering) */
+/* ==========================================================
+   MyTube Orbit Loader — Attentional Capture & Perceived Performance
+   Duas esferas rítmicas com aceleração elástica (Azul Elétrico & Ciano Neon)
+   ========================================================== */
+.video-item.buffering .video-player::before,
 .video-item.buffering .video-player::after {
     content: '';
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
-    width: 60px;
-    height: 60px;
-    background: rgba(59, 130, 246, 0.85);
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    margin-left: -8px;
     border-radius: 50%;
-    z-index: 3;
-    opacity: 0.9;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 30px 30px;
-    animation: pulse 1s infinite;
+    pointer-events: none;
+    z-index: 12;
+    will-change: transform, opacity;
+}
+
+/* Esfera 1: Azul Elétrico MyTube */
+.video-item.buffering .video-player::before {
+    background: #007BFF;
+    box-shadow: 0 0 16px rgba(0, 123, 255, 0.9);
+    animation: mytubeOrbitBlue 0.85s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
+}
+
+/* Esfera 2: Ciano Neon MyTube */
+.video-item.buffering .video-player::after {
+    background: #00f2fe;
+    box-shadow: 0 0 16px rgba(0, 242, 254, 0.9);
+    background-image: none;
+    animation: mytubeOrbitCyan 0.85s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
+}
+
+@keyframes mytubeOrbitBlue {
+    0% {
+        transform: translate3d(-18px, 0, 0) scale(0.8);
+        z-index: 13;
+        opacity: 0.85;
+    }
+    50% {
+        transform: translate3d(0, 0, 0) scale(1.15);
+        z-index: 13;
+        opacity: 1;
+    }
+    100% {
+        transform: translate3d(18px, 0, 0) scale(0.85);
+        z-index: 11;
+        opacity: 0.75;
+    }
+}
+
+@keyframes mytubeOrbitCyan {
+    0% {
+        transform: translate3d(18px, 0, 0) scale(0.85);
+        z-index: 11;
+        opacity: 0.75;
+    }
+    50% {
+        transform: translate3d(0, 0, 0) scale(0.8);
+        z-index: 11;
+        opacity: 0.85;
+    }
+    100% {
+        transform: translate3d(-18px, 0, 0) scale(1.15);
+        z-index: 13;
+        opacity: 1;
+    }
+}
+
+/* Escurecimento sutil do fundo durante o buffering para destacar o Orbit */
+.video-item.buffering video {
+    filter: brightness(0.65);
+}
+.video-item video {
+    transition: filter 0.3s ease;
 }
 
 /* Estilo para usuários não logados */

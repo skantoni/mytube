@@ -908,6 +908,12 @@ class TikTokPlayer {
             this.materializeVideo(videoData);
         }
         if (videoData.video) {
+            // Se o vídeo ainda não está pronto para tocar (readyState < 3), ativar buffering (MyTube Orbit)
+            if (videoData.video.readyState < 3 && !videoData.manuallyPaused) {
+                videoData.element.classList.add('buffering');
+                videoData.element.classList.remove('paused');
+            }
+
             // Respeitar o estado de mute atual e permissão do browser
             const shouldHaveAudio = this.canPlayWithAudio();
 
@@ -942,6 +948,7 @@ class TikTokPlayer {
                         if (!afterPlay(true)) return;
                         console.log(`[playVideo] Vídeo ${videoData.videoId} a tocar COM som`);
                         videoData.element.classList.remove('paused');
+                        videoData.element.classList.remove('buffering');
                         this.hideAudioPrompt(videoData.videoId);
                         this.updateAudioButtonState(videoData.videoId, false);
                     })
@@ -961,6 +968,7 @@ class TikTokPlayer {
                                 if (!afterPlay(true)) return;
                                 console.log(`[playVideo] Vídeo ${videoData.videoId} a tocar SEM som (fallback)`);
                                 videoData.element.classList.remove('paused');
+                                videoData.element.classList.remove('buffering');
                                 this.showAudioPrompt(videoData.videoId);
                                 this.updateAudioButtonState(videoData.videoId, true);
                             })
@@ -979,6 +987,7 @@ class TikTokPlayer {
                     .then(() => {
                         if (!afterPlay(true)) return;
                         videoData.element.classList.remove('paused');
+                        videoData.element.classList.remove('buffering');
                         if (!userInteracted) {
                             this.showAudioPrompt(videoData.videoId);
                         }
