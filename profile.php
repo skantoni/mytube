@@ -2248,8 +2248,8 @@ $has_more_videos = $total_user_videos > count($user_videos);
     </script>
 
     <script src="<?php echo asset('assets/js/image-compressor.js'); ?>"></script>
-    <!-- HLS.js — Player adaptativo -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+    <!-- HLS.js — Player adaptativo (local) -->
+    <script src="<?php echo asset('assets/js/hls.min.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/hls-player-v2.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/profile.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/video-delete.js'); ?>"></script>
