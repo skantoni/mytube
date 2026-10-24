@@ -1,3 +1,7 @@
+/* ==========================================================
+   MyTube Splash Screen — Opção C: Fade & Zoom Cinematográfico
+   Estilo Netflix / Cinema: Minimalista, limpo e memorável.
+   ========================================================== */
 .splash-screen {
     position: fixed;
     inset: 0;
@@ -8,7 +12,7 @@
     z-index: 20000;
     opacity: 1;
     visibility: visible;
-    transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0.45s;
+    transition: opacity 0.45s ease-out, visibility 0s linear 0.45s;
 }
 
 .splash-screen.hidden {
@@ -17,91 +21,34 @@
     pointer-events: none;
 }
 
-/* ==========================================================
-   MyTube Brand Heartbeat — Attentional Capture & Identidade MyTube
-   ========================================================== */
-.splash-heartbeat-box {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Ondas de choque neon concêntricas */
-.splash-shockwave {
-    position: absolute;
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
-    border: 2px solid rgba(0, 242, 254, 0.7);
-    box-shadow: 0 0 30px rgba(0, 123, 255, 0.6), inset 0 0 15px rgba(0, 242, 254, 0.35);
-    pointer-events: none;
-    animation: mytubeShockwave 1.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
-}
-
-.splash-shockwave-2 {
-    animation-delay: 0.25s;
-    border-color: rgba(0, 123, 255, 0.6);
-}
-
 .splash-logo {
-    position: relative;
     width: min(240px, 62vw);
     height: auto;
     object-fit: contain;
-    z-index: 2;
-    animation: mytubeHeartbeat 1.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
-    will-change: transform, filter;
-    transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity: 0;
+    transform: scale(0.92);
+    animation: mytubeCinematicIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
 }
 
 .splash-screen.hidden .splash-logo {
     opacity: 0;
-    transform: scale(1.06);
+    transform: scale(1.04);
 }
 
 body.splash-active {
     overflow: hidden;
 }
 
-/* Pulso duplo tipo batimento cardíaco (tump-tump!) com brilho neon intenso */
-@keyframes mytubeHeartbeat {
+/* Entrada cinematográfica suave da logo */
+@keyframes mytubeCinematicIn {
     0% {
-        transform: scale(1);
-        filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.4));
-    }
-    14% {
-        transform: scale(1.07);
-        filter: drop-shadow(0 0 25px rgba(0, 242, 254, 0.8)) drop-shadow(0 0 40px rgba(0, 123, 255, 0.6));
-    }
-    28% {
-        transform: scale(1);
-        filter: drop-shadow(0 0 12px rgba(0, 123, 255, 0.4));
-    }
-    42% {
-        transform: scale(1.14);
-        filter: drop-shadow(0 0 35px rgba(0, 242, 254, 0.95)) drop-shadow(0 0 60px rgba(0, 123, 255, 0.8));
-    }
-    70% {
-        transform: scale(1);
-        filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.4));
-    }
-    100% {
-        transform: scale(1);
-        filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.4));
-    }
-}
-
-@keyframes mytubeShockwave {
-    0% {
-        transform: scale(0.6);
-        opacity: 0.9;
-    }
-    50% {
-        opacity: 0.5;
-    }
-    100% {
-        transform: scale(2.4);
         opacity: 0;
+        transform: scale(0.92);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
     }
 }

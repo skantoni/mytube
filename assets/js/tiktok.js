@@ -118,6 +118,9 @@ class TikTokPlayer {
                 video.ontimeupdate = () => {
                     const vd = this.videos.find(v => v.video === video);
                     if (vd) this.updateProgress(vd);
+                    if (video.currentTime > 0.05) {
+                        window.dispatchEvent(new CustomEvent('mytubeFirstFrameRendered'));
+                    }
                 };
                 video.onended = () => this.nextVideo();
 
@@ -717,7 +720,12 @@ class TikTokPlayer {
                 video.currentTime = videoData.savedTime;
             }
         };
-        video.ontimeupdate = () => this.updateProgress(videoData);
+        video.ontimeupdate = () => {
+            this.updateProgress(videoData);
+            if (video.currentTime > 0.05) {
+                window.dispatchEvent(new CustomEvent('mytubeFirstFrameRendered'));
+            }
+        };
 
         videoData.video = video;
         videoData.materialized = true;

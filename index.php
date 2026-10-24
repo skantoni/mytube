@@ -155,11 +155,7 @@ if ($start_video_id > 0) {
 </head>
 <body>
     <div class="splash-screen" id="splashScreen" aria-label="Tela de abertura">
-        <div class="splash-heartbeat-box">
-            <div class="splash-shockwave"></div>
-            <div class="splash-shockwave splash-shockwave-2"></div>
-            <img src="assets/images/logo.png" alt="MyTube" class="splash-logo">
-        </div>
+        <img src="assets/images/logo.png" alt="MyTube" class="splash-logo">
     </div>
 
     <?php 
@@ -897,8 +893,8 @@ if ($start_video_id > 0) {
 
             let dismissed = false;
             const startTime = Date.now();
-            const minDisplayMs = 600; // Tempo mínimo para o cérebro registrar o pulso de marca com elegância
-            const maxSafetyMs = 2800; // Timeout de segurança: nunca prende se houver lentidão extrema na rede
+            const minDisplayMs = 500;  // Tempo mínimo para a entrada cinematográfica da logo
+            const maxSafetyMs = 5000;  // Timeout de segurança: 5s (nunca trava a tela se houver erro de rede ou bloqueio de autoplay)
 
             function dismissSplash() {
                 if (dismissed) return;
@@ -916,28 +912,39 @@ if ($start_video_id > 0) {
                 }, remainingMin);
             }
 
-            // Ouve evento disparado assim que o primeiro vídeo entra em reprodução real
-            window.addEventListener('mytubeFirstVideoPlaying', dismissSplash, { once: true });
+            // 1. Escutar evento customizado disparado quando o 1º frame REAL começa a rodar
+            window.addEventListener('mytubeFirstFrameRendered', dismissSplash, { once: true });
 
-            // Ouvir também diretamente no elemento <video>
-            const checkFirstVideo = function() {
-                const vid = document.querySelector('.video-item video');
-                if (vid) {
-                    if (!vid.paused && vid.currentTime > 0) {
-                        dismissSplash();
-                    } else {
-                        vid.addEventListener('playing', dismissSplash, { once: true });
-                    }
+            // 2. Monitorizar diretamente o elemento <video> do 1º item no DOM
+            function bindFirstVideo() {
+                const firstVid = document.querySelector('.video-item video');
+                if (!firstVid) {
+                    setTimeout(bindFirstVideo, 80);
+                    return;
                 }
-            };
 
-            if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                checkFirstVideo();
-            } else {
-                document.addEventListener('DOMContentLoaded', checkFirstVideo);
+                if (firstVid.currentTime > 0.05) {
+                    dismissSplash();
+                    return;
+                }
+
+                // timeupdate só dispara quando o vídeo está EFETIVAMENTE a rodar frames na tela
+                const onTimeUpdate = function() {
+                    if (firstVid.currentTime > 0.05) {
+                        firstVid.removeEventListener('timeupdate', onTimeUpdate);
+                        dismissSplash();
+                    }
+                };
+                firstVid.addEventListener('timeupdate', onTimeUpdate);
             }
 
-            // Timeout de segurança (caso o navegador bloqueie autoplay ou rede demore)
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                bindFirstVideo();
+            } else {
+                document.addEventListener('DOMContentLoaded', bindFirstVideo);
+            }
+
+            // Timeout de segurança
             setTimeout(dismissSplash, maxSafetyMs);
 
             if (forceSplash && window.history.replaceState) {
