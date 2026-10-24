@@ -26,8 +26,8 @@
     height: auto;
     object-fit: contain;
     opacity: 0;
-    transform: scale(0.88);
-    animation: mytubeCinematicIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+    transform: scale(0.8);
+    animation: mytubeCinematicIn 1.35s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
     will-change: transform, opacity;
     transition: opacity 0.45s ease-out, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -41,11 +41,11 @@ body.splash-active {
     overflow: hidden;
 }
 
-/* Entrada cinematográfica da logo: nasce suave de 0.88 para 1.0 */
+/* Entrada cinematográfica da logo: nasce a 80% (scale 0.8) até 100% em 1.35s */
 @keyframes mytubeCinematicIn {
     0% {
         opacity: 0;
-        transform: scale(0.88);
+        transform: scale(0.8);
     }
     100% {
         opacity: 1;

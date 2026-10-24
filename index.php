@@ -882,7 +882,7 @@ if ($start_video_id > 0) {
 
             let dismissed = false;
             const startTime = Date.now();
-            const minMs = 1000;    // Garante que o utilizador vê a entrada cinematográfica da logo (1s completo)
+            const minMs = 1400;    // Garante que o utilizador vê a entrada cinematográfica completa (1.35s)
             const safetyMs = 6000; // Timeout de segurança: 6s (nunca prende se a rede falhar)
 
             function dismissSplash() {
