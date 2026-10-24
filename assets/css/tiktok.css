@@ -1068,77 +1068,77 @@ body * {
 }
 
 /* ==========================================================
-   MyTube Orbit Loader — Attentional Capture & Perceived Performance
-   Duas esferas rítmicas com aceleração elástica (Azul Elétrico & Ciano Neon)
+   MyTube Quantum Halo — Identidade Exclusiva & Attentional Capture
+   Anel de luz neon (Azul Elétrico & Ciano) com núcleo pulsante.
+   Foco cinematográfico que substitui as bolinhas do TikTok por
+   uma estética futurista de reprodutor de vídeo de alta gama.
    ========================================================== */
-.video-item.buffering .video-player::before,
+/* Anel Externo de Luz Líquida */
+.video-item.buffering .video-player::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 46px;
+    height: 46px;
+    margin-top: -23px;
+    margin-left: -23px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: #00f2fe;
+    border-right-color: #007BFF;
+    border-bottom-color: rgba(0, 123, 255, 0.25);
+    box-shadow: 0 0 20px rgba(0, 242, 254, 0.55), inset 0 0 12px rgba(0, 123, 255, 0.35);
+    animation: mytubeHaloSpin 0.75s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+    pointer-events: none;
+    z-index: 12;
+    will-change: transform;
+}
+
+/* Núcleo Central de Energia */
 .video-item.buffering .video-player::after {
     content: '';
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 16px;
-    height: 16px;
-    margin-top: -8px;
-    margin-left: -8px;
+    width: 10px;
+    height: 10px;
+    margin-top: -5px;
+    margin-left: -5px;
     border-radius: 50%;
+    background: linear-gradient(135deg, #00f2fe, #007BFF);
+    box-shadow: 0 0 14px #00f2fe, 0 0 26px rgba(0, 123, 255, 0.85);
+    background-image: none;
+    animation: mytubeCorePulse 0.75s ease-in-out infinite alternate;
     pointer-events: none;
-    z-index: 12;
+    z-index: 13;
     will-change: transform, opacity;
 }
 
-/* Esfera 1: Azul Elétrico MyTube */
-.video-item.buffering .video-player::before {
-    background: #007BFF;
-    box-shadow: 0 0 16px rgba(0, 123, 255, 0.9);
-    animation: mytubeOrbitBlue 0.85s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
-}
-
-/* Esfera 2: Ciano Neon MyTube */
-.video-item.buffering .video-player::after {
-    background: #00f2fe;
-    box-shadow: 0 0 16px rgba(0, 242, 254, 0.9);
-    background-image: none;
-    animation: mytubeOrbitCyan 0.85s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
-}
-
-@keyframes mytubeOrbitBlue {
+@keyframes mytubeHaloSpin {
     0% {
-        transform: translate3d(-18px, 0, 0) scale(0.8);
-        z-index: 13;
-        opacity: 0.85;
+        transform: rotate(0deg) scale(0.92);
     }
     50% {
-        transform: translate3d(0, 0, 0) scale(1.15);
-        z-index: 13;
-        opacity: 1;
+        transform: rotate(180deg) scale(1.06);
     }
     100% {
-        transform: translate3d(18px, 0, 0) scale(0.85);
-        z-index: 11;
-        opacity: 0.75;
+        transform: rotate(360deg) scale(0.92);
     }
 }
 
-@keyframes mytubeOrbitCyan {
+@keyframes mytubeCorePulse {
     0% {
-        transform: translate3d(18px, 0, 0) scale(0.85);
-        z-index: 11;
-        opacity: 0.75;
-    }
-    50% {
-        transform: translate3d(0, 0, 0) scale(0.8);
-        z-index: 11;
-        opacity: 0.85;
+        transform: scale(0.75);
+        opacity: 0.55;
     }
     100% {
-        transform: translate3d(-18px, 0, 0) scale(1.15);
-        z-index: 13;
+        transform: scale(1.3);
         opacity: 1;
     }
 }
 
-/* Escurecimento sutil do fundo durante o buffering para destacar o Orbit */
+/* Escurecimento sutil do fundo durante o buffering para destacar o Halo */
 .video-item.buffering video {
     filter: brightness(0.65);
 }
