@@ -874,78 +874,81 @@ if ($start_video_id > 0) {
     <script>
         (function() {
             const splash = document.getElementById('splashScreen');
-            if (!splash) {
-                return;
-            }
+            if (!splash) return;
 
             const forceSplash = <?php echo $force_splash ? 'true' : 'false'; ?>;
-            const skipSplash = <?php echo ($start_video_id > 0) ? 'true' : 'false'; ?>;
-            const splashStorageKey = 'mytube_splash_shown';
-            const hasShownSplash = sessionStorage.getItem(splashStorageKey) === '1';
+            const skipSplash  = <?php echo ($start_video_id > 0) ? 'true' : 'false'; ?>;
+            const splashKey   = 'mytube_splash_shown';
+            const hasShown    = sessionStorage.getItem(splashKey) === '1';
 
-            if (!forceSplash && (hasShownSplash || skipSplash)) {
+            if (!forceSplash && (hasShown || skipSplash)) {
                 splash.remove();
                 return;
             }
 
-            sessionStorage.setItem(splashStorageKey, '1');
+            sessionStorage.setItem(splashKey, '1');
             document.body.classList.add('splash-active');
 
-            let dismissed = false;
+            let dismissed   = false;
             const startTime = Date.now();
-            const minDisplayMs = 500;  // Tempo mínimo para a entrada cinematográfica da logo
-            const maxSafetyMs = 5000;  // Timeout de segurança: 5s (nunca trava a tela se houver erro de rede ou bloqueio de autoplay)
+            const minMs     = 600;  // mínimo para a animação cinematográfica ser sentida
+            const safetyMs  = 7000; // timeout de segurança (bloqueio de autoplay, rede muito lenta)
 
             function dismissSplash() {
                 if (dismissed) return;
                 dismissed = true;
-
-                const elapsed = Date.now() - startTime;
-                const remainingMin = Math.max(0, minDisplayMs - elapsed);
-
+                const wait = Math.max(0, minMs - (Date.now() - startTime));
                 setTimeout(function() {
                     splash.classList.add('hidden');
                     setTimeout(function() {
                         document.body.classList.remove('splash-active');
                         splash.remove();
                     }, 450);
-                }, remainingMin);
+                }, wait);
             }
 
-            // 1. Escutar evento customizado disparado quando o 1º frame REAL começa a rodar
-            window.addEventListener('mytubeFirstFrameRendered', dismissSplash, { once: true });
-
-            // 2. Monitorizar diretamente o elemento <video> do 1º item no DOM
-            function bindFirstVideo() {
-                const firstVid = document.querySelector('.video-item video');
-                if (!firstVid) {
-                    setTimeout(bindFirstVideo, 80);
+            // Tentar encontrar o elemento <video> do 1º item, repetindo até aparecer no DOM
+            let pollCount = 0;
+            function bindVideo() {
+                const vid = document.querySelector('.video-item video');
+                if (!vid) {
+                    if (++pollCount < 100) setTimeout(bindVideo, 100);
                     return;
                 }
 
-                if (firstVid.currentTime > 0.05) {
-                    dismissSplash();
-                    return;
-                }
-
-                // timeupdate só dispara quando o vídeo está EFETIVAMENTE a rodar frames na tela
-                const onTimeUpdate = function() {
-                    if (firstVid.currentTime > 0.05) {
-                        firstVid.removeEventListener('timeupdate', onTimeUpdate);
-                        dismissSplash();
+                // requestVideoFrameCallback: único método que garante frame PINTADO na tela
+                if (typeof vid.requestVideoFrameCallback === 'function') {
+                    (function waitForFrame() {
+                        vid.requestVideoFrameCallback(function(now, meta) {
+                            // meta.mediaTime > 0 confirma que é um frame real de vídeo (não o frame preto inicial)
+                            if (meta.mediaTime > 0) {
+                                dismissSplash();
+                            } else {
+                                vid.requestVideoFrameCallback(waitForFrame);
+                            }
+                        });
+                    })();
+                } else {
+                    // Fallback para browsers sem requestVideoFrameCallback (Safari < 15.4, Firefox)
+                    // Combinar readyState >= 3 (HAVE_FUTURE_DATA) com currentTime > 0 para maior garantia
+                    function onTimeUpdate() {
+                        if (vid.readyState >= 3 && vid.currentTime > 0.1) {
+                            vid.removeEventListener('timeupdate', onTimeUpdate);
+                            dismissSplash();
+                        }
                     }
-                };
-                firstVid.addEventListener('timeupdate', onTimeUpdate);
+                    vid.addEventListener('timeupdate', onTimeUpdate);
+                }
             }
 
             if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                bindFirstVideo();
+                bindVideo();
             } else {
-                document.addEventListener('DOMContentLoaded', bindFirstVideo);
+                document.addEventListener('DOMContentLoaded', bindVideo);
             }
 
-            // Timeout de segurança
-            setTimeout(dismissSplash, maxSafetyMs);
+            // Timeout de segurança — garante que nunca prende a tela
+            setTimeout(dismissSplash, safetyMs);
 
             if (forceSplash && window.history.replaceState) {
                 const cleanUrl = new URL(window.location.href);
