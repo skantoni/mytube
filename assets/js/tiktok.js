@@ -118,7 +118,7 @@ class TikTokPlayer {
                 video.ontimeupdate = () => {
                     const vd = this.videos.find(v => v.video === video);
                     if (vd) this.updateProgress(vd);
-                    if (video.currentTime > 0.05) {
+                    if (video.currentTime >= 0.2 && !video.paused) {
                         window.dispatchEvent(new CustomEvent('mytubeFirstFrameRendered'));
                     }
                 };
@@ -722,7 +722,7 @@ class TikTokPlayer {
         };
         video.ontimeupdate = () => {
             this.updateProgress(videoData);
-            if (video.currentTime > 0.05) {
+            if (video.currentTime >= 0.2 && !video.paused) {
                 window.dispatchEvent(new CustomEvent('mytubeFirstFrameRendered'));
             }
         };

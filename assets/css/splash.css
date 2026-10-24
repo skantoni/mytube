@@ -12,7 +12,7 @@
     z-index: 20000;
     opacity: 1;
     visibility: visible;
-    transition: opacity 0.45s ease-out, visibility 0s linear 0.45s;
+    transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0.5s;
 }
 
 .splash-screen.hidden {
@@ -26,26 +26,26 @@
     height: auto;
     object-fit: contain;
     opacity: 0;
-    transform: scale(0.92);
-    animation: mytubeCinematicIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transform: scale(0.88);
+    animation: mytubeCinematicIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
     will-change: transform, opacity;
-    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+    transition: opacity 0.45s ease-out, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .splash-screen.hidden .splash-logo {
     opacity: 0;
-    transform: scale(1.04);
+    transform: scale(1.06);
 }
 
 body.splash-active {
     overflow: hidden;
 }
 
-/* Entrada cinematográfica suave da logo */
+/* Entrada cinematográfica da logo: nasce suave de 0.88 para 1.0 */
 @keyframes mytubeCinematicIn {
     0% {
         opacity: 0;
-        transform: scale(0.92);
+        transform: scale(0.88);
     }
     100% {
         opacity: 1;

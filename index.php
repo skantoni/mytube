@@ -135,6 +135,8 @@ if ($start_video_id > 0) {
     <link rel="canonical" href="https://www.mytube.social/">
     <?php echo r2_js_config(); ?>
     <?php include __DIR__ . '/includes/favicon.php'; ?>
+    <!-- Preload da logo da abertura (garante carregamento instantâneo da animação) -->
+    <link rel="preload" href="<?php echo asset('assets/images/logo.png'); ?>" as="image">
     <!-- Google AdSense Verification Code -->
     <meta name="google-adsense-account" content="ca-pub-7296999127636132">
     <?php if ($preload_m3u8_url): ?>
@@ -876,85 +878,68 @@ if ($start_video_id > 0) {
             const splash = document.getElementById('splashScreen');
             if (!splash) return;
 
-            const forceSplash = <?php echo $force_splash ? 'true' : 'false'; ?>;
-            const skipSplash  = <?php echo ($start_video_id > 0) ? 'true' : 'false'; ?>;
-            const splashKey   = 'mytube_splash_shown';
-            const hasShown    = sessionStorage.getItem(splashKey) === '1';
-
-            if (!forceSplash && (hasShown || skipSplash)) {
-                splash.remove();
-                return;
-            }
-
-            sessionStorage.setItem(splashKey, '1');
             document.body.classList.add('splash-active');
 
-            let dismissed   = false;
+            let dismissed = false;
             const startTime = Date.now();
-            const minMs     = 600;  // mínimo para a animação cinematográfica ser sentida
-            const safetyMs  = 7000; // timeout de segurança (bloqueio de autoplay, rede muito lenta)
+            const minMs = 1000;    // Garante que o utilizador vê a entrada cinematográfica da logo (1s completo)
+            const safetyMs = 6000; // Timeout de segurança: 6s (nunca prende se a rede falhar)
 
             function dismissSplash() {
                 if (dismissed) return;
                 dismissed = true;
-                const wait = Math.max(0, minMs - (Date.now() - startTime));
+
+                const elapsed = Date.now() - startTime;
+                const wait = Math.max(0, minMs - elapsed);
+
                 setTimeout(function() {
                     splash.classList.add('hidden');
                     setTimeout(function() {
                         document.body.classList.remove('splash-active');
                         splash.remove();
-                    }, 450);
+                    }, 500);
                 }, wait);
             }
 
-            // Tentar encontrar o elemento <video> do 1º item, repetindo até aparecer no DOM
-            let pollCount = 0;
-            function bindVideo() {
+            // Monitorizar o primeiro vídeo do feed até ele estar REALMENTE a rodar frames na tela
+            function watchFirstVideo() {
                 const vid = document.querySelector('.video-item video');
                 if (!vid) {
-                    if (++pollCount < 100) setTimeout(bindVideo, 100);
+                    setTimeout(watchFirstVideo, 60);
                     return;
                 }
 
-                // requestVideoFrameCallback: único método que garante frame PINTADO na tela
-                if (typeof vid.requestVideoFrameCallback === 'function') {
-                    (function waitForFrame() {
-                        vid.requestVideoFrameCallback(function(now, meta) {
-                            // meta.mediaTime > 0 confirma que é um frame real de vídeo (não o frame preto inicial)
-                            if (meta.mediaTime > 0) {
-                                dismissSplash();
-                            } else {
-                                vid.requestVideoFrameCallback(waitForFrame);
-                            }
-                        });
-                    })();
-                } else {
-                    // Fallback para browsers sem requestVideoFrameCallback (Safari < 15.4, Firefox)
-                    // Combinar readyState >= 3 (HAVE_FUTURE_DATA) com currentTime > 0 para maior garantia
-                    function onTimeUpdate() {
-                        if (vid.readyState >= 3 && vid.currentTime > 0.1) {
-                            vid.removeEventListener('timeupdate', onTimeUpdate);
-                            dismissSplash();
-                        }
+                // Função que valida se o vídeo está efetivamente a tocar com tempo avançado
+                function checkRealPlayback() {
+                    // currentTime >= 0.2 garante que os segmentos HLS foram descarregados,
+                    // decodificados e estão fisicamente a rolar na tela
+                    if (!vid.paused && vid.currentTime >= 0.2) {
+                        vid.removeEventListener('timeupdate', checkRealPlayback);
+                        vid.removeEventListener('playing', checkRealPlayback);
+                        dismissSplash();
                     }
-                    vid.addEventListener('timeupdate', onTimeUpdate);
+                }
+
+                vid.addEventListener('timeupdate', checkRealPlayback);
+                vid.addEventListener('playing', checkRealPlayback);
+
+                // Se já estiver a tocar
+                if (!vid.paused && vid.currentTime >= 0.2) {
+                    dismissSplash();
                 }
             }
 
             if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                bindVideo();
+                watchFirstVideo();
             } else {
-                document.addEventListener('DOMContentLoaded', bindVideo);
+                document.addEventListener('DOMContentLoaded', watchFirstVideo);
             }
 
-            // Timeout de segurança — garante que nunca prende a tela
+            // Ouvir evento disparado pelo tiktok.js no primeiro avanço de tempo
+            window.addEventListener('mytubeFirstFrameRendered', dismissSplash, { once: true });
+
+            // Timeout de segurança absoluto
             setTimeout(dismissSplash, safetyMs);
-
-            if (forceSplash && window.history.replaceState) {
-                const cleanUrl = new URL(window.location.href);
-                cleanUrl.searchParams.delete('splash');
-                window.history.replaceState({}, document.title, cleanUrl.toString());
-            }
         })();
     </script>
 
