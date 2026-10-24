@@ -4,11 +4,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--black);
+    background: #000;
     z-index: 20000;
     opacity: 1;
     visibility: visible;
-    transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0.4s;
+    transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0.45s;
 }
 
 .splash-screen.hidden {
@@ -17,20 +17,91 @@
     pointer-events: none;
 }
 
+/* ==========================================================
+   MyTube Brand Heartbeat — Attentional Capture & Identidade MyTube
+   ========================================================== */
+.splash-heartbeat-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Ondas de choque neon concêntricas */
+.splash-shockwave {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 2px solid rgba(0, 242, 254, 0.7);
+    box-shadow: 0 0 30px rgba(0, 123, 255, 0.6), inset 0 0 15px rgba(0, 242, 254, 0.35);
+    pointer-events: none;
+    animation: mytubeShockwave 1.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.splash-shockwave-2 {
+    animation-delay: 0.25s;
+    border-color: rgba(0, 123, 255, 0.6);
+}
+
 .splash-logo {
-    width: min(260px, 68vw);
+    position: relative;
+    width: min(240px, 62vw);
     height: auto;
     object-fit: contain;
-    opacity: 1;
-    transform: scale(1);
+    z-index: 2;
+    animation: mytubeHeartbeat 1.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+    will-change: transform, filter;
     transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .splash-screen.hidden .splash-logo {
     opacity: 0;
-    transform: scale(0.9);
+    transform: scale(1.06);
 }
 
 body.splash-active {
     overflow: hidden;
+}
+
+/* Pulso duplo tipo batimento cardíaco (tump-tump!) com brilho neon intenso */
+@keyframes mytubeHeartbeat {
+    0% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.4));
+    }
+    14% {
+        transform: scale(1.07);
+        filter: drop-shadow(0 0 25px rgba(0, 242, 254, 0.8)) drop-shadow(0 0 40px rgba(0, 123, 255, 0.6));
+    }
+    28% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 12px rgba(0, 123, 255, 0.4));
+    }
+    42% {
+        transform: scale(1.14);
+        filter: drop-shadow(0 0 35px rgba(0, 242, 254, 0.95)) drop-shadow(0 0 60px rgba(0, 123, 255, 0.8));
+    }
+    70% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.4));
+    }
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.4));
+    }
+}
+
+@keyframes mytubeShockwave {
+    0% {
+        transform: scale(0.6);
+        opacity: 0.9;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(2.4);
+        opacity: 0;
+    }
 }

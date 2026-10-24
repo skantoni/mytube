@@ -949,6 +949,7 @@ class TikTokPlayer {
                         console.log(`[playVideo] Vídeo ${videoData.videoId} a tocar COM som`);
                         videoData.element.classList.remove('paused');
                         videoData.element.classList.remove('buffering');
+                        window.dispatchEvent(new CustomEvent('mytubeFirstVideoPlaying'));
                         this.hideAudioPrompt(videoData.videoId);
                         this.updateAudioButtonState(videoData.videoId, false);
                     })
@@ -969,6 +970,7 @@ class TikTokPlayer {
                                 console.log(`[playVideo] Vídeo ${videoData.videoId} a tocar SEM som (fallback)`);
                                 videoData.element.classList.remove('paused');
                                 videoData.element.classList.remove('buffering');
+                                window.dispatchEvent(new CustomEvent('mytubeFirstVideoPlaying'));
                                 this.showAudioPrompt(videoData.videoId);
                                 this.updateAudioButtonState(videoData.videoId, true);
                             })
@@ -988,6 +990,7 @@ class TikTokPlayer {
                         if (!afterPlay(true)) return;
                         videoData.element.classList.remove('paused');
                         videoData.element.classList.remove('buffering');
+                        window.dispatchEvent(new CustomEvent('mytubeFirstVideoPlaying'));
                         if (!userInteracted) {
                             this.showAudioPrompt(videoData.videoId);
                         }

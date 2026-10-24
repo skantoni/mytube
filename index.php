@@ -155,7 +155,11 @@ if ($start_video_id > 0) {
 </head>
 <body>
     <div class="splash-screen" id="splashScreen" aria-label="Tela de abertura">
-        <img src="assets/images/logo.png" alt="MyTube" class="splash-logo">
+        <div class="splash-heartbeat-box">
+            <div class="splash-shockwave"></div>
+            <div class="splash-shockwave splash-shockwave-2"></div>
+            <img src="assets/images/logo.png" alt="MyTube" class="splash-logo">
+        </div>
     </div>
 
     <?php 
@@ -881,8 +885,6 @@ if ($start_video_id > 0) {
             const forceSplash = <?php echo $force_splash ? 'true' : 'false'; ?>;
             const skipSplash = <?php echo ($start_video_id > 0) ? 'true' : 'false'; ?>;
             const splashStorageKey = 'mytube_splash_shown';
-            const splashVisibleMs = 250;
-            const splashExitMs = 500;
             const hasShownSplash = sessionStorage.getItem(splashStorageKey) === '1';
 
             if (!forceSplash && (hasShownSplash || skipSplash)) {
@@ -893,13 +895,50 @@ if ($start_video_id > 0) {
             sessionStorage.setItem(splashStorageKey, '1');
             document.body.classList.add('splash-active');
 
-            setTimeout(function() {
-                splash.classList.add('hidden');
+            let dismissed = false;
+            const startTime = Date.now();
+            const minDisplayMs = 600; // Tempo mínimo para o cérebro registrar o pulso de marca com elegância
+            const maxSafetyMs = 2800; // Timeout de segurança: nunca prende se houver lentidão extrema na rede
+
+            function dismissSplash() {
+                if (dismissed) return;
+                dismissed = true;
+
+                const elapsed = Date.now() - startTime;
+                const remainingMin = Math.max(0, minDisplayMs - elapsed);
+
                 setTimeout(function() {
-                    document.body.classList.remove('splash-active');
-                    splash.remove();
-                }, splashExitMs);
-            }, splashVisibleMs);
+                    splash.classList.add('hidden');
+                    setTimeout(function() {
+                        document.body.classList.remove('splash-active');
+                        splash.remove();
+                    }, 450);
+                }, remainingMin);
+            }
+
+            // Ouve evento disparado assim que o primeiro vídeo entra em reprodução real
+            window.addEventListener('mytubeFirstVideoPlaying', dismissSplash, { once: true });
+
+            // Ouvir também diretamente no elemento <video>
+            const checkFirstVideo = function() {
+                const vid = document.querySelector('.video-item video');
+                if (vid) {
+                    if (!vid.paused && vid.currentTime > 0) {
+                        dismissSplash();
+                    } else {
+                        vid.addEventListener('playing', dismissSplash, { once: true });
+                    }
+                }
+            };
+
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                checkFirstVideo();
+            } else {
+                document.addEventListener('DOMContentLoaded', checkFirstVideo);
+            }
+
+            // Timeout de segurança (caso o navegador bloqueie autoplay ou rede demore)
+            setTimeout(dismissSplash, maxSafetyMs);
 
             if (forceSplash && window.history.replaceState) {
                 const cleanUrl = new URL(window.location.href);
